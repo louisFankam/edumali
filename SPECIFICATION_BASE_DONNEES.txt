@@ -1,0 +1,680 @@
+================================================================================
+                    SPECIFICATION BASE DE DONNEES - EDUMALI
+================================================================================
+
+1. TABLE: users (Utilisateurs)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- username: VARCHAR(50) UNIQUE NOT NULL
+- email: VARCHAR(100) UNIQUE NOT NULL
+- password_hash: VARCHAR(255) NOT NULL
+- full_name: VARCHAR(100) NOT NULL
+- phone: VARCHAR(20)
+- role: ENUM('admin', 'teacher', 'parent') DEFAULT 'admin'
+- avatar: VARCHAR(255)
+- last_login: DATETIME
+- is_active: BOOLEAN DEFAULT true
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FONCTIONS:
+- createUser(username, email, password, full_name, phone, role)
+- authenticateUser(username, password)
+- updateUser(id, data)
+- deleteUser(id)
+- getUserById(id)
+- getUserByUsername(username)
+- getAllUsers()
+- updateLastLogin(id)
+
+================================================================================
+
+2. TABLE: school_info (Informations de l'école)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- name: VARCHAR(100) NOT NULL
+- address: TEXT NOT NULL
+- phone: VARCHAR(20)
+- email: VARCHAR(100)
+- director: VARCHAR(100)
+- founded_year: YEAR
+- logo: VARCHAR(255)
+- website: VARCHAR(255)
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FONCTIONS:
+- getSchoolInfo()
+- updateSchoolInfo(data)
+- updateLogo(logo_path)
+
+================================================================================
+
+3. TABLE: classes (Classes)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- name: VARCHAR(10) NOT NULL (ex: CP, CE1, 6ème)
+- level: ENUM('Primaire', 'Collège', 'Lycée') NOT NULL
+- capacity: INT NOT NULL DEFAULT 30
+- current_students: INT DEFAULT 0
+- teacher_id: INT
+- color: VARCHAR(20) DEFAULT 'bg-blue-100 text-blue-700'
+- academic_year: VARCHAR(9) NOT NULL (ex: 2024-2025)
+- is_active: BOOLEAN DEFAULT true
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- teacher_id -> teachers(id)
+
+FONCTIONS:
+- createClass(name, level, capacity, teacher_id, academic_year)
+- updateClass(id, data)
+- deleteClass(id)
+- getClassById(id)
+- getAllClasses(academic_year)
+- getClassesByLevel(level, academic_year)
+- updateStudentCount(id)
+- assignTeacher(class_id, teacher_id)
+
+================================================================================
+
+4. TABLE: subjects (Matières)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- name: VARCHAR(50) NOT NULL
+- code: VARCHAR(10) UNIQUE NOT NULL
+- teacher_id: INT
+- hours_per_week: INT NOT NULL
+- coefficient: DECIMAL(3,2) NOT NULL DEFAULT 1.00
+- color: VARCHAR(50) DEFAULT 'bg-blue-100 text-blue-700'
+- description: TEXT
+- is_active: BOOLEAN DEFAULT true
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- teacher_id -> teachers(id)
+
+FONCTIONS:
+- createSubject(name, code, teacher_id, hours_per_week, coefficient)
+- updateSubject(id, data)
+- deleteSubject(id)
+- getSubjectById(id)
+- getAllSubjects()
+- getSubjectsByTeacher(teacher_id)
+- assignTeacher(subject_id, teacher_id)
+
+================================================================================
+
+5. TABLE: class_subjects (Liaison Classes-Matières)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- class_id: INT NOT NULL
+- subject_id: INT NOT NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- class_id -> classes(id) ON DELETE CASCADE
+- subject_id -> subjects(id) ON DELETE CASCADE
+
+UNIQUE KEY: (class_id, subject_id)
+
+FONCTIONS:
+- assignSubjectToClass(class_id, subject_id)
+- removeSubjectFromClass(class_id, subject_id)
+- getSubjectsByClass(class_id)
+- getClassesBySubject(subject_id)
+- getAllClassSubjects()
+
+================================================================================
+
+6. TABLE: teachers (Professeurs)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- first_name: VARCHAR(50) NOT NULL
+- last_name: VARCHAR(50) NOT NULL
+- email: VARCHAR(100) UNIQUE NOT NULL
+- phone: VARCHAR(20)
+- address: TEXT
+- hire_date: DATE NOT NULL
+- salary: DECIMAL(10,2)
+- status: ENUM('active', 'inactive', 'on_leave') DEFAULT 'active'
+- photo: VARCHAR(255)
+- user_id: INT
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- user_id -> users(id)
+
+FONCTIONS:
+- createTeacher(first_name, last_name, email, phone, hire_date, salary)
+- updateTeacher(id, data)
+- deleteTeacher(id)
+- getTeacherById(id)
+- getAllTeachers()
+- getActiveTeachers()
+- assignUser(teacher_id, user_id)
+- getTeacherSubjects(teacher_id)
+
+================================================================================
+
+7. TABLE: students (Élèves)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- first_name: VARCHAR(50) NOT NULL
+- last_name: VARCHAR(50) NOT NULL
+- date_of_birth: DATE NOT NULL
+- gender: ENUM('Masculin', 'Féminin') NOT NULL
+- class_id: INT NOT NULL
+- parent_name: VARCHAR(100) NOT NULL
+- parent_phone: VARCHAR(20) NOT NULL
+- parent_email: VARCHAR(100)
+- address: TEXT NOT NULL
+- enrollment_date: DATE NOT NULL
+- status: ENUM('active', 'inactive', 'graduated', 'transferred') DEFAULT 'active'
+- photo: VARCHAR(255)
+- academic_year: VARCHAR(9) NOT NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- class_id -> classes(id)
+
+FONCTIONS:
+- createStudent(data)
+- updateStudent(id, data)
+- deleteStudent(id)
+- getStudentById(id)
+- getAllStudents(academic_year)
+- getStudentsByClass(class_id)
+- getActiveStudents()
+- transferStudent(student_id, new_class_id)
+- graduateStudent(student_id)
+
+================================================================================
+
+8. TABLE: attendance (Présences)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- student_id: INT NOT NULL
+- date: DATE NOT NULL
+- status: ENUM('present', 'absent', 'late', 'excused') NOT NULL
+- arrival_time: TIME
+- departure_time: TIME
+- remarks: TEXT
+- recorded_by: INT NOT NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- student_id -> students(id) ON DELETE CASCADE
+- recorded_by -> users(id)
+
+UNIQUE KEY: (student_id, date)
+
+FONCTIONS:
+- recordAttendance(student_id, date, status, arrival_time, remarks, recorded_by)
+- updateAttendance(id, data)
+- getAttendanceByStudent(student_id, start_date, end_date)
+- getAttendanceByClass(class_id, date)
+- getAttendanceByDate(date)
+- getAttendanceStats(class_id, start_date, end_date)
+- bulkRecordAttendance(class_id, date, attendance_data, recorded_by)
+
+================================================================================
+
+9. TABLE: exams (Examens)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- name: VARCHAR(100) NOT NULL
+- type: ENUM('composition', 'trimestre', 'semestre', 'annuel') NOT NULL
+- class_id: INT NOT NULL
+- subject_id: INT NOT NULL
+- exam_date: DATE NOT NULL
+- coefficient: DECIMAL(3,2) NOT NULL DEFAULT 1.00
+- max_score: DECIMAL(5,2) DEFAULT 20.00
+- duration: INT (en minutes)
+- instructions: TEXT
+- created_by: INT NOT NULL
+- is_active: BOOLEAN DEFAULT true
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- class_id -> classes(id)
+- subject_id -> subjects(id)
+- created_by -> users(id)
+
+FONCTIONS:
+- createExam(data)
+- updateExam(id, data)
+- deleteExam(id)
+- getExamById(id)
+- getExamsByClass(class_id)
+- getExamsBySubject(subject_id)
+- getExamsByDateRange(start_date, end_date)
+- getActiveExams()
+
+================================================================================
+
+10. TABLE: grades (Notes)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- exam_id: INT NOT NULL
+- student_id: INT NOT NULL
+- score: DECIMAL(5,2) NOT NULL
+- remarks: TEXT
+- recorded_by: INT NOT NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- exam_id -> exams(id) ON DELETE CASCADE
+- student_id -> students(id) ON DELETE CASCADE
+- recorded_by -> users(id)
+
+UNIQUE KEY: (exam_id, student_id)
+
+FONCTIONS:
+- recordGrade(exam_id, student_id, score, remarks, recorded_by)
+- updateGrade(id, data)
+- getGradeById(id)
+- getGradesByExam(exam_id)
+- getGradesByStudent(student_id)
+- getGradesByClass(class_id, subject_id)
+- calculateAverage(student_id, subject_id, academic_year)
+- bulkRecordGrades(exam_id, grades_data, recorded_by)
+
+================================================================================
+
+11. TABLE: report_cards (Bulletins)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- student_id: INT NOT NULL
+- academic_year: VARCHAR(9) NOT NULL
+- period: ENUM('trimestre1', 'trimestre2', 'trimestre3', 'annuel') NOT NULL
+- general_average: DECIMAL(5,2)
+- rank: INT
+- total_students: INT
+- teacher_remarks: TEXT
+- director_remarks: TEXT
+- generated_by: INT NOT NULL
+- generated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- student_id -> students(id) ON DELETE CASCADE
+- generated_by -> users(id)
+
+UNIQUE KEY: (student_id, academic_year, period)
+
+FONCTIONS:
+- generateReportCard(student_id, academic_year, period, generated_by)
+- updateReportCard(id, data)
+- getReportCardById(id)
+- getReportCardsByStudent(student_id, academic_year)
+- getReportCardsByClass(class_id, academic_year, period)
+- calculateRankings(class_id, academic_year, period)
+
+================================================================================
+
+12. TABLE: report_card_details (Détails des bulletins)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- report_card_id: INT NOT NULL
+- subject_id: INT NOT NULL
+- average: DECIMAL(5,2) NOT NULL
+- coefficient: DECIMAL(3,2) NOT NULL
+- weighted_average: DECIMAL(5,2) NOT NULL
+- teacher_remarks: TEXT
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- report_card_id -> report_cards(id) ON DELETE CASCADE
+- subject_id -> subjects(id)
+
+UNIQUE KEY: (report_card_id, subject_id)
+
+FONCTIONS:
+- addReportCardDetail(report_card_id, subject_id, average, coefficient, teacher_remarks)
+- updateReportCardDetail(id, data)
+- getReportCardDetails(report_card_id)
+
+================================================================================
+
+13. TABLE: schedule (Emploi du temps)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- class_id: INT NOT NULL
+- day_of_week: ENUM('monday', 'tuesday', 'wednesday', 'thursday', 'friday') NOT NULL
+- start_time: TIME NOT NULL
+- end_time: TIME NOT NULL
+- subject_id: INT NOT NULL
+- teacher_id: INT NOT NULL
+- room: VARCHAR(20)
+- is_break: BOOLEAN DEFAULT false
+- break_type: ENUM('recreation', 'lunch') NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- class_id -> classes(id) ON DELETE CASCADE
+- subject_id -> subjects(id)
+- teacher_id -> teachers(id)
+
+FONCTIONS:
+- createScheduleSlot(data)
+- updateScheduleSlot(id, data)
+- deleteScheduleSlot(id)
+- getScheduleByClass(class_id)
+- getScheduleByTeacher(teacher_id)
+- getScheduleByDay(class_id, day_of_week)
+- checkConflicts(teacher_id, day_of_week, start_time, end_time, exclude_id)
+- bulkCreateSchedule(class_id, schedule_data)
+
+================================================================================
+
+14. TABLE: exam_schedule (Planning d'examens)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- exam_id: INT NOT NULL
+- exam_date: DATE NOT NULL
+- start_time: TIME NOT NULL
+- end_time: TIME NOT NULL
+- room: VARCHAR(20) NOT NULL
+- supervisor_id: INT NOT NULL
+- max_students: INT DEFAULT 30
+- instructions: TEXT
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- exam_id -> exams(id) ON DELETE CASCADE
+- supervisor_id -> teachers(id)
+
+FONCTIONS:
+- createExamSchedule(data)
+- updateExamSchedule(id, data)
+- deleteExamSchedule(id)
+- getExamScheduleByExam(exam_id)
+- getExamScheduleByDate(date)
+- getExamScheduleBySupervisor(supervisor_id)
+- checkRoomAvailability(room, date, start_time, end_time, exclude_id)
+- checkSupervisorAvailability(supervisor_id, date, start_time, end_time, exclude_id)
+
+================================================================================
+
+15. TABLE: payments (Paiements)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- student_id: INT NOT NULL
+- payment_type: ENUM('tuition', 'lunch', 'transport', 'other') NOT NULL
+- amount: DECIMAL(10,2) NOT NULL
+- paid_amount: DECIMAL(10,2) NOT NULL
+- due_date: DATE NOT NULL
+- payment_date: DATE
+- payment_method: ENUM('cash', 'check', 'transfer', 'card') NOT NULL
+- reference: VARCHAR(50)
+- status: ENUM('paid', 'partial', 'overdue', 'cancelled') DEFAULT 'partial'
+- remarks: TEXT
+- recorded_by: INT NOT NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- student_id -> students(id) ON DELETE CASCADE
+- recorded_by -> users(id)
+
+FONCTIONS:
+- createPayment(data)
+- updatePayment(id, data)
+- deletePayment(id)
+- getPaymentById(id)
+- getPaymentsByStudent(student_id)
+- getPaymentsByDateRange(start_date, end_date)
+- getOverduePayments()
+- calculateBalance(student_id)
+- recordPayment(payment_id, paid_amount, payment_date, payment_method)
+
+================================================================================
+
+16. TABLE: notifications (Notifications)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- title: VARCHAR(100) NOT NULL
+- message: TEXT NOT NULL
+- type: ENUM('info', 'warning', 'error', 'success') NOT NULL
+- category: ENUM('absence', 'payment', 'exam', 'general') NOT NULL
+- priority: ENUM('low', 'medium', 'high') DEFAULT 'medium'
+- target_user_id: INT
+- target_class_id: INT
+- target_student_id: INT
+- is_read: BOOLEAN DEFAULT false
+- read_at: TIMESTAMP NULL
+- created_by: INT NOT NULL
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- target_user_id -> users(id)
+- target_class_id -> classes(id)
+- target_student_id -> students(id)
+- created_by -> users(id)
+
+FONCTIONS:
+- createNotification(data)
+- updateNotification(id, data)
+- deleteNotification(id)
+- getNotificationById(id)
+- getNotificationsByUser(user_id)
+- getUnreadNotifications(user_id)
+- markAsRead(id)
+- markAllAsRead(user_id)
+- getNotificationsByCategory(category)
+- getNotificationsByPriority(priority)
+
+================================================================================
+
+17. TABLE: user_preferences (Préférences utilisateur)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- user_id: INT NOT NULL
+- theme: ENUM('light', 'dark', 'auto') DEFAULT 'light'
+- primary_color: VARCHAR(7) DEFAULT '#3B82F6'
+- accent_color: VARCHAR(7) DEFAULT '#EF4444'
+- font_size: ENUM('small', 'medium', 'large') DEFAULT 'medium'
+- border_radius: ENUM('none', 'small', 'medium', 'large') DEFAULT 'medium'
+- language: VARCHAR(5) DEFAULT 'fr'
+- timezone: VARCHAR(50) DEFAULT 'Africa/Bamako'
+- email_notifications: BOOLEAN DEFAULT true
+- push_notifications: BOOLEAN DEFAULT true
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- user_id -> users(id) ON DELETE CASCADE
+
+UNIQUE KEY: user_id
+
+FONCTIONS:
+- createUserPreferences(user_id, data)
+- updateUserPreferences(user_id, data)
+- getUserPreferences(user_id)
+- updateTheme(user_id, theme)
+- updateColors(user_id, primary_color, accent_color)
+
+================================================================================
+
+18. TABLE: academic_years (Années scolaires)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- year: VARCHAR(9) NOT NULL (ex: 2024-2025)
+- start_date: DATE NOT NULL
+- end_date: DATE NOT NULL
+- is_active: BOOLEAN DEFAULT false
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+
+UNIQUE KEY: year
+
+FONCTIONS:
+- createAcademicYear(year, start_date, end_date)
+- updateAcademicYear(id, data)
+- deleteAcademicYear(id)
+- getAcademicYearById(id)
+- getActiveAcademicYear()
+- getAllAcademicYears()
+- activateAcademicYear(id)
+- deactivateAllAcademicYears()
+
+================================================================================
+
+19. TABLE: audit_logs (Journal d'audit)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- user_id: INT
+- action: VARCHAR(50) NOT NULL
+- table_name: VARCHAR(50) NOT NULL
+- record_id: INT
+- old_values: JSON
+- new_values: JSON
+- ip_address: VARCHAR(45)
+- user_agent: TEXT
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- user_id -> users(id)
+
+FONCTIONS:
+- logAction(user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
+- getAuditLogsByUser(user_id)
+- getAuditLogsByTable(table_name)
+- getAuditLogsByDateRange(start_date, end_date)
+- getAuditLogsByAction(action)
+
+================================================================================
+
+20. TABLE: backup_logs (Logs de sauvegarde)
+================================================================================
+- id: INT PRIMARY KEY AUTO_INCREMENT
+- backup_type: ENUM('full', 'incremental', 'manual') NOT NULL
+- file_path: VARCHAR(255) NOT NULL
+- file_size: BIGINT
+- status: ENUM('success', 'failed', 'in_progress') NOT NULL
+- error_message: TEXT
+- created_by: INT
+- created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+FOREIGN KEYS:
+- created_by -> users(id)
+
+FONCTIONS:
+- createBackupLog(data)
+- updateBackupLog(id, data)
+- getBackupLogsByDateRange(start_date, end_date)
+- getLastSuccessfulBackup()
+- getBackupLogsByStatus(status)
+
+================================================================================
+
+LIENS ET RELATIONS PRINCIPALES:
+================================================================================
+
+1. HIERARCHIE UTILISATEURS:
+   users -> teachers (1:1)
+   users -> students (1:1 via parents)
+
+2. HIERARCHIE SCOLAIRE:
+   academic_years -> classes (1:N)
+   classes -> students (1:N)
+   classes -> class_subjects (1:N)
+   subjects -> class_subjects (1:N)
+
+3. HIERARCHIE ENSEIGNEMENT:
+   teachers -> subjects (1:N)
+   teachers -> schedule (1:N)
+   teachers -> exam_schedule (1:N)
+
+4. HIERARCHIE EVALUATION:
+   exams -> grades (1:N)
+   students -> grades (1:N)
+   students -> report_cards (1:N)
+   report_cards -> report_card_details (1:N)
+
+5. HIERARCHIE PRESENCE:
+   students -> attendance (1:N)
+   classes -> attendance (1:N via students)
+
+6. HIERARCHIE FINANCIERE:
+   students -> payments (1:N)
+
+7. HIERARCHIE NOTIFICATIONS:
+   users -> notifications (1:N)
+   classes -> notifications (1:N)
+   students -> notifications (1:N)
+
+8. HIERARCHIE PERSONNALISATION:
+   users -> user_preferences (1:1)
+
+================================================================================
+
+INDEX RECOMMANDES:
+================================================================================
+
+1. users: username, email, role
+2. students: class_id, status, academic_year
+3. attendance: student_id, date
+4. grades: exam_id, student_id
+5. payments: student_id, status, due_date
+6. schedule: class_id, day_of_week
+7. notifications: target_user_id, is_read, created_at
+8. audit_logs: user_id, created_at, table_name
+
+================================================================================
+
+CONTRAINTES ET VALIDATIONS:
+================================================================================
+
+1. Notes: 0 <= score <= max_score
+2. Présences: Une seule entrée par élève par jour
+3. Grades: Une seule note par élève par examen
+4. Schedule: Pas de conflit de professeur ou de salle
+5. Payments: paid_amount <= amount
+6. Academic Year: start_date < end_date
+7. Students: enrollment_date >= date_of_birth + 5 years
+
+================================================================================
+
+FONCTIONS METIER PRINCIPALES:
+================================================================================
+
+1. CALCULS ACADEMIQUES:
+   - calculateStudentAverage(student_id, subject_id, period)
+   - calculateClassAverage(class_id, subject_id, exam_id)
+   - calculateGeneralAverage(student_id, period)
+   - generateRankings(class_id, period)
+
+2. GESTION PRESENCES:
+   - calculateAttendanceRate(student_id, start_date, end_date)
+   - generateAbsenceReport(class_id, date)
+   - sendAbsenceNotifications()
+
+3. GESTION FINANCIERE:
+   - calculateStudentBalance(student_id)
+   - generatePaymentReport(start_date, end_date)
+   - sendOverdueNotifications()
+
+4. PLANNING:
+   - checkScheduleConflicts(teacher_id, date, time)
+   - generateScheduleReport(class_id)
+   - optimizeSchedule()
+
+5. NOTIFICATIONS:
+   - sendNotification(user_id, notification_data)
+   - sendBulkNotifications(user_ids, notification_data)
+   - processNotificationQueue()
+
+================================================================================
