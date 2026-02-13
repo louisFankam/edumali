@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -100,51 +101,37 @@ function PaymentsPage({ onSelectStudent }: PaymentsPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClass, setSelectedClass] = useState("all");
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
-    
+
   const { toast } = useToast()
   const { studentsWithPayments, isLoading, error, fetchStudentsWithPayments } = usePayments()
-  const { academicYears, fetchAcademicYears, getCurrentAcademicYear } = useAcademicYears()
+  const { academicYears, loadAcademicYears, getCurrentAcademicYear } = useAcademicYears()
   const { fetchClasses } = useClasses()
   const { fetchStudentPayments, createPayment, deletePayment } = usePayments()
 
   // Initialisation des données
   useEffect(() => {
-    fetchAcademicYears()
+    loadAcademicYears()
     fetchClasses()
-  }, [fetchAcademicYears, fetchClasses])
+  }, [loadAcademicYears, fetchClasses])
 
   // Définir l'année académique sélectionnée
   useEffect(() => {
     console.log('Années académiques chargées:', academicYears.length)
     console.log('selectedAcademicYear actuel:', selectedAcademicYear)
     if (academicYears.length > 0 && !selectedAcademicYear) {
-      const currentYear = getCurrentAcademicYear()
-      console.log('Année courante trouvée:', currentYear)
-      if (currentYear) {
-        // Si le year est undefined, utiliser l'ID ou générer un nom
-        const yearName = currentYear.year || currentYear.id || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
-        console.log('Année sélectionnée:', yearName)
-        setSelectedAcademicYear(yearName)
-      } else {
-        // Si aucune année courante, utiliser la première année disponible
-        const firstYear = academicYears[0]
-        const yearName = firstYear.year || firstYear.id || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
-        console.log('Première année utilisée:', yearName)
-        setSelectedAcademicYear(yearName)
-      }
+      console.log('Année sélectionnée:', selectedAcademicYear)
+      setSelectedAcademicYear(selectedAcademicYear)
     }
-  }, [academicYears, selectedAcademicYear, getCurrentAcademicYear])
+  }, [academicYears, selectedAcademicYear])
 
   // Récupérer les données quand l'année change
   useEffect(() => {
     console.log('useEffect déclenché avec selectedAcademicYear:', selectedAcademicYear)
     if (selectedAcademicYear) {
-      const currentYear = getCurrentAcademicYear()
-      const yearName = currentYear?.year || currentYear?.id || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
-      console.log('Chargement des étudiants pour l\'année:', yearName)
-      fetchStudentsWithPayments(yearName)
+      console.log('Chargement des étudiants pour l\'année:', selectedAcademicYear)
+      fetchStudentsWithPayments(selectedAcademicYear)
     }
-  }, [selectedAcademicYear, fetchStudentsWithPayments, getCurrentAcademicYear])
+  }, [selectedAcademicYear, fetchStudentsWithPayments])
 
   // Liste des classes disponibles
   const classOptions = useMemo(() => {
@@ -223,7 +210,7 @@ function PaymentsPage({ onSelectStudent }: PaymentsPageProps) {
     <main className="flex-1 p-6 space-y-6 md:ml-64">
       <PageHeader title="Gestion des Paiements" description="Suivi des frais de scolarité des élèves">
         <div className="flex items-center space-x-2">
-          <Button onClick={handleExport} variant="outline" className="bg-transparent">
+          <Button onClick={handleExport} variant="outline">
             <FileDown className="h-4 w-4 mr-2" />
             Exporter
           </Button>
@@ -569,7 +556,7 @@ function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
           <div className="flex items-center justify-between">
             <CardTitle>Historique des paiements</CardTitle>
             <div className="flex space-x-2">
-              <Button onClick={handleExport} variant="outline" className="bg-transparent">
+              <Button onClick={handleExport} variant="outline">
                 <FileDown className="h-4 w-4 mr-2" />
                 Exporter
               </Button>
@@ -586,7 +573,7 @@ function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
                   </DialogHeader>
                   <form onSubmit={handleAddPayment} className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="amount" className="text-right">Montant</Label>
+                      <Label htmlFor="amount" className="text-right">Montant *</Label>
                       <Input
                         id="amount"
                         type="number"
@@ -625,7 +612,7 @@ function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
                       </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="payerName" className="text-right">Nom du payeur</Label>
+                      <Label htmlFor="payerName" className="text-right">Nom du payeur *</Label>
                       <Input
                         id="payerName"
                         value={newPayment.payerName}
@@ -641,11 +628,12 @@ function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
                         value={newPayment.description}
                         onChange={(e) => setNewPayment({ ...newPayment, description: e.target.value })}
                         className="col-span-3"
+                        placeholder="Optionnel"
                       />
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
                       <DialogClose asChild>
-                        <Button type="button" variant="outline" className="bg-transparent">Annuler</Button>
+                        <Button type="button" variant="outline">Annuler</Button>
                       </DialogClose>
                       <Button type="submit">Enregistrer le paiement</Button>
                     </div>
@@ -656,83 +644,67 @@ function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Montant
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type de frais
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Mode de paiement
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nom du payeur
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Chargement des paiements...
-                    </td>
-                  </tr>
-                ) : payments.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Aucun paiement enregistré pour cet élève.
-                    </td>
-                  </tr>
-                ) : (
-                  payments.map((record: any) => (
-                    <tr key={record.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {format(new Date(record.date), "dd MMMM yyyy", { locale: fr })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.amount.toLocaleString('fr-FR')} FCFA</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.paymentType === 'tuition' ? 'Scolarité' : 
-                         record.paymentType === 'lunch' ? 'Cantine' :
-                         record.paymentType === 'transport' ? 'Transport' :
-                         record.paymentType === 'other' ? 'Autre' : record.paymentType}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {record.paymentMethod === 'cash' ? 'Espèces' : 
-                         record.paymentMethod === 'check' ? 'Chèque' :
-                         record.paymentMethod === 'transfer' ? 'Virement' :
-                         record.paymentMethod === 'card' ? 'Carte' : record.paymentMethod}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.payerName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.description}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Button
-                          onClick={() => handleDeletePayment(record.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Montant</TableHead>
+                <TableHead>Type de frais</TableHead>
+                <TableHead>Mode de paiement</TableHead>
+                <TableHead>Nom du payeur</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+                    Chargement des paiements...
+                  </TableCell>
+                </TableRow>
+              ) : payments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+                    Aucun paiement enregistré pour cet élève.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                payments.map((record: any) => (
+                  <TableRow key={record.id}>
+                    <TableCell className="font-medium">
+                      {format(new Date(record.date), "dd MMMM yyyy", { locale: fr })}
+                    </TableCell>
+                    <TableCell>{record.amount.toLocaleString('fr-FR')} FCFA</TableCell>
+                    <TableCell>
+                      {record.paymentType === 'tuition' ? 'Scolarité' :
+                       record.paymentType === 'lunch' ? 'Cantine' :
+                       record.paymentType === 'transport' ? 'Transport' :
+                       record.paymentType === 'other' ? 'Autre' : record.paymentType}
+                    </TableCell>
+                    <TableCell>
+                      {record.paymentMethod === 'cash' ? 'Espèces' :
+                       record.paymentMethod === 'check' ? 'Chèque' :
+                       record.paymentMethod === 'transfer' ? 'Virement' :
+                       record.paymentMethod === 'card' ? 'Carte' : record.paymentMethod}
+                    </TableCell>
+                    <TableCell>{record.payerName}</TableCell>
+                    <TableCell>{record.description}</TableCell>
+                    <TableCell>
+                      <Button
+                        onClick={() => handleDeletePayment(record.id)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </main>
@@ -742,12 +714,10 @@ function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
 // Composant principal de l'application
 export default function App() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const { studentsWithPayments } = usePayments()
-  const { academicYears, getCurrentAcademicYear } = useAcademicYears()
 
   console.log('selectedStudent mis à jour:', selectedStudent?.firstName);
 
-  
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
