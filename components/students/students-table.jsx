@@ -6,11 +6,20 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Eye, Edit, Trash2, ChevronLeft, Loader2, ChevronRight } from "lucide-react"
 
 const ITEMS_PER_PAGE = 10
 
-export function StudentsTable({ students, onViewDetails, onEdit, onDelete }) {
+export function StudentsTable({ students, onViewDetails, onEdit, onDelete, isLoading }) {
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
   const [currentPage, setCurrentPage] = useState(1)
 
   const totalPages = Math.ceil(students.length / ITEMS_PER_PAGE)
@@ -46,7 +55,7 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete }) {
                 <TableHead>Élève</TableHead>
                 <TableHead>Âge</TableHead>
                 <TableHead>Classe</TableHead>
-                <TableHead>École</TableHead>
+                <TableHead>Nationalité</TableHead>
                 <TableHead>Parent/Tuteur</TableHead>
                 <TableHead>Téléphone</TableHead>
                 <TableHead>Statut</TableHead>
@@ -60,7 +69,7 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete }) {
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                          src={student.photo || "/placeholder.svg"}
+                          src={student.photo || (student.gender === "Masculin" ? "/homme.png" : "/femme.png")}
                           alt={`${student.firstName} ${student.lastName}`}
                         />
                         <AvatarFallback>{getInitials(student.firstName, student.lastName)}</AvatarFallback>
@@ -77,7 +86,7 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete }) {
                   <TableCell>
                     <Badge variant="outline">{student.class}</Badge>
                   </TableCell>
-                  <TableCell className="max-w-48 truncate">{student.school}</TableCell>
+                  <TableCell>{student.nationality || '-'}</TableCell>
                   <TableCell>{student.parentName}</TableCell>
                   <TableCell>{student.parentPhone}</TableCell>
                   <TableCell>
@@ -94,7 +103,7 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete }) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onDelete(student.id)}
+                        onClick={() => onDelete(student.id, student.classId)}
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />

@@ -1,0 +1,344 @@
+// components/students/add-student-modal.tsx
+"use client"
+
+import { useState } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+import { useSchoolInfo } from '@/hooks/use-school-info'
+
+interface Class {
+  id: string
+  name: string
+  level: string
+}
+
+interface AddStudentModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onAdd: (student: any) => Promise<void>
+  classes: Class[]
+}
+
+export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentModalProps) {
+
+  const { schoolInfo, isLoading } = useSchoolInfo()
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    dateOfBirth: undefined as Date | undefined,
+    gender: "",
+    class: "",
+    school: schoolInfo ? schoolInfo.name : "",
+    nationality: "",
+    parentName: "",
+    parentPhone: "",
+    address: "",
+    enrollmentDate: new Date(),
+    status: "Actif",
+  })
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (formData.firstName && formData.lastName && formData.dateOfBirth && formData.class) {
+      setIsSubmitting(true)
+      try {
+        await onAdd({
+          ...formData,
+          dateOfBirth: format(formData.dateOfBirth, "yyyy-MM-dd"),
+          enrollmentDate: format(formData.enrollmentDate, "yyyy-MM-dd"),
+        })
+        setFormData({
+          firstName: "",
+          lastName: "",
+          dateOfBirth: undefined,
+          gender: "",
+          class: "",
+          school: schoolInfo ? schoolInfo.name : "",
+          nationality: "",
+          parentName: "",
+          parentPhone: "",
+          address: "",
+          enrollmentDate: new Date(),
+          status: "Actif",
+        })
+        onClose()
+      } catch (error) {
+        console.error('Erreur lors de l\'ajout:', error)
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+  }
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-center">Ajouter un nouvel élève</DialogTitle>
+          <DialogDescription className="text-center">Remplissez les informations de l'élève pour l'inscrire dans le système.</DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personal Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-center bg-blue-200">Informations personnelles</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Prénom *</Label>
+                <Input
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  placeholder="Prénom de l'élève"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Nom de famille *</Label>
+                <Input
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  placeholder="Nom de famille"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date de naissance *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-transparent",
+                        !formData.dateOfBirth && "text-muted-foreground",
+                      )}
+                      disabled={isSubmitting}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.dateOfBirth ? (
+                        format(formData.dateOfBirth, "dd MMMM yyyy", { locale: fr })
+                      ) : (
+                        <span>Sélectionner une date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.dateOfBirth}
+                      onSelect={(date) => handleInputChange("dateOfBirth", date)}
+                      required
+                      locale={fr}
+                      disabled={isSubmitting}
+                      captionLayout="dropdown"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Genre *</Label>
+                <Select 
+                  value={formData.gender} 
+                  onValueChange={(value) => handleInputChange("gender", value)}
+                  disabled={isSubmitting}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner le genre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Masculin">Masculin</SelectItem>
+                    <SelectItem value="Féminin">Féminin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nationalité *</Label>
+                <Input
+                  value={formData.nationality}
+                  onChange={(e) => handleInputChange("nationality", e.target.value)}
+                  placeholder="Nationalité de l'élève"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* School Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-center bg-blue-200">Informations scolaires</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Classe *</Label>
+                <Select 
+                  value={formData.class} 
+                  onValueChange={(value) => handleInputChange("class", value)}
+                  disabled={isSubmitting || classes.length === 0}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={classes.length === 0 ? "Aucune classe disponible" : "Sélectionner la classe"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        Aucune classe disponible
+                      </div>
+                    ) : (
+                      classes.map((classItem) => (
+                        <SelectItem key={classItem.id} value={classItem.name}>
+                          {classItem.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {classes.length === 0 && (
+                  <p className="text-sm text-red-500">Aucune classe disponible. Veuillez d'abord créer des classes.</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Date d'inscription *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-transparent",
+                        !formData.enrollmentDate && "text-muted-foreground",
+                      )}
+                      disabled={isSubmitting}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(formData.enrollmentDate, "dd MMMM yyyy", { locale: fr })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.enrollmentDate}
+                      onSelect={(date) => handleInputChange("enrollmentDate", date)}
+                      required
+                      locale={fr}
+                      disabled={isSubmitting}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>École</Label>
+                <Input
+                  value={formData.school}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Statut *</Label>
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value) => handleInputChange("status", value)}
+                  disabled={isSubmitting}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner le statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Actif">Actif</SelectItem>
+                    <SelectItem value="Inactif">Inactif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Parent Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-center bg-blue-200">Informations du parent/tuteur</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="parentName">Nom du parent/tuteur *</Label>
+                <Input
+                  id="parentName"
+                  value={formData.parentName}
+                  onChange={(e) => handleInputChange("parentName", e.target.value)}
+                  placeholder="Nom complet du parent"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parentPhone">Téléphone *</Label>
+                <Input
+                  id="parentPhone"
+                  value={formData.parentPhone}
+                  onChange={(e) => handleInputChange("parentPhone", e.target.value)}
+                  placeholder="+223 XX XX XX XX"
+                  required
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Adresse *</Label>
+              <Textarea
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleInputChange("address", e.target.value)}
+                placeholder="Adresse complète de résidence"
+                rows={3}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose} 
+              className="bg-transparent"
+              disabled={isSubmitting}
+            >
+              Annuler
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || classes.length === 0}
+            >
+              {isSubmitting ? "Ajout en cours..." : "Ajouter l'élève"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

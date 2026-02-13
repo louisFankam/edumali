@@ -1,30 +1,22 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
-  UserCheck,
   Search,
   CheckCircle,
   Clock,
-  ChevronLeft,
-  ChevronRight,
-  Users,
   DollarSign,
   ArrowLeft,
   FileDown,
   PlusCircle,
-  X,
-  LayoutDashboard,
-  GraduationCap,
-  BarChart2,
-  Settings
+  X
 } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -37,14 +29,39 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-// Import de votre composant de barre latérale
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
 import { Sidebar } from "@/components/sidebar"
+
+// Import des hooks personnalisés
+import { usePayments } from "@/hooks/use-payments"
+import { useAcademicYears } from "@/hooks/use-academic-years"
+import { useClasses } from "@/hooks/use-classes"
+import { SchoolYearSelector } from "@/components/school-year-selector"
+
+// --- Types pour les composants ---
+
+interface PageHeaderProps {
+  title: string
+  description: string
+  children?: React.ReactNode
+}
+
+
+
+interface PaymentsPageProps {
+  onSelectStudent: (student: any) => void
+}
+
+interface StudentFinanceDetailProps {
+  student: any
+  onBack: () => void
+}
 
 // --- Composants réutilisables ---
 
 // Composant pour l'en-tête de la page
-function PageHeader({ title, description, children }) {
+function PageHeader({ title, description, children }: PageHeaderProps) {
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 pb-4 md:pb-6">
       <div className="space-y-1">
@@ -56,78 +73,10 @@ function PageHeader({ title, description, children }) {
   );
 }
 
-// Sélecteur d'année scolaire (simplifié)
-function SchoolYearSelector() {
-  return (
-    <Select defaultValue="2024-2025">
-      <SelectTrigger className="w-full md:w-[180px]">
-        <SelectValue placeholder="Année scolaire" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="2024-2025">2024-2025</SelectItem>
-        <SelectItem value="2023-2024">2023-2024</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
-
-// --- Données simulées ---
-
-const mockStudents = [
-  // CM2
-  { id: "cm2-1", firstName: "Aminata", lastName: "Traoré", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  { id: "cm2-2", firstName: "Ibrahim", lastName: "Keita", class: "CM2", photo: "/diverse-student-boy.png", totalFee: 50000 },
-  { id: "cm2-3", firstName: "Mariam", lastName: "Coulibaly", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  { id: "cm2-4", firstName: "Ousmane", lastName: "Diarra", class: "CM2", photo: "/diverse-student-boy.png", totalFee: 50000 },
-  { id: "cm2-5", firstName: "Kadiatou", lastName: "Sangaré", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  { id: "cm2-6", firstName: "Moussa", lastName: "Koné", class: "CM2", photo: "/diverse-student-boy.png", totalFee: 50000 },
-  { id: "cm2-7", firstName: "Fatoumata", lastName: "Diallo", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  { id: "cm2-8", firstName: "Cheick", lastName: "Sidibé", class: "CM2", photo: "/diverse-student-boy.png", totalFee: 50000 },
-  { id: "cm2-9", firstName: "Aïcha", lastName: "Camara", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  { id: "cm2-10", firstName: "Issa", lastName: "Touré", class: "CM2", photo: "/diverse-student-boy.png", totalFee: 50000 },
-  { id: "cm2-11", firstName: "Assa", lastName: "Diallo", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  { id: "cm2-12", firstName: "Adama", lastName: "Cissé", class: "CM2", photo: "/diverse-student-boy.png", totalFee: 50000 },
-  { id: "cm2-13", firstName: "Nafissatou", lastName: "Konaré", class: "CM2", photo: "/diverse-student-girl.png", totalFee: 50000 },
-  // 6ème
-  { id: "6eme-1", firstName: "Ahmadou", lastName: "Traoré", class: "6ème", photo: "/diverse-student-boy.png", totalFee: 75000 },
-  { id: "6eme-2", firstName: "Fanta", lastName: "Sidibé", class: "6ème", photo: "/diverse-student-girl.png", totalFee: 75000 },
-  { id: "6eme-3", firstName: "Modibo", lastName: "Keita", class: "6ème", photo: "/diverse-student-boy.png", totalFee: 75000 },
-  { id: "6eme-4", firstName: "Kadidiatou", lastName: "Doumbia", class: "6ème", photo: "/diverse-student-girl.png", totalFee: 75000 },
-  // 5ème
-  { id: "5eme-1", firstName: "Sékou", lastName: "Koné", class: "5ème", photo: "/diverse-student-boy.png", totalFee: 90000 },
-  { id: "5eme-2", firstName: "Aïssata", lastName: "Touré", class: "5ème", photo: "/diverse-student-girl.png", totalFee: 90000 },
-];
-
-// Données de paiement simulées pour tous les élèves
-const mockPayments = [
-  // Paiements pour Aminata Traoré (complètement payé)
-  { id: "pay-1", studentId: "cm2-1", date: "2024-09-01", amount: 25000, description: "1ère tranche de scolarité", paymentType: "Scolarité", paymentMethod: "Espèces", payerName: "Maman" },
-  { id: "pay-2", studentId: "cm2-1", date: "2024-10-15", amount: 25000, description: "2ème tranche de scolarité", paymentType: "Scolarité", paymentMethod: "Chèque", payerName: "Papa" },
-  // Paiements pour Ibrahim Keita (paiement partiel)
-  { id: "pay-3", studentId: "cm2-2", date: "2024-09-20", amount: 30000, description: "Frais d'inscription + 1ère tranche", paymentType: "Inscription", paymentMethod: "Virement", payerName: "Papa" },
-  // Paiements pour Fanta Sidibé (paiement partiel)
-  { id: "pay-4", studentId: "6eme-2", date: "2024-10-05", amount: 40000, description: "Acompte", paymentType: "Scolarité", paymentMethod: "Espèces", payerName: "Maman" },
-  // Paiements pour Aïssata Touré (complètement payé)
-  { id: "pay-5", studentId: "5eme-2", date: "2024-09-10", amount: 90000, description: "Totalité des frais", paymentType: "Scolarité", paymentMethod: "Espèces", payerName: "Tuteur" },
-  // Paiements pour Sékou Koné (impayé) - Aucun paiement simulé pour lui.
-];
 
 // --- Fonctions utilitaires ---
-const getStudentPaymentStatus = (studentId) => {
-  const student = mockStudents.find(s => s.id === studentId);
-  const studentPayments = mockPayments.filter(p => p.studentId === studentId);
-  const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
-  
-  if (totalPaid >= student.totalFee) {
-    return "Payé";
-  } else if (totalPaid > 0 && totalPaid < student.totalFee) {
-    return "Partiel";
-  } else {
-    return "Impayé";
-  }
-};
 
-const getPaymentStatusStyle = (status) => {
+const getPaymentStatusStyle = (status: string) => {
   switch (status) {
     case "Payé":
       return "bg-green-100 text-green-700";
@@ -140,27 +89,102 @@ const getPaymentStatusStyle = (status) => {
   }
 };
 
+const getInitials = (firstName: string, lastName: string) => {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`;
+};
+
 // --- Composant pour la page des paiements ---
-function PaymentsPage({ onSelectStudent }) {
+
+function PaymentsPage({ onSelectStudent }: PaymentsPageProps) {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClass, setSelectedClass] = useState("all");
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
+    
+  const { toast } = useToast()
+  const { studentsWithPayments, isLoading, error, fetchStudentsWithPayments } = usePayments()
+  const { academicYears, fetchAcademicYears, getCurrentAcademicYear } = useAcademicYears()
+  const { fetchClasses } = useClasses()
+  const { fetchStudentPayments, createPayment, deletePayment } = usePayments()
+
+  // Initialisation des données
+  useEffect(() => {
+    fetchAcademicYears()
+    fetchClasses()
+  }, [fetchAcademicYears, fetchClasses])
+
+  // Définir l'année académique sélectionnée
+  useEffect(() => {
+    console.log('Années académiques chargées:', academicYears.length)
+    console.log('selectedAcademicYear actuel:', selectedAcademicYear)
+    if (academicYears.length > 0 && !selectedAcademicYear) {
+      const currentYear = getCurrentAcademicYear()
+      console.log('Année courante trouvée:', currentYear)
+      if (currentYear) {
+        // Si le year est undefined, utiliser l'ID ou générer un nom
+        const yearName = currentYear.year || currentYear.id || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
+        console.log('Année sélectionnée:', yearName)
+        setSelectedAcademicYear(yearName)
+      } else {
+        // Si aucune année courante, utiliser la première année disponible
+        const firstYear = academicYears[0]
+        const yearName = firstYear.year || firstYear.id || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
+        console.log('Première année utilisée:', yearName)
+        setSelectedAcademicYear(yearName)
+      }
+    }
+  }, [academicYears, selectedAcademicYear, getCurrentAcademicYear])
+
+  // Récupérer les données quand l'année change
+  useEffect(() => {
+    console.log('useEffect déclenché avec selectedAcademicYear:', selectedAcademicYear)
+    if (selectedAcademicYear) {
+      const currentYear = getCurrentAcademicYear()
+      const yearName = currentYear?.year || currentYear?.id || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
+      console.log('Chargement des étudiants pour l\'année:', yearName)
+      fetchStudentsWithPayments(yearName)
+    }
+  }, [selectedAcademicYear, fetchStudentsWithPayments, getCurrentAcademicYear])
 
   // Liste des classes disponibles
   const classOptions = useMemo(() => {
-    const classes = Array.from(new Set(mockStudents.map(s => s.class)));
-    return ["all", ...classes];
-  }, []);
+    const availableClasses = Array.from(new Set(studentsWithPayments.map(s => s.class)));
+    console.log('Classes disponibles:', availableClasses)
+    return ["all", ...availableClasses];
+  }, [studentsWithPayments]);
 
   const handleExport = () => {
-    alert("Fonctionnalité d'exportation en cours de développement !");
+    const headers = ["Nom", "Prénom", "Classe", "Statut", "Frais totaux", "Montant payé", "Solde restant"];
+    const rows = filteredStudents.map(student => [
+      student.lastName,
+      student.firstName,
+      student.class,
+      student.status,
+      student.totalFee,
+      student.totalPaid,
+      student.remainingBalance
+    ]);
+    
+    let csvContent = headers.join(";") + "\n" + rows.map(e => e.join(";")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `paiements_${selectedAcademicYear}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export réussi",
+      description: "Le rapport de paiements a été exporté avec succès."
+    })
   };
 
   const filteredStudents = useMemo(() => {
-    let list = mockStudents.map(student => ({
-      ...student,
-      status: getStudentPaymentStatus(student.id)
-    }));
+    let list = studentsWithPayments;
+    console.log('Filtrage des étudiants:', studentsWithPayments.length, 'étudiants au total');
 
     // Filtrage par statut
     if (activeTab !== "all") {
@@ -177,12 +201,23 @@ function PaymentsPage({ onSelectStudent }) {
       const normalizedQuery = searchQuery.toLowerCase();
       list = list.filter(student =>
         student.firstName.toLowerCase().includes(normalizedQuery) ||
-        student.lastName.toLowerCase().includes(normalizedQuery)
+        student.lastName.toLowerCase().includes(normalizedQuery) ||
+        `${student.firstName} ${student.lastName}`.toLowerCase().includes(normalizedQuery)
       );
     }
 
     return list;
-  }, [activeTab, searchQuery, selectedClass]);
+  }, [studentsWithPayments, activeTab, searchQuery, selectedClass]);
+
+  if (error) {
+    return (
+      <main className="flex-1 p-6 space-y-6 md:ml-64">
+        <div className="text-center text-red-600">
+          <p>Erreur: {error}</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="flex-1 p-6 space-y-6 md:ml-64">
@@ -199,7 +234,7 @@ function PaymentsPage({ onSelectStudent }) {
       {/* Filtre par salle de classe */}
       <div className="flex items-center space-x-2 mb-2">
         <Label htmlFor="classFilter" className="text-sm">Salle de classe :</Label>
-        <Select id="classFilter" value={selectedClass} onValueChange={setSelectedClass}>
+        <Select value={selectedClass} onValueChange={setSelectedClass}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Toutes les classes" />
           </SelectTrigger>
@@ -235,26 +270,48 @@ function PaymentsPage({ onSelectStudent }) {
         <TabsContent value={activeTab} className="mt-4">
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredStudents.length === 0 ? (
-                  <div className="col-span-full text-center text-muted-foreground p-6">
-                    Aucun élève trouvé pour cette catégorie ou ne correspond à la recherche.
-                  </div>
-                ) : (
-                  filteredStudents.map((student) => (
+              {error ? (
+                <div className="col-span-full text-center text-red-600 p-6">
+                  <p className="font-semibold">Erreur de chargement</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              ) : isLoading ? (
+                <div className="text-center text-muted-foreground p-6">
+                  Chargement des données...
+                </div>
+              ) : filteredStudents.length === 0 ? (
+                <div className="col-span-full text-center text-muted-foreground p-6">
+                  Aucun élève trouvé pour cette catégorie ou ne correspond à la recherche.
+                  <p className="text-xs mt-2">Essayez de changer de filtre ou d'année académique</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredStudents.map((student) => (
                     <div
                       key={student.id}
                       className="flex items-center space-x-4 border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50"
-                      onClick={() => onSelectStudent(student.id)}
+                      onClick={() => {
+                        console.log('Carte cliquée pour étudiant:', student.firstName, student.id);
+                        console.log('Avant appel onSelectStudent');
+                        onSelectStudent(student);
+                        console.log('Après appel onSelectStudent');
+                      }}
                     >
-                      <img
-                        src={student.photo}
-                        alt={`${student.firstName} ${student.lastName}`}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage 
+                          src={student.photo || (student.gender === "Masculin" ? "/homme.png" : "/femme.png")} 
+                          alt={`${student.firstName} ${student.lastName}`} 
+                        />
+                        <AvatarFallback>
+                          {getInitials(student.firstName, student.lastName)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="flex-1">
                         <h4 className="font-semibold">{student.firstName} {student.lastName}</h4>
                         <p className="text-sm text-gray-500">{student.class}</p>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {Number(student.totalPaid).toLocaleString('fr-FR')} / {Number(student.totalFee).toLocaleString('fr-FR')} FCFA
+                        </div>
                       </div>
                       <span className={cn(
                         "text-xs font-semibold px-2 py-1 rounded-full",
@@ -263,9 +320,9 @@ function PaymentsPage({ onSelectStudent }) {
                         {student.status}
                       </span>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -275,8 +332,10 @@ function PaymentsPage({ onSelectStudent }) {
 }
 
 // --- Composant pour la page détaillée d'un élève (paiements) ---
-function StudentFinanceDetail({ student, onBack }) {
-  const [payments, setPayments] = useState(() => mockPayments.filter(p => p.studentId === student.id));
+
+function StudentFinanceDetail({ student, onBack }: StudentFinanceDetailProps) {
+  const [payments, setPayments] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
   const [newPayment, setNewPayment] = useState({
     amount: "",
     paymentType: "Scolarité",
@@ -285,6 +344,48 @@ function StudentFinanceDetail({ student, onBack }) {
     description: "",
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const { toast } = useToast()
+  const { fetchStudentPayments, createPayment, deletePayment } = usePayments()
+  const { academicYears, fetchAcademicYears } = useAcademicYears()
+  
+  // S'assurer que les années académiques sont chargées
+  useEffect(() => {
+    if (academicYears.length === 0) {
+      fetchAcademicYears()
+    }
+  }, [academicYears, fetchAcademicYears])
+  
+  // Trouver le nom de l'année académique
+  const academicYearName = academicYears.find(year => year.id === student.academicYear)?.year || student.academicYear
+  
+  // Debug
+  console.log('Années académiques disponibles:', academicYears)
+  console.log('ID de l\'année de l\'étudiant:', student.academicYear)
+  console.log('Nom trouvé:', academicYearName)
+
+  // Charger les paiements de l'étudiant
+  useEffect(() => {
+    const loadPayments = async () => {
+      setIsLoading(true)
+      try {
+        const studentPayments = await fetchStudentPayments(student.id)
+        setPayments(studentPayments)
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les paiements de l'élève",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    if (student.id) {
+      loadPayments()
+    }
+  }, [student.id, fetchStudentPayments, toast])
 
   const totalPaid = useMemo(() => {
     return payments.reduce((sum, p) => sum + p.amount, 0);
@@ -294,39 +395,80 @@ function StudentFinanceDetail({ student, onBack }) {
     return student.totalFee - totalPaid;
   }, [student.totalFee, totalPaid]);
 
-  const handleAddPayment = (e) => {
+  const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPayment.amount || !newPayment.payerName) {
-      alert("Le montant et le nom du payeur sont obligatoires.");
+      toast({
+        title: "Erreur",
+        description: "Le montant et le nom du payeur sont obligatoires.",
+        variant: "destructive"
+      })
       return;
     }
-    const newId = `pay-${Math.random().toString(16).slice(2)}`;
-    const newEntry = {
-      id: newId,
-      studentId: student.id,
-      date: new Date().toISOString().split('T')[0],
-      amount: parseFloat(newPayment.amount),
-      description: newPayment.description,
-      paymentType: newPayment.paymentType,
-      paymentMethod: newPayment.paymentMethod,
-      payerName: newPayment.payerName,
-    };
-    
-    setPayments([...payments, newEntry]);
-    setNewPayment({
-      amount: "",
-      paymentType: "Scolarité",
-      paymentMethod: "Espèces",
-      payerName: "",
-      description: "",
-    });
-    setIsDialogOpen(false);
+
+    try {
+      await createPayment({
+        studentId: student.id,
+        date: new Date().toISOString().split('T')[0],
+        amount: parseFloat(newPayment.amount),
+        description: newPayment.description,
+        paymentType: newPayment.paymentType,
+        paymentMethod: newPayment.paymentMethod,
+        payerName: newPayment.payerName,
+        academicYear: student.academicYearId // Utiliser l'ID pour la relation
+      });
+      
+      // Rafraîchir la liste des paiements
+      const updatedPayments = await fetchStudentPayments(student.id)
+      setPayments(updatedPayments)
+      
+      setNewPayment({
+        amount: "",
+        paymentType: "Scolarité",
+        paymentMethod: "Espèces",
+        payerName: "",
+        description: "",
+      });
+      setIsDialogOpen(false);
+      
+      toast({
+        title: "Succès",
+        description: "Le paiement a été enregistré avec succès."
+      })
+      
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer le paiement",
+        variant: "destructive"
+      })
+    }
   };
   
+  const handleDeletePayment = async (paymentId: string) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce paiement ?")) {
+      try {
+        await deletePayment(paymentId)
+        const updatedPayments = await fetchStudentPayments(student.id)
+        setPayments(updatedPayments)
+        
+        toast({
+          title: "Succès",
+          description: "Le paiement a été supprimé avec succès."
+        })
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de supprimer le paiement",
+          variant: "destructive"
+        })
+      }
+    }
+  };
+
   const handleExport = () => {
-    // Créez le contenu CSV
     const headers = ["Date", "Montant", "Type", "Mode de paiement", "Nom du payeur", "Description"];
-    const rows = payments.map(p => [
+    const rows = payments.map((p: any) => [
       format(new Date(p.date), "dd/MM/yyyy"),
       p.amount,
       p.paymentType,
@@ -345,7 +487,17 @@ function StudentFinanceDetail({ student, onBack }) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    alert("Le rapport a été exporté avec succès !");
+    
+    toast({
+      title: "Export réussi",
+      description: "Le rapport de paiements a été exporté avec succès."
+    })
+  };
+
+  const getPaymentStatus = () => {
+    if (totalPaid >= student.totalFee) return "Payé";
+    if (totalPaid > 0) return "Partiel";
+    return "Impayé";
   };
 
   return (
@@ -356,8 +508,10 @@ function StudentFinanceDetail({ student, onBack }) {
         </Button>
         <PageHeader
           title={`Paiements de ${student.firstName} ${student.lastName}`}
-          description={`Classe: ${student.class}`}
-        />
+          description={`Classe: ${student.class} • Année: ${academicYearName}`}
+        >
+          <div></div>
+        </PageHeader>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -367,7 +521,7 @@ function StudentFinanceDetail({ student, onBack }) {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{student.totalFee.toLocaleString('fr-FR')} FCFA</div>
+            <div className="text-2xl font-bold">{Number(student.totalFee).toLocaleString('fr-FR')} FCFA</div>
             <p className="text-xs text-muted-foreground">Année scolaire en cours</p>
           </CardContent>
         </Card>
@@ -377,7 +531,7 @@ function StudentFinanceDetail({ student, onBack }) {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalPaid.toLocaleString('fr-FR')} FCFA</div>
+            <div className="text-2xl font-bold">{Number(totalPaid).toLocaleString('fr-FR')} FCFA</div>
             <p className="text-xs text-muted-foreground">Total des paiements reçus</p>
           </CardContent>
         </Card>
@@ -387,7 +541,7 @@ function StudentFinanceDetail({ student, onBack }) {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{remainingBalance.toLocaleString('fr-FR')} FCFA</div>
+            <div className="text-2xl font-bold">{Number(remainingBalance).toLocaleString('fr-FR')} FCFA</div>
             <p className="text-xs text-muted-foreground">Montant à collecter</p>
           </CardContent>
         </Card>
@@ -399,12 +553,12 @@ function StudentFinanceDetail({ student, onBack }) {
           <CardContent>
             <span className={cn(
               "text-xs font-semibold px-2 py-1 rounded-full",
-              getPaymentStatusStyle(getStudentPaymentStatus(student.id))
+              getPaymentStatusStyle(getPaymentStatus())
             )}>
-              {getStudentPaymentStatus(student.id)}
+              {getPaymentStatus()}
             </span>
             <p className="text-xs text-muted-foreground mt-1">
-              {getStudentPaymentStatus(student.id) === 'Payé' ? 'Solde à zéro' : 'Solde restant'}
+              {getPaymentStatus() === 'Payé' ? 'Solde à zéro' : 'Solde restant'}
             </p>
           </CardContent>
         </Card>
@@ -524,26 +678,55 @@ function StudentFinanceDetail({ student, onBack }) {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Description
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {payments.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                      Chargement des paiements...
+                    </td>
+                  </tr>
+                ) : payments.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                       Aucun paiement enregistré pour cet élève.
                     </td>
                   </tr>
                 ) : (
-                  payments.map((record) => (
+                  payments.map((record: any) => (
                     <tr key={record.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {format(new Date(record.date), "dd MMMM yyyy", { locale: fr })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.amount.toLocaleString('fr-FR')} FCFA</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.paymentType}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.paymentMethod}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {record.paymentType === 'tuition' ? 'Scolarité' : 
+                         record.paymentType === 'lunch' ? 'Cantine' :
+                         record.paymentType === 'transport' ? 'Transport' :
+                         record.paymentType === 'other' ? 'Autre' : record.paymentType}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {record.paymentMethod === 'cash' ? 'Espèces' : 
+                         record.paymentMethod === 'check' ? 'Chèque' :
+                         record.paymentMethod === 'transfer' ? 'Virement' :
+                         record.paymentMethod === 'card' ? 'Carte' : record.paymentMethod}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.payerName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.description}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <Button
+                          onClick={() => handleDeletePayment(record.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -558,21 +741,20 @@ function StudentFinanceDetail({ student, onBack }) {
 
 // Composant principal de l'application
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("students");
-  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const { studentsWithPayments } = usePayments()
+  const { academicYears, getCurrentAcademicYear } = useAcademicYears()
 
-  const selectedStudent = mockStudents.find(s => s.id === selectedStudentId);
+  console.log('selectedStudent mis à jour:', selectedStudent?.firstName);
 
+  
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Import de votre composant de barre latérale */}
       <Sidebar />
-
-      {/* Contenu principal en fonction de la page sélectionnée */}
-      {selectedStudentId && selectedStudent ? (
-        <StudentFinanceDetail student={selectedStudent} onBack={() => setSelectedStudentId(null)} />
+      {selectedStudent ? (
+        <StudentFinanceDetail student={selectedStudent} onBack={() => setSelectedStudent(null)} />
       ) : (
-        <PaymentsPage onSelectStudent={setSelectedStudentId} />
+        <PaymentsPage onSelectStudent={setSelectedStudent} />
       )}
     </div>
   );

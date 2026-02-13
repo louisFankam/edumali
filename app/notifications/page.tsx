@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
   Bell,
@@ -20,182 +19,19 @@ import {
   Eye,
   EyeOff,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react"
-
-interface Notification {
-  id: string
-  type: "info" | "warning" | "error" | "success"
-  title: string
-  message: string
-  timestamp: Date
-  read: boolean
-  category: "absence" | "payment" | "exam" | "general"
-  priority: "low" | "medium" | "high"
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "warning",
-    title: "Absence non justifiée",
-    message: "Aminata Koné (CP) absente depuis 3 jours sans justification. Veuillez contacter les parents.",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h ago
-    read: false,
-    category: "absence",
-    priority: "high"
-  },
-  {
-    id: "2",
-    type: "error",
-    title: "Paiements en retard",
-    message: "5 familles ont des paiements en retard pour ce mois. Montant total: 450,000 FCFA",
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4h ago
-    read: false,
-    category: "payment",
-    priority: "high"
-  },
-  {
-    id: "3",
-    type: "info",
-    title: "Examen à venir",
-    message: "Contrôle de Mathématiques CM2 prévu pour demain à 10h00. Préparer les salles d'examen.",
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6h ago
-    read: true,
-    category: "exam",
-    priority: "medium"
-  },
-  {
-    id: "4",
-    type: "success",
-    title: "Inscription réussie",
-    message: "Nouvel élève inscrit en CE1 : Fatoumata Diarra. Dossier complet reçu.",
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8h ago
-    read: true,
-    category: "general",
-    priority: "low"
-  },
-  {
-    id: "5",
-    type: "warning",
-    title: "Professeur absent",
-    message: "M. Koné absent aujourd'hui pour raisons médicales. Remplacement nécessaire pour les cours de Français CE2.",
-    timestamp: new Date(Date.now() - 10 * 60 * 60 * 1000), // 10h ago
-    read: false,
-    category: "absence",
-    priority: "medium"
-  },
-  {
-    id: "6",
-    type: "info",
-    title: "Réunion parents-professeurs",
-    message: "Réunion parents-professeurs prévue vendredi à 16h00. Préparer les bulletins.",
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12h ago
-    read: true,
-    category: "general",
-    priority: "medium"
-  },
-  {
-    id: "7",
-    type: "success",
-    title: "Maintenance terminée",
-    message: "La maintenance du système informatique est terminée. Tous les services sont opérationnels.",
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-    read: true,
-    category: "general",
-    priority: "low"
-  },
-  {
-    id: "8",
-    type: "error",
-    title: "Problème de chauffage",
-    message: "Problème de chauffage détecté dans la salle CM1. Intervention technique nécessaire.",
-    timestamp: new Date(Date.now() - 36 * 60 * 60 * 1000), // 1.5 days ago
-    read: false,
-    category: "general",
-    priority: "high"
-  },
-  {
-    id: "9",
-    type: "info",
-    title: "Nouveau matériel informatique",
-    message: "Livraison de 10 nouveaux ordinateurs pour la salle informatique. Installation prévue demain.",
-    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
-    read: true,
-    category: "general",
-    priority: "medium"
-  },
-  {
-    id: "10",
-    type: "success",
-    title: "Réussite aux examens",
-    message: "Taux de réussite de 95% aux examens de fin d'année. Félicitations à tous les élèves !",
-    timestamp: new Date(Date.now() - 60 * 60 * 60 * 1000), // 2.5 days ago
-    read: true,
-    category: "exam",
-    priority: "medium"
-  },
-  {
-    id: "11",
-    type: "warning",
-    title: "Absence prolongée",
-    message: "Mariam Coulibaly (CE2) absente depuis 5 jours. Contacter immédiatement la famille.",
-    timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000), // 3 days ago
-    read: false,
-    category: "absence",
-    priority: "high"
-  },
-  {
-    id: "12",
-    type: "info",
-    title: "Réunion du conseil d'école",
-    message: "Réunion du conseil d'école prévue vendredi prochain à 18h00. Ordre du jour à préparer.",
-    timestamp: new Date(Date.now() - 84 * 60 * 60 * 1000), // 3.5 days ago
-    read: true,
-    category: "general",
-    priority: "medium"
-  },
-  {
-    id: "13",
-    type: "error",
-    title: "Panne électrique",
-    message: "Panne électrique dans le bâtiment B. Intervention d'urgence nécessaire.",
-    timestamp: new Date(Date.now() - 96 * 60 * 60 * 1000), // 4 days ago
-    read: false,
-    category: "general",
-    priority: "high"
-  },
-  {
-    id: "14",
-    type: "success",
-    title: "Don de livres",
-    message: "Don de 200 livres reçu de la bibliothèque municipale. Merci pour ce généreux don !",
-    timestamp: new Date(Date.now() - 108 * 60 * 60 * 1000), // 4.5 days ago
-    read: true,
-    category: "general",
-    priority: "low"
-  },
-  {
-    id: "15",
-    type: "warning",
-    title: "Retard de paiement",
-    message: "3 familles en retard de paiement pour les frais de cantine. Relance nécessaire.",
-    timestamp: new Date(Date.now() - 120 * 60 * 60 * 1000), // 5 days ago
-    read: false,
-    category: "payment",
-    priority: "medium"
-  }
-]
+import { useNotifications, Notification } from "@/hooks/use-notifications"
+import Link from "next/link"
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const { notifications, isLoading, error, unreadCount, markAsRead, markAllAsRead, refresh } = useNotifications()
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedPriority, setSelectedPriority] = useState<string>("all")
   const [showRead, setShowRead] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-
-  const unreadCount = notifications.filter(n => !n.read).length
 
   const getNotificationIcon = (category: string) => {
     switch (category) {
@@ -223,7 +59,7 @@ export default function NotificationsPage() {
     }
   }
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string | undefined) => {
     switch (priority) {
       case "high":
         return "bg-red-100 text-red-700"
@@ -236,20 +72,16 @@ export default function NotificationsPage() {
     }
   }
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    )
+  const handleMarkAsRead = async (id: string) => {
+    await markAsRead(id)
   }
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    )
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead()
   }
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
+  const handleRefresh = async () => {
+    await refresh()
   }
 
   // Fonctions de pagination
@@ -271,10 +103,11 @@ export default function NotificationsPage() {
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage)
-    setCurrentPage(1) // Retour à la première page
+    setCurrentPage(1)
   }
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
     const now = new Date()
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
     
@@ -288,13 +121,13 @@ export default function NotificationsPage() {
   }
 
   const filteredNotifications = useMemo(() => {
-    return notifications.filter(notification => {
-      const categoryMatch = selectedCategory === "all" || notification.category === selectedCategory
-      const priorityMatch = selectedPriority === "all" || notification.priority === selectedPriority
-      const readMatch = showRead || !notification.read
-      return categoryMatch && priorityMatch && readMatch
-    })
-  }, [notifications, selectedCategory, selectedPriority, showRead])
+  return notifications.filter(notification => {
+    const categoryMatch = selectedCategory === "all" || notification.category === selectedCategory
+    const priorityMatch = selectedPriority === "all" || notification.priority === selectedPriority
+    const readMatch = showRead || !notification.is_read
+    return categoryMatch && priorityMatch && readMatch
+  })
+}, [notifications, selectedCategory, selectedPriority, showRead])
 
   // Calcul de la pagination
   const totalItems = filteredNotifications.length
@@ -304,7 +137,7 @@ export default function NotificationsPage() {
   const currentNotifications = filteredNotifications.slice(startIndex, endIndex)
 
   // Réinitialiser la page courante si elle dépasse le nombre total de pages
-  useMemo(() => {
+  useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1)
     }
@@ -318,6 +151,27 @@ export default function NotificationsPage() {
     { value: "general", label: "Général", count: notifications.filter(n => n.category === "general").length }
   ]
 
+  if (error) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <main className="flex-1 md:ml-64 flex items-center justify-center">
+          <Card className="w-full max-w-md mx-4">
+            <CardContent className="p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de chargement</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Réessayer
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -328,6 +182,8 @@ export default function NotificationsPage() {
             <PageHeader
               title="Notifications"
               description="Gérez toutes vos notifications et alertes"
+              className=""
+              children=""
             />
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-2">
@@ -347,14 +203,19 @@ export default function NotificationsPage() {
               </div>
               <Button
                 variant="outline"
-                onClick={markAllAsRead}
-                disabled={unreadCount === 0}
+                onClick={handleMarkAllAsRead}
+                disabled={unreadCount === 0 || isLoading}
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Tout marquer comme lu
               </Button>
-              <Button variant="outline" size="icon">
-                <RefreshCw className="h-4 w-4" />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </div>
@@ -366,7 +227,7 @@ export default function NotificationsPage() {
                 <div className="flex items-center space-x-2">
                   <Bell className="h-5 w-5 text-blue-500" />
                   <div>
-                    <p className="text-2xl font-bold">{notifications.length}</p>
+                    <p className="text-2xl font-bold">{isLoading ? "-" : notifications.length}</p>
                     <p className="text-sm text-muted-foreground">Total</p>
                   </div>
                 </div>
@@ -377,7 +238,7 @@ export default function NotificationsPage() {
                 <div className="flex items-center space-x-2">
                   <AlertCircle className="h-5 w-5 text-orange-500" />
                   <div>
-                    <p className="text-2xl font-bold">{unreadCount}</p>
+                    <p className="text-2xl font-bold">{isLoading ? "-" : unreadCount}</p>
                     <p className="text-sm text-muted-foreground">Non lues</p>
                   </div>
                 </div>
@@ -388,7 +249,9 @@ export default function NotificationsPage() {
                 <div className="flex items-center space-x-2">
                   <DollarSign className="h-5 w-5 text-red-500" />
                   <div>
-                    <p className="text-2xl font-bold">{notifications.filter(n => n.category === "payment").length}</p>
+                    <p className="text-2xl font-bold">
+                      {isLoading ? "-" : notifications.filter(n => n.category === "payment").length}
+                    </p>
                     <p className="text-sm text-muted-foreground">Paiements</p>
                   </div>
                 </div>
@@ -399,7 +262,9 @@ export default function NotificationsPage() {
                 <div className="flex items-center space-x-2">
                   <GraduationCap className="h-5 w-5 text-blue-500" />
                   <div>
-                    <p className="text-2xl font-bold">{notifications.filter(n => n.category === "exam").length}</p>
+                    <p className="text-2xl font-bold">
+                      {isLoading ? "-" : notifications.filter(n => n.category === "exam").length}
+                    </p>
                     <p className="text-sm text-muted-foreground">Examens</p>
                   </div>
                 </div>
@@ -426,6 +291,7 @@ export default function NotificationsPage() {
                         variant={selectedCategory === category.value ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSelectedCategory(category.value)}
+                        disabled={isLoading}
                       >
                         {category.label}
                         <Badge variant="secondary" className="ml-1">
@@ -445,6 +311,7 @@ export default function NotificationsPage() {
                         variant={selectedPriority === priority ? "default" : "outline"}
                         size="sm"
                         onClick={() => setSelectedPriority(priority)}
+                        disabled={isLoading}
                       >
                         {priority === "all" ? "Toutes" : 
                          priority === "high" ? "Haute" :
@@ -460,6 +327,7 @@ export default function NotificationsPage() {
                     variant={showRead ? "default" : "outline"}
                     size="sm"
                     onClick={() => setShowRead(!showRead)}
+                    disabled={isLoading}
                   >
                     {showRead ? "Toutes" : "Non lues uniquement"}
                   </Button>
@@ -470,7 +338,14 @@ export default function NotificationsPage() {
 
           {/* Liste des notifications */}
           <div className="space-y-4">
-            {currentNotifications.length === 0 ? (
+            {isLoading ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin" />
+                  <p className="text-gray-600">Chargement des notifications...</p>
+                </CardContent>
+              </Card>
+            ) : currentNotifications.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
                   <Bell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -483,7 +358,7 @@ export default function NotificationsPage() {
                 <Card 
                   key={notification.id}
                   className={`transition-all hover:shadow-md ${
-                    notification.read ? "opacity-75" : ""
+                    notification.is_read ? "opacity-75" : ""
                   }`}
                 >
                   <CardContent className="p-4">
@@ -497,7 +372,7 @@ export default function NotificationsPage() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-1">
                               <h3 className={`text-sm font-medium ${
-                                notification.read ? "text-gray-700" : "text-gray-900"
+                                notification.is_read ? "text-gray-700" : "text-gray-900"
                               }`}>
                                 {notification.title}
                               </h3>
@@ -508,7 +383,7 @@ export default function NotificationsPage() {
                                 {notification.priority === "high" ? "Haute" :
                                  notification.priority === "medium" ? "Moyenne" : "Basse"}
                               </Badge>
-                              {!notification.read && (
+                              {!notification.is_read && (
                                 <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                               )}
                             </div>
@@ -518,31 +393,29 @@ export default function NotificationsPage() {
                             <div className="flex items-center space-x-4 text-xs text-gray-400">
                               <span className="flex items-center space-x-1">
                                 <Clock className="h-3 w-3" />
-                                <span>{formatTimeAgo(notification.timestamp)}</span>
+                                <span>{formatTimeAgo(notification.created)}</span>
                               </span>
                               <span className="capitalize">{notification.category}</span>
+                              {notification.expand?.target_class_id && (
+                                <span>Classe: {notification.expand.target_class_id.name}</span>
+                              )}
+                              {notification.expand?.target_student_id && (
+                                <span>Élève: {notification.expand.target_student_id.first_name}</span>
+                              )}
                             </div>
                           </div>
                           
                           <div className="flex items-center space-x-2">
-                            {!notification.read && (
+                            {!notification.is_read && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => markAsRead(notification.id)}
+                                onClick={() => handleMarkAsRead(notification.id)}
                                 className="text-blue-600 hover:text-blue-700"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteNotification(notification.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </div>
                       </div>
@@ -617,5 +490,3 @@ export default function NotificationsPage() {
     </div>
   )
 }
-
-

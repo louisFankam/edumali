@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,52 +11,45 @@ import {
   Eye,
   EyeOff,
   Lock,
-  User,
+  Mail,
   GraduationCap,
   AlertCircle,
   CheckCircle
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    username: "",
+    email: "", // Changé de username à email
     password: "",
     rememberMe: false
   })
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   
   const router = useRouter()
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth()
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard')
+    }
+  }, [isAuthenticated, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setIsLoading(true)
     setError("")
     setSuccess("")
 
-    // Simulation d'une authentification
     try {
-      // Simuler un délai de connexion
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      // Vérification des identifiants (en production, ceci serait une API)
-      if (formData.username === "admin" && formData.password === "admin123") {
-        setSuccess("Connexion réussie ! Redirection...")
-        
-        // Simuler la redirection
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1000)
-      } else {
-        setError("Nom d'utilisateur ou mot de passe incorrect")
-      }
-    } catch (err) {
-      setError("Erreur de connexion. Veuillez réessayer.")
-    } finally {
-      setIsLoading(false)
+      await login(formData.email, formData.password)
+      setSuccess("Connexion réussie ! Redirection...")
+      // La redirection est gérée par le useEffect
+    } catch (err: any) {
+      setError(err.message || "Email ou mot de passe incorrect")
+      console.error('Login error:', err)
     }
   }
 
@@ -83,8 +76,6 @@ export default function LoginPage() {
               Gestion Scolaire
             </p>
           </div>
-          
-          
         </div>
 
         {/* Carte de connexion */}
@@ -94,7 +85,7 @@ export default function LoginPage() {
               Connexion
             </CardTitle>
             <CardDescription className="text-center">
-              Connectez-vous à votre compte administrateur
+              Connectez-vous avec votre email et mot de passe
             </CardDescription>
           </CardHeader>
           
@@ -116,22 +107,22 @@ export default function LoginPage() {
 
             {/* Formulaire */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Nom d'utilisateur */}
+              {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium">
-                  Nom d'utilisateur
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email
                 </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    id="username"
-                    type="text"
-                    placeholder="Entrez votre nom d'utilisateur"
-                    value={formData.username}
-                    onChange={(e) => handleInputChange("username", e.target.value)}
+                    id="email"
+                    type="email"
+                    placeholder="Entrez votre email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
                     className="pl-10"
                     required
-                    disabled={isLoading}
+                    disabled={authLoading}
                   />
                 </div>
               </div>
@@ -151,7 +142,7 @@ export default function LoginPage() {
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     className="pl-10 pr-10"
                     required
-                    disabled={isLoading}
+                    disabled={authLoading}
                   />
                   <Button
                     type="button"
@@ -159,7 +150,7 @@ export default function LoginPage() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    disabled={authLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4 text-gray-400" />
@@ -176,7 +167,7 @@ export default function LoginPage() {
                   id="rememberMe"
                   checked={formData.rememberMe}
                   onCheckedChange={(checked) => handleInputChange("rememberMe", checked)}
-                  disabled={isLoading}
+                  disabled={authLoading}
                 />
                 <Label
                   htmlFor="rememberMe"
@@ -190,9 +181,9 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 className="w-full bg-red-600 hover:bg-red-700 text-white transition-colors duration-200"
-                disabled={isLoading}
+                disabled={authLoading}
               >
-                {isLoading ? (
+                {authLoading ? (
                   <div className="flex items-center space-x-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Connexion en cours...</span>
@@ -209,7 +200,7 @@ export default function LoginPage() {
                 Identifiants de test :
               </h3>
               <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Utilisateur :</strong> admin</p>
+                <p><strong>Email :</strong> admin@edumali.ml</p>
                 <p><strong>Mot de passe :</strong> admin123</p>
               </div>
             </div>
@@ -219,7 +210,7 @@ export default function LoginPage() {
               <Button
                 variant="link"
                 className="text-sm text-gray-600 hover:text-red-600 transition-colors duration-200"
-                disabled={isLoading}
+                disabled={authLoading}
               >
                 Mot de passe oublié ?
               </Button>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
@@ -12,97 +12,33 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Download, Users } from "lucide-react"
+import { Plus, Search, Download, Users, Loader2, RefreshCw } from "lucide-react"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
-
-// Mock data for students
-const mockStudents = [
-  {
-    id: 1,
-    firstName: "Aminata",
-    lastName: "Traoré",
-    dateOfBirth: "2010-03-15",
-    gender: "Féminin",
-    class: "CM2",
-    school: "École Primaire de Bamako",
-    parentName: "Mamadou Traoré",
-    parentPhone: "+223 76 12 34 56",
-    address: "Quartier Hippodrome, Bamako",
-    enrollmentDate: "2024-09-01",
-    status: "Actif",
-    photo: "/diverse-student-girl.png",
-  },
-  {
-    id: 2,
-    firstName: "Ibrahim",
-    lastName: "Keita",
-    dateOfBirth: "2009-07-22",
-    gender: "Masculin",
-    class: "CM1",
-    school: "École Primaire de Bamako",
-    parentName: "Fatoumata Keita",
-    parentPhone: "+223 65 98 76 54",
-    address: "Médina Coura, Bamako",
-    enrollmentDate: "2024-09-01",
-    status: "Actif",
-    photo: "/student-boy.png",
-  },
-  {
-    id: 3,
-    firstName: "Mariam",
-    lastName: "Coulibaly",
-    dateOfBirth: "2011-11-08",
-    gender: "Féminin",
-    class: "CE2",
-    school: "École Primaire de Bamako",
-    parentName: "Seydou Coulibaly",
-    parentPhone: "+223 78 45 67 89",
-    address: "Komoguel, Bamako",
-    enrollmentDate: "2024-09-01",
-    status: "Actif",
-    photo: "/diverse-student-girl.png",
-  },
-  {
-    id: 4,
-    firstName: "Ousmane",
-    lastName: "Diarra",
-    dateOfBirth: "2008-12-03",
-    gender: "Masculin",
-    class: "CE1",
-    school: "École Primaire de Bamako",
-    parentName: "Aïssata Diarra",
-    parentPhone: "+223 69 87 54 32",
-    address: "Château, Bamako",
-    enrollmentDate: "2024-09-01",
-    status: "Actif",
-    photo: "/student-boy.png",
-  },
-  {
-    id: 5,
-    firstName: "Kadiatou",
-    lastName: "Sangaré",
-    dateOfBirth: "2010-05-17",
-    gender: "Féminin",
-    class: "CP",
-    school: "École Primaire de Bamako",
-    parentName: "Bakary Sangaré",
-    parentPhone: "+223 77 23 45 67",
-    address: "Liberté, Bamako",
-    enrollmentDate: "2024-09-01",
-    status: "Actif",
-    photo: "/diverse-student-girl.png",
-  },
-]
+import { useStudents } from "@/hooks/use-students"
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState(mockStudents)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedClass, setSelectedClass] = useState("all")
-
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  const { 
+    students, 
+    classes, 
+    isLoading, 
+    error, 
+    newRegistrations,
+    fetchStudents, 
+    createStudent, 
+    updateStudent, 
+    deleteStudent 
+  } = useStudents()
+
+  useEffect(() => {
+    fetchStudents()
+  }, [fetchStudents])
 
   // Filter students based on search and filters
   const filteredStudents = students.filter((student) => {
@@ -114,22 +50,30 @@ export default function StudentsPage() {
     return matchesSearch && matchesClass
   })
 
-  const handleAddStudent = (newStudent) => {
-    const student = {
-      ...newStudent,
-      id: students.length + 1,
-      enrollmentDate: new Date().toISOString().split("T")[0],
-      status: "Actif",
+  const handleAddStudent = async (newStudent) => {
+    try {
+      await createStudent(newStudent)
+      setIsAddModalOpen(false)
+    } catch (err) {
+      console.error('Erreur lors de l\'ajout:', err)
     }
-    setStudents([...students, student])
   }
 
-  const handleEditStudent = (updatedStudent) => {
-    setStudents(students.map((student) => (student.id === updatedStudent.id ? updatedStudent : student)))
+  const handleEditStudent = async (updatedStudent) => {
+    try {
+      await updateStudent(updatedStudent.id, updatedStudent)
+      setIsEditModalOpen(false)
+    } catch (err) {
+      console.error('Erreur lors de la modification:', err)
+    }
   }
 
-  const handleDeleteStudent = (studentId) => {
-    setStudents(students.filter((student) => student.id !== studentId))
+  const handleDeleteStudent = async (studentId, classId) => {
+    try {
+      await deleteStudent(studentId, classId)
+    } catch (err) {
+      console.error('Erreur lors de la suppression:', err)
+    }
   }
 
   const handleViewDetails = (student) => {
@@ -142,6 +86,27 @@ export default function StudentsPage() {
     setIsEditModalOpen(true)
   }
 
+  if (error) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <main className="flex-1 md:ml-64 flex items-center justify-center">
+          <Card className="w-full max-w-md mx-4">
+            <CardContent className="p-6 text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de chargement</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={fetchStudents}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Réessayer
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -152,7 +117,7 @@ export default function StudentsPage() {
             <div className="flex items-center space-x-2">
               <NotificationBellMain />
               <SchoolYearSelector />
-              <Button onClick={() => setIsAddModalOpen(true)}>
+              <Button onClick={() => setIsAddModalOpen(true)} disabled={isLoading}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nouvel élève
               </Button>
@@ -167,7 +132,9 @@ export default function StudentsPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold">{students.length}</div>
+                <div className="text-2xl font-serif font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : students.length}
+                </div>
                 <p className="text-xs text-muted-foreground">Total</p>
               </CardContent>
             </Card>
@@ -177,7 +144,9 @@ export default function StudentsPage() {
                 <Plus className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold">47</div>
+                <div className="text-2xl font-serif font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : newRegistrations}
+                </div>
                 <p className="text-xs text-muted-foreground">Ce mois-ci</p>
               </CardContent>
             </Card>
@@ -188,10 +157,14 @@ export default function StudentsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-serif font-bold">
-                  {students.filter((s) => s.gender === "Féminin").length}
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : 
+                    students.filter((s) => s.gender === "Féminin").length
+                  }
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {Math.round((students.filter((s) => s.gender === "Féminin").length / students.length) * 100)}%
+                  {isLoading ? "-" : 
+                    Math.round((students.filter((s) => s.gender === "Féminin").length / students.length) * 100)
+                  }%
                 </p>
               </CardContent>
             </Card>
@@ -202,10 +175,14 @@ export default function StudentsPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-serif font-bold">
-                  {students.filter((s) => s.gender === "Masculin").length}
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : 
+                    students.filter((s) => s.gender === "Masculin").length
+                  }
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {Math.round((students.filter((s) => s.gender === "Masculin").length / students.length) * 100)}%
+                  {isLoading ? "-" : 
+                    Math.round((students.filter((s) => s.gender === "Masculin").length / students.length) * 100)
+                  }%
                 </p>
               </CardContent>
             </Card>
@@ -227,28 +204,25 @@ export default function StudentsPage() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
+                      disabled={isLoading}
                     />
                   </div>
                 </div>
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <Select value={selectedClass} onValueChange={setSelectedClass} disabled={isLoading}>
                   <SelectTrigger className="w-full md:w-48">
                     <SelectValue placeholder="Filtrer par classe" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les classes</SelectItem>
-                    <SelectItem value="CP">CP</SelectItem>
-                    <SelectItem value="CE1">CE1</SelectItem>
-                    <SelectItem value="CE2">CE2</SelectItem>
-                    <SelectItem value="CM1">CM1</SelectItem>
-                    <SelectItem value="CM2">CM2</SelectItem>
-                    <SelectItem value="6ème">6ème</SelectItem>
-                    <SelectItem value="5ème">5ème</SelectItem>
-                    <SelectItem value="4ème">4ème</SelectItem>
-                    <SelectItem value="3ème">3ème</SelectItem>
+                    {classes.map((classe) => (
+                      <SelectItem key={classe.id} value={classe.name}>
+                        {classe.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
-                <Button variant="outline" className="bg-transparent">
+                <Button variant="outline" className="bg-transparent" disabled={isLoading}>
                   <Download className="h-4 w-4 mr-2" />
                   Exporter
                 </Button>
@@ -257,15 +231,29 @@ export default function StudentsPage() {
           </Card>
 
           {/* Students Table */}
-          <StudentsTable
-            students={filteredStudents}
-            onViewDetails={handleViewDetails}
-            onEdit={handleEditClick}
-            onDelete={handleDeleteStudent}
-          />
+          {isLoading ? (
+            <Card>
+              <CardContent className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </CardContent>
+            </Card>
+          ) : (
+            <StudentsTable
+              students={filteredStudents}
+              onViewDetails={handleViewDetails}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteStudent}
+              isLoading={isLoading}
+            />
+          )}
 
           {/* Modals */}
-          <AddStudentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={handleAddStudent} />
+          <AddStudentModal 
+            isOpen={isAddModalOpen} 
+            onClose={() => setIsAddModalOpen(false)} 
+            onAdd={handleAddStudent} 
+            classes={classes} 
+          />
 
           <StudentDetailsModal
             isOpen={isDetailsModalOpen}
@@ -278,6 +266,7 @@ export default function StudentsPage() {
             onClose={() => setIsEditModalOpen(false)}
             student={selectedStudent}
             onEdit={handleEditStudent}
+            classes={classes}
           />
         </div>
       </main>

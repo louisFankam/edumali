@@ -35,10 +35,10 @@ export function SchoolYearDetailsModal({ isOpen, onClose, schoolYear }) {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-serif font-bold">{schoolYear.name}</h2>
+              <h2 className="text-2xl font-serif font-bold">{schoolYear.year}</h2>
               <p className="text-muted-foreground">
-                Du {format(new Date(schoolYear.startDate), "dd MMMM yyyy", { locale: fr })} au{" "}
-                {format(new Date(schoolYear.endDate), "dd MMMM yyyy", { locale: fr })}
+                Du {format(new Date(schoolYear.start_date), "dd MMMM yyyy", { locale: fr })} au{" "}
+                {format(new Date(schoolYear.end_date), "dd MMMM yyyy", { locale: fr })}
               </p>
             </div>
             {getStatusBadge(schoolYear.status)}
@@ -55,7 +55,7 @@ export function SchoolYearDetailsModal({ isOpen, onClose, schoolYear }) {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-serif font-bold text-primary">
-                  {schoolYear.totalStudents.toLocaleString()}
+                  {(schoolYear.total_students || 0).toLocaleString()}
                 </div>
               </CardContent>
             </Card>
@@ -66,7 +66,7 @@ export function SchoolYearDetailsModal({ isOpen, onClose, schoolYear }) {
                 <Users className="h-4 w-4 text-secondary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold text-secondary">{schoolYear.totalTeachers}</div>
+                <div className="text-2xl font-serif font-bold text-secondary">{schoolYear.total_teachers || 0}</div>
               </CardContent>
             </Card>
 
@@ -76,7 +76,7 @@ export function SchoolYearDetailsModal({ isOpen, onClose, schoolYear }) {
                 <Building2 className="h-4 w-4 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold text-accent">{schoolYear.totalSchools}</div>
+                <div className="text-2xl font-serif font-bold text-accent">1</div>
               </CardContent>
             </Card>
           </div>
@@ -141,7 +141,7 @@ export function SchoolYearDetailsModal({ isOpen, onClose, schoolYear }) {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Date de création</p>
-                  <p>{format(new Date(schoolYear.createdAt), "dd MMMM yyyy", { locale: fr })}</p>
+                  <p>{schoolYear.created ? format(new Date(schoolYear.created), "dd MMMM yyyy", { locale: fr }) : "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Statut</p>
