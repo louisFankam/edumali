@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { useAuth } from '@/hooks/use-auth'
+import { useStudentsStats } from '@/hooks/use-students-stats'
+import { useAttendanceStats } from '@/hooks/use-attendance-stats'
+import { useFinancialStats } from '@/hooks/use-financial-stats'
+import { useExamStats } from '@/hooks/use-exam-stats'
 import { 
   GraduationCap,
   Users,
@@ -26,57 +31,31 @@ import {
 
 import Link from "next/link"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
-
-// Données mock pour les graphiques
-const studentData = {
-  total: 187,
-  newThisMonth: 12,
-  growth: 6.8,
-  byClass: [
-    { class: "CP", count: 28, capacity: 30, percentage: 93 },
-    { class: "CE1", count: 25, capacity: 30, percentage: 83 },
-    { class: "CE2", count: 27, capacity: 30, percentage: 90 },
-    { class: "CM1", count: 26, capacity: 30, percentage: 87 },
-    { class: "CM2", count: 29, capacity: 30, percentage: 97 },
-    { class: "6ème", count: 32, capacity: 35, percentage: 91 }
-  ]
-}
-
-const attendanceData = {
-  overall: 94,
-  trend: 2.1,
-  byClass: [
-    { class: "CP", rate: 96, trend: 1.2 },
-    { class: "CE1", rate: 93, trend: -0.5 },
-    { class: "CE2", rate: 95, trend: 2.3 },
-    { class: "CM1", rate: 92, trend: -1.1 },
-    { class: "CM2", rate: 97, trend: 3.2 },
-    { class: "6ème", rate: 91, trend: 0.8 }
-  ]
-}
-
-const financialData = {
-  totalRevenue: 45000000, // 45M FCFA
-  monthlyAverage: 3750000, // 3.75M FCFA
-  growth: 8.5,
-  outstandingPayments: 3200000, // 3.2M FCFA
-  paymentRate: 87
-}
-
-const examData = {
-  averageScore: 14.2,
-  passRate: 78,
-  topSubjects: [
-    { subject: "Mathématiques", average: 15.8, students: 156 },
-    { subject: "Français", average: 14.5, students: 156 },
-    { subject: "Sciences", average: 13.9, students: 156 },
-    { subject: "Histoire-Géo", average: 13.2, students: 156 }
-  ]
-}
+import { AlertsSection } from "@/components/alerts/alerts-section"
 
 export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("month")
-  const [isLoading, setIsLoading] = useState(false)
+  // const [isLoading, setIsLoading] = useState(false)
+  const { user, logout, isAuthenticated } = useAuth()
+
+  // écupération des statistiques
+  const { data: studentData, isLoading: studentsLoading, refetch: refetchStudents } = useStudentsStats()
+  const { data: attendanceData, isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendanceStats()
+  const { data: financialData, isLoading: financialLoading, refetch: refetchFinancial } = useFinancialStats()
+  const { data: examData, isLoading: examLoading, refetch: refetchExam } = useExamStats()
+
+  if (!isAuthenticated) {
+    return null // La redirection est gérée dans le hook
+  }
+
+  const isLoading = studentsLoading || attendanceLoading || financialLoading || examLoading
+
+  const handleRefresh = () => {
+    refetchStudents()
+    refetchAttendance()
+    refetchFinancial()
+    refetchExam()
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -86,9 +65,22 @@ export default function DashboardPage() {
     }).format(amount)
   }
 
-  const handleRefresh = () => {
+  /**const handleRefresh = () => {
     setIsLoading(true)
     setTimeout(() => setIsLoading(false), 1000)
+  }*/
+
+  if (!studentData || !attendanceData || !financialData || !examData) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <main className="flex-1 md:ml-64 flex items-center justify-center">
+          <div className="text-center">
+            <p>Chargement des données...</p>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -101,6 +93,7 @@ export default function DashboardPage() {
             <PageHeader
               title="Tableau de bord"
               description="Vue d'ensemble de l'établissement scolaire"
+              className=""
             >
               <NotificationBellMain />
             </PageHeader>
@@ -121,6 +114,7 @@ export default function DashboardPage() {
                 size="icon"
                 onClick={handleRefresh}
                 disabled={isLoading}
+                title="Actualiser"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
@@ -237,7 +231,7 @@ export default function DashboardPage() {
                     <div key={classData.class} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-medium text-red-600">{classData.class}</span>
+                          <span className="text-sm font-medium text-red-600">{classData.name}</span>
                         </div>
                         <div>
                           <p className="text-sm font-medium">{classData.count}/{classData.capacity}</p>
@@ -327,7 +321,7 @@ export default function DashboardPage() {
             </Card>
 
             {/* Alertes et actions rapides */}
-            <Card>
+            {/*<Card>
               <CardHeader>
                 <CardTitle>Alertes importantes</CardTitle>
                 <CardDescription>Actions requises</CardDescription>
@@ -368,7 +362,8 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
+            <AlertsSection />
           </div>
 
           {/* Accès rapides */}

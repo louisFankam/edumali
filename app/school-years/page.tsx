@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { AcademicYear } from "@/hooks/use-academic-years"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearsTable } from "@/components/school-years/school-years-table"
 import { CreateSchoolYearModal } from "@/components/school-years/create-school-year-modal"
+import { EditSchoolYearModal } from "@/components/school-years/edit-school-year-modal"
 import { SchoolYearDetailsModal } from "@/components/school-years/school-year-details-modal"
 import { ArchiveModal } from "@/components/school-years/archive-modal"
 import { Button } from "@/components/ui/button"
@@ -12,123 +14,100 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Calendar, Archive, TrendingUp } from "lucide-react"
-
-// Mock data for school years
-const mockSchoolYears = [
-  {
-    id: 1,
-    name: "2024-2025",
-    startDate: "2024-09-01",
-    endDate: "2025-06-30",
-    status: "active", // active, upcoming, archived
-    totalStudents: 2847,
-    totalTeachers: 156,
-    totalSchools: 8,
-    periods: [
-      { name: "1er Trimestre", startDate: "2024-09-01", endDate: "2024-12-15" },
-      { name: "2ème Trimestre", startDate: "2025-01-08", endDate: "2025-03-28" },
-      { name: "3ème Trimestre", startDate: "2025-04-07", endDate: "2025-06-30" },
-    ],
-    holidays: [
-      { name: "Vacances de Noël", startDate: "2024-12-16", endDate: "2025-01-07" },
-      { name: "Vacances de Pâques", startDate: "2025-03-29", endDate: "2025-04-06" },
-    ],
-    createdAt: "2024-06-15",
-  },
-  {
-    id: 2,
-    name: "2023-2024",
-    startDate: "2023-09-01",
-    endDate: "2024-06-30",
-    status: "archived",
-    totalStudents: 2654,
-    totalTeachers: 148,
-    totalSchools: 7,
-    periods: [
-      { name: "1er Trimestre", startDate: "2023-09-01", endDate: "2023-12-15" },
-      { name: "2ème Trimestre", startDate: "2024-01-08", endDate: "2024-03-28" },
-      { name: "3ème Trimestre", startDate: "2024-04-07", endDate: "2024-06-30" },
-    ],
-    holidays: [
-      { name: "Vacances de Noël", startDate: "2023-12-16", endDate: "2024-01-07" },
-      { name: "Vacances de Pâques", startDate: "2024-03-29", endDate: "2024-04-06" },
-    ],
-    createdAt: "2023-06-15",
-  },
-  {
-    id: 3,
-    name: "2025-2026",
-    startDate: "2025-09-01",
-    endDate: "2026-06-30",
-    status: "upcoming",
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalSchools: 0,
-    periods: [
-      { name: "1er Trimestre", startDate: "2025-09-01", endDate: "2025-12-15" },
-      { name: "2ème Trimestre", startDate: "2026-01-08", endDate: "2026-03-28" },
-      { name: "3ème Trimestre", startDate: "2026-04-07", endDate: "2026-06-30" },
-    ],
-    holidays: [
-      { name: "Vacances de Noël", startDate: "2025-12-16", endDate: "2026-01-07" },
-      { name: "Vacances de Pâques", startDate: "2026-03-29", endDate: "2026-04-06" },
-    ],
-    createdAt: "2024-12-01",
-  },
-]
+import { useAcademicYears } from "@/hooks/use-academic-years"
 
 export default function SchoolYearsPage() {
-  const [schoolYears, setSchoolYears] = useState(mockSchoolYears)
-  const [selectedSchoolYear, setSelectedSchoolYear] = useState(null)
+  const {
+    academicYears,
+    isLoading,
+    error,
+    createAcademicYear,
+    updateAcademicYear,
+    activateAcademicYear,
+    archiveAcademicYear,
+    getActiveAcademicYear,
+    calculateTotals,
+    getStats,
+  } = useAcademicYears()
+
+  const [selectedSchoolYear, setSelectedSchoolYear] = useState<AcademicYear | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false)
+  const [yearTotals, setYearTotals] = useState<{[key: string]: {students: number, teachers: number}}>({})
 
-  const handleCreateSchoolYear = (newSchoolYear) => {
-    const schoolYear = {
-      ...newSchoolYear,
-      id: schoolYears.length + 1,
-      totalStudents: 0,
-      totalTeachers: 0,
-      totalSchools: 0,
-      createdAt: new Date().toISOString().split("T")[0],
+  const handleCreateSchoolYear = async (newSchoolYear: Omit<AcademicYear, 'id' | 'created' | 'updated'>) => {
+    const success = await createAcademicYear(newSchoolYear)
+    if (success) {
+      setIsCreateModalOpen(false)
     }
-    setSchoolYears([...schoolYears, schoolYear])
   }
 
-  const handleActivateSchoolYear = (schoolYearId) => {
-    setSchoolYears((prev) =>
-      prev.map((year) => ({
-        ...year,
-        status: year.id === schoolYearId ? "active" : year.status === "active" ? "archived" : year.status,
-      })),
-    )
+  const handleActivateSchoolYear = async (schoolYearId: string) => {
+    await activateAcademicYear(schoolYearId)
   }
 
-  const handleArchiveSchoolYear = (schoolYearId) => {
-    setSchoolYears((prev) => prev.map((year) => (year.id === schoolYearId ? { ...year, status: "archived" } : year)))
+  const handleArchiveSchoolYear = async (schoolYearId: string) => {
+    await archiveAcademicYear(schoolYearId)
+    setIsArchiveModalOpen(false)
   }
 
-  const handleViewDetails = (schoolYear) => {
+  const handleViewDetails = (schoolYear: AcademicYear) => {
     setSelectedSchoolYear(schoolYear)
     setIsDetailsModalOpen(true)
   }
 
-  const handleArchiveClick = (schoolYear) => {
+  const handleArchiveClick = (schoolYear: AcademicYear) => {
     setSelectedSchoolYear(schoolYear)
     setIsArchiveModalOpen(true)
   }
 
+  const handleEditClick = (schoolYear: AcademicYear) => {
+    setSelectedSchoolYear(schoolYear)
+    setIsEditModalOpen(true)
+  }
+
+  const handleEditYear = async (updatedYear: Partial<AcademicYear>) => {
+    console.log("handleEditYear called with:", updatedYear)
+    if (selectedSchoolYear?.id) {
+      console.log("Updating school year with ID:", selectedSchoolYear.id)
+      const success = await updateAcademicYear(selectedSchoolYear.id, updatedYear)
+      console.log("Update result:", success)
+      if (success) {
+        // Recharger les totaux
+        await loadYearTotals()
+        setIsEditModalOpen(false)
+        setSelectedSchoolYear(null)
+      }
+    } else {
+      console.log("No selectedSchoolYear.id found")
+    }
+  }
+
+  const loadYearTotals = async () => {
+    const totals: {[key: string]: {students: number, teachers: number}} = {}
+    for (const year of academicYears) {
+      if (year.id) {
+        const yearTotal = await calculateTotals(year.id)
+        totals[year.id] = yearTotal
+      }
+    }
+    setYearTotals(totals)
+  }
+
   // Get current active school year
-  const activeSchoolYear = schoolYears.find((year) => year.status === "active")
+  const activeSchoolYear = getActiveAcademicYear()
+
+  // Load year totals when academic years change
+  useEffect(() => {
+    if (academicYears.length > 0) {
+      loadYearTotals()
+    }
+  }, [academicYears])
 
   // Calculate statistics
-  const stats = {
-    totalYears: schoolYears.length,
-    activeYear: activeSchoolYear?.name || "Aucune",
-    archivedYears: schoolYears.filter((year) => year.status === "archived").length,
-    upcomingYears: schoolYears.filter((year) => year.status === "upcoming").length,
-  }
+  const stats = getStats()
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -143,6 +122,15 @@ export default function SchoolYearsPage() {
             </Button>
           </PageHeader>
 
+          {/* Error Message */}
+          {error && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <p className="text-red-800">{error}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Statistics Cards */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
@@ -151,7 +139,9 @@ export default function SchoolYearsPage() {
                 <Calendar className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold text-primary">{stats.activeYear}</div>
+                <div className="text-2xl font-serif font-bold text-primary">
+                  {isLoading ? "Chargement..." : stats.activeYear}
+                </div>
                 <p className="text-xs text-muted-foreground">En cours</p>
               </CardContent>
             </Card>
@@ -162,7 +152,9 @@ export default function SchoolYearsPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold">{stats.totalYears}</div>
+                <div className="text-2xl font-serif font-bold">
+                  {isLoading ? "Chargement..." : stats.totalYears}
+                </div>
                 <p className="text-xs text-muted-foreground">Gérées dans le système</p>
               </CardContent>
             </Card>
@@ -173,7 +165,9 @@ export default function SchoolYearsPage() {
                 <Archive className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold">{stats.archivedYears}</div>
+                <div className="text-2xl font-serif font-bold">
+                  {isLoading ? "Chargement..." : stats.archivedYears}
+                </div>
                 <p className="text-xs text-muted-foreground">Terminées</p>
               </CardContent>
             </Card>
@@ -184,7 +178,9 @@ export default function SchoolYearsPage() {
                 <Calendar className="h-4 w-4 text-secondary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-serif font-bold text-secondary">{stats.upcomingYears}</div>
+                <div className="text-2xl font-serif font-bold text-secondary">
+                  {isLoading ? "Chargement..." : stats.upcomingYears}
+                </div>
                 <p className="text-xs text-muted-foreground">Planifiées</p>
               </CardContent>
             </Card>
@@ -206,11 +202,11 @@ export default function SchoolYearsPage() {
                       <div>
                         <CardTitle className="flex items-center">
                           <Calendar className="h-5 w-5 mr-2 text-primary" />
-                          Année scolaire active: {activeSchoolYear.name}
+                          Année scolaire active: {activeSchoolYear.year}
                         </CardTitle>
                         <CardDescription>
-                          Du {new Date(activeSchoolYear.startDate).toLocaleDateString("fr-FR")} au{" "}
-                          {new Date(activeSchoolYear.endDate).toLocaleDateString("fr-FR")}
+                          Du {new Date(activeSchoolYear.start_date).toLocaleDateString("fr-FR")} au{" "}
+                          {new Date(activeSchoolYear.end_date).toLocaleDateString("fr-FR")}
                         </CardDescription>
                       </div>
                       <Badge className="bg-primary text-primary-foreground">Active</Badge>
@@ -220,19 +216,19 @@ export default function SchoolYearsPage() {
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="text-center">
                         <div className="text-2xl font-serif font-bold text-primary">
-                          {activeSchoolYear.totalStudents.toLocaleString()}
+                          {activeSchoolYear.id ? (yearTotals[activeSchoolYear.id]?.students || 0).toLocaleString() : "0"}
                         </div>
                         <p className="text-sm text-muted-foreground">Élèves inscrits</p>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-serif font-bold text-secondary">
-                          {activeSchoolYear.totalTeachers}
+                          {activeSchoolYear.id ? yearTotals[activeSchoolYear.id]?.teachers || 0 : 0}
                         </div>
                         <p className="text-sm text-muted-foreground">Professeurs</p>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-serif font-bold text-accent">{activeSchoolYear.totalSchools}</div>
-                        <p className="text-sm text-muted-foreground">Établissements</p>
+                        <div className="text-2xl font-serif font-bold text-accent">1</div>
+                        <p className="text-sm text-muted-foreground">Établissement</p>
                       </div>
                     </div>
                   </CardContent>
@@ -241,10 +237,13 @@ export default function SchoolYearsPage() {
 
               {/* School Years Table */}
               <SchoolYearsTable
-                schoolYears={schoolYears}
+                schoolYears={academicYears}
+                yearTotals={yearTotals}
                 onActivate={handleActivateSchoolYear}
                 onArchive={handleArchiveClick}
                 onViewDetails={handleViewDetails}
+                onEdit={handleEditClick}
+                isLoading={isLoading}
               />
             </TabsContent>
 
@@ -261,7 +260,7 @@ export default function SchoolYearsPage() {
                       <div>
                         <h3 className="text-lg font-medium mb-4">Trimestres</h3>
                         <div className="grid gap-4 md:grid-cols-3">
-                          {activeSchoolYear.periods.map((period, index) => (
+                          {(activeSchoolYear.periods || []).map((period, index) => (
                             <Card key={index}>
                               <CardHeader className="pb-3">
                                 <CardTitle className="text-base">{period.name}</CardTitle>
@@ -281,7 +280,7 @@ export default function SchoolYearsPage() {
                       <div>
                         <h3 className="text-lg font-medium mb-4">Vacances</h3>
                         <div className="grid gap-4 md:grid-cols-2">
-                          {activeSchoolYear.holidays.map((holiday, index) => (
+                          {(activeSchoolYear.holidays || []).map((holiday, index) => (
                             <Card key={index}>
                               <CardHeader className="pb-3">
                                 <CardTitle className="text-base">{holiday.name}</CardTitle>
@@ -299,7 +298,9 @@ export default function SchoolYearsPage() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-muted-foreground">Aucune année scolaire active</p>
+                      <p className="text-muted-foreground">
+                        {isLoading ? "Chargement..." : "Aucune année scolaire active"}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -314,16 +315,16 @@ export default function SchoolYearsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {schoolYears
+                    {academicYears
                       .filter((year) => year.status === "archived")
                       .map((year) => (
                         <Card key={year.id}>
                           <CardHeader>
                             <div className="flex items-center justify-between">
                               <div>
-                                <CardTitle className="text-base">{year.name}</CardTitle>
+                                <CardTitle className="text-base">{year.year}</CardTitle>
                                 <CardDescription>
-                                  {year.totalStudents.toLocaleString()} élèves • {year.totalTeachers} professeurs
+                                  {year.total_students?.toLocaleString() || 0} élèves • {year.total_teachers || 0} professeurs
                                 </CardDescription>
                               </div>
                               <div className="flex items-center space-x-2">
@@ -336,6 +337,11 @@ export default function SchoolYearsPage() {
                           </CardHeader>
                         </Card>
                       ))}
+                    {academicYears.filter((year) => year.status === "archived").length === 0 && !isLoading && (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">Aucune année scolaire archivée</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -347,6 +353,16 @@ export default function SchoolYearsPage() {
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
             onCreate={handleCreateSchoolYear}
+          />
+
+          <EditSchoolYearModal
+            isOpen={isEditModalOpen}
+            onClose={() => {
+              setIsEditModalOpen(false)
+              setSelectedSchoolYear(null)
+            }}
+            schoolYear={selectedSchoolYear}
+            onUpdate={handleEditYear}
           />
 
           <SchoolYearDetailsModal

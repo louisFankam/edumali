@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
@@ -17,110 +17,110 @@ import { CalendarIcon, UserCheck } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-
-// Mock data for students with attendance
-const mockStudentsAttendance = [
-  {
-    id: 1,
-    firstName: "Aminata",
-    lastName: "Traoré",
-    class: "CM2",
-    school: "École Primaire de Bamako",
-    status: "present", // present, absent, late
-    arrivalTime: "08:00",
-    photo: "/placeholder.svg?key=student1",
-  },
-  {
-    id: 2,
-    firstName: "Ibrahim",
-    lastName: "Keita",
-    class: "CM1",
-    school: "École Primaire de Bamako",
-    status: "late",
-    arrivalTime: "08:15",
-    photo: "/placeholder.svg?key=student2",
-  },
-  {
-    id: 3,
-    firstName: "Mariam",
-    lastName: "Coulibaly",
-    class: "CE2",
-    school: "École Primaire de Bamako",
-    status: "absent",
-    arrivalTime: null,
-    photo: "/placeholder.svg?key=student3",
-  },
-  {
-    id: 4,
-    firstName: "Ousmane",
-    lastName: "Diarra",
-    class: "CE1",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "07:55",
-    photo: "/placeholder.svg?key=student4",
-  },
-  {
-    id: 5,
-    firstName: "Kadiatou",
-    lastName: "Sangaré",
-    class: "CP",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "08:05",
-    photo: "/placeholder.svg?key=student5",
-  },
-]
-
-// Mock attendance history data
-const mockAttendanceHistory = [
-  {
-    date: "2024-12-20",
-    class: "CM2",
-    school: "École Primaire de Bamako",
-    totalStudents: 25,
-    present: 23,
-    absent: 1,
-    late: 1,
-    attendanceRate: 92,
-  },
-  {
-    date: "2024-12-19",
-    class: "CM2",
-    school: "École Primaire de Bamako",
-    totalStudents: 25,
-    present: 24,
-    absent: 1,
-    late: 0,
-    attendanceRate: 96,
-  },
-  {
-    date: "2024-12-18",
-    class: "CM2",
-    school: "École Primaire de Bamako",
-    totalStudents: 25,
-    present: 22,
-    absent: 2,
-    late: 1,
-    attendanceRate: 88,
-  },
-]
+import { useStudents } from "@/hooks/use-students"
+import { useAttendance } from "@/hooks/use-attendance"
+import { useSchoolInfo } from "@/hooks/use-school-info"
 
 export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [selectedClass, setSelectedClass] = useState("CM2")
-  const [selectedSchool, setSelectedSchool] = useState("École Primaire de Bamako")
-  const [studentsAttendance, setStudentsAttendance] = useState(mockStudentsAttendance)
-  const [attendanceHistory] = useState(mockAttendanceHistory)
+  const [selectedClass, setSelectedClass] = useState("all")
+  const [selectedSchool, setSelectedSchool] = useState("")
+  
+  const { students, classes, isLoading, fetchStudents } = useStudents()
+  const { saveAttendance, getAttendanceByDate, isLoading: isSaving } = useAttendance()
+  const { schoolInfo } = useSchoolInfo()
 
-  const handleAttendanceChange = (studentId: number, status: string) => {
+  useEffect(() => {
+    fetchStudents()
+  }, [fetchStudents])
+
+  // Initialiser avec la première classe disponible
+  useEffect(() => {
+    if (classes.length > 0 && selectedClass === "all") {
+      setSelectedClass(classes[0].name)
+    }
+  }, [classes, selectedClass])
+
+  // Initialiser avec le nom de l'école
+  useEffect(() => {
+    if (schoolInfo && !selectedSchool) {
+      setSelectedSchool(schoolInfo.name)
+    }
+  }, [schoolInfo, selectedSchool])
+
+  // Charger les présences existantes quand la date ou la classe change
+  useEffect(() => {
+    const loadExistingAttendance = async () => {
+      if (students.length === 0) return
+      
+      try {
+        const formattedDate = format(selectedDate, "yyyy-MM-dd")
+        console.log("Chargement des présences pour le", formattedDate)
+        
+        // Récupérer toutes les présences pour cette date
+        const existingAttendance = await getAttendanceByDate(formattedDate)
+        console.log("Présences brutes chargées:", existingAttendance)
+        
+        // Filtrer les étudiants selon la classe sélectionnée
+        const filteredStudents = selectedClass === "all" 
+          ? students 
+          : students.filter(student => student.class === selectedClass)
+        
+        console.log("Étudiants filtrés pour la classe", selectedClass, ":", filteredStudents.map(s => `${s.firstName} ${s.lastName} (ID: ${s.id})`))
+        
+        // Mettre à jour l'état des présences avec les données existantes
+        const updatedAttendance = filteredStudents.map(student => {
+          // Le student_id dans la base contient bien l'UUID de l'étudiant
+          const attendanceRecord = existingAttendance.find(record => record.student_id === student.id)
+          const status = attendanceRecord?.status || "present"
+          console.log(`Étudiant ${student.firstName} ${student.lastName} (ID: ${student.id}):`)
+          console.log(`  - Recherche de présence par ID: ${attendanceRecord ? 'TROUVÉ' : 'NON TROUVÉ'}`)
+          console.log(`  - Statut final: ${status}`)
+          
+          return {
+            ...student,
+            status: status
+          }
+        })
+        
+        console.log("Présences finales:", updatedAttendance.map(a => `${a.firstName} ${a.lastName}: ${a.status}`))
+        setStudentsAttendance(updatedAttendance)
+        
+      } catch (error) {
+        console.error("Erreur lors du chargement des présences:", error)
+      }
+    }
+
+    loadExistingAttendance()
+  }, [selectedDate, selectedClass, students, getAttendanceByDate])
+
+  // État local pour gérer les présences
+  const [studentsAttendance, setStudentsAttendance] = useState<any[]>([])
+
+  
+  useEffect(() => {
+    // Mettre à jour les données de présence quand les étudiants changent
+    const updatedAttendance = students
+      .filter(student => selectedClass === "all" || student.class === selectedClass)
+      .map(student => ({
+        id: student.id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        class: student.class,
+        school: "École Primaire de Bamako",
+        status: "present", // Valeur par défaut
+        photo: student.gender === "Masculin" ? "/homme.png" : "/femme.png",
+      }))
+    setStudentsAttendance(updatedAttendance)
+  }, [students, selectedClass])
+
+  const handleAttendanceChange = (studentId: string, status: string) => {
     setStudentsAttendance((prev) =>
       prev.map((student) =>
         student.id === studentId
           ? {
               ...student,
-              status,
-              arrivalTime: status === "absent" ? null : status === "late" ? "08:15" : "08:00",
+              status
             }
           : student,
       ),
@@ -131,16 +131,40 @@ export default function AttendancePage() {
     setStudentsAttendance((prev) =>
       prev.map((student) => ({
         ...student,
-        status: "present",
-        arrivalTime: "08:00",
+        status: "present"
       })),
     )
   }
 
-  const handleSaveAttendance = () => {
-    // Here you would save to your backend
-    console.log("Saving attendance for", format(selectedDate, "yyyy-MM-dd"), selectedClass, selectedSchool)
-    alert("Présences sauvegardées avec succès!")
+  const handleSaveAttendance = async () => {
+    try {
+      const formattedDate = format(selectedDate, "yyyy-MM-dd")
+      
+      // Récupérer l'ID de la classe sélectionnée
+      const selectedClassData = classes.find(c => c.name === selectedClass)
+      if (!selectedClassData && selectedClass !== "all") {
+        alert("Classe non trouvée!")
+        return
+      }
+
+      // Préparer les données pour la sauvegarde
+      const attendanceData = studentsAttendance.map(student => ({
+        studentId: student.id, // Utiliser l'UUID comme dans la base
+        status: student.status
+      }))
+
+      // Sauvegarder les présences
+      await saveAttendance(
+        formattedDate,
+        selectedClassData?.id || "all",
+        attendanceData
+      )
+
+      alert("Présences sauvegardées avec succès!")
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde:", error)
+      alert("Erreur lors de la sauvegarde des présences. Veuillez réessayer.")
+    }
   }
 
   // Calculate stats for current selection
@@ -211,11 +235,9 @@ export default function AttendancePage() {
                           <SelectValue placeholder="Sélectionner l'école" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="École Primaire de Bamako">École Primaire de Bamako</SelectItem>
-                          <SelectItem value="Collège de Sikasso">Collège de Sikasso</SelectItem>
-                          <SelectItem value="École Primaire de Mopti">École Primaire de Mopti</SelectItem>
-                          <SelectItem value="Collège de Gao">Collège de Gao</SelectItem>
-                          <SelectItem value="École Primaire de Kayes">École Primaire de Kayes</SelectItem>
+                          <SelectItem value={schoolInfo?.name || "École Primaire de Bamako"}>
+                            {schoolInfo?.name || "École Primaire de Bamako"}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -227,15 +249,12 @@ export default function AttendancePage() {
                           <SelectValue placeholder="Classe" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="CP">CP</SelectItem>
-                          <SelectItem value="CE1">CE1</SelectItem>
-                          <SelectItem value="CE2">CE2</SelectItem>
-                          <SelectItem value="CM1">CM1</SelectItem>
-                          <SelectItem value="CM2">CM2</SelectItem>
-                          <SelectItem value="6ème">6ème</SelectItem>
-                          <SelectItem value="5ème">5ème</SelectItem>
-                          <SelectItem value="4ème">4ème</SelectItem>
-                          <SelectItem value="3ème">3ème</SelectItem>
+                          <SelectItem value="all">Toutes les classes</SelectItem>
+                          {classes.map((classItem) => (
+                            <SelectItem key={classItem.id} value={classItem.name}>
+                              {classItem.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -245,7 +264,9 @@ export default function AttendancePage() {
                         <UserCheck className="h-4 w-4 mr-2" />
                         Tous présents
                       </Button>
-                      <Button onClick={handleSaveAttendance}>Sauvegarder</Button>
+                      <Button onClick={handleSaveAttendance} disabled={isSaving}>
+                {isSaving ? "Sauvegarde en cours..." : "Sauvegarder"}
+              </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -264,7 +285,7 @@ export default function AttendancePage() {
             </TabsContent>
 
             <TabsContent value="history" className="space-y-6">
-              <AttendanceHistory history={attendanceHistory} />
+              <AttendanceHistory history={[]} classes={classes} />
             </TabsContent>
 
             <TabsContent value="reports" className="space-y-6">

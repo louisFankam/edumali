@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
@@ -24,125 +24,127 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react"
+import { useExams } from "@/hooks/use-exams"
+import { useGrades } from "@/hooks/use-grades"
+import { useClasses } from "@/hooks/use-classes"
+import { useSubjects } from "@/hooks/use-subjects"
+import { useStudents } from "@/hooks/use-students"
+import { useAcademicYears } from "@/hooks/use-academic-years"
+import { useToast } from "@/hooks/use-toast"
+import { format } from "date-fns"
+import { fr } from "date-fns/locale"
 
 // Types pour les données
 interface Student {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
+  classId?: string;
   class: string;
 }
 
 interface Subject {
-  id: number;
+  id: string;
   name: string;
   coefficient: number;
 }
 
 interface Exam {
-  id: number;
+  id: string;
   name: string;
-  type: "composition" | "trimestre";
-  date: string;
-  class: string;
-  subject: string;
+  type: "composition" | "trimestre" | "semestre" | "annuel";
+  exam_date: string;
+  class_id: string;
+  subject_id: string;
   coefficient: number;
-  isActive: boolean;
+  max_score?: number;
+  duration?: number;
+  instructions?: string;
+  is_active: boolean;
+  academic_year: string;
+  expand?: {
+    class_id?: {
+      id: string;
+      name: string
+    }
+    subject_id?: {
+      id: string;
+      name: string;
+      coefficient: number
+    }
+  }
 }
 
 interface Grade {
-  id: number;
-  studentId: number;
-  examId: number;
+  id: string;
+  student_id: string;
+  exam_id: string;
   grade: number;
   remarks?: string;
+  expand?: {
+    student_id?: {
+      id: string
+      first_name: string
+      last_name: string
+    }
+  }
 }
 
-// Mock data
-const mockStudents: Student[] = [
-  { id: 1, firstName: "Aminata", lastName: "Traoré", class: "CM2" },
-  { id: 2, firstName: "Ibrahim", lastName: "Keita", class: "CM2" },
-  { id: 3, firstName: "Mariam", lastName: "Coulibaly", class: "CM2" },
-  { id: 4, firstName: "Ousmane", lastName: "Diarra", class: "CM2" },
-  { id: 5, firstName: "Kadiatou", lastName: "Sangaré", class: "CM2" },
-]
-
-const mockSubjects: Subject[] = [
-  { id: 1, name: "Mathématiques", coefficient: 3 },
-  { id: 2, name: "Français", coefficient: 3 },
-  { id: 3, name: "Sciences", coefficient: 2 },
-  { id: 4, name: "Histoire-Géographie", coefficient: 2 },
-  { id: 5, name: "Anglais", coefficient: 1 },
-]
-
-const mockExams: Exam[] = [
-  {
-    id: 1,
-    name: "Composition 1 - Mathématiques",
-    type: "composition",
-    date: "2024-12-15",
-    class: "CM2",
-    subject: "Mathématiques",
-    coefficient: 1,
-    isActive: true
-  },
-  {
-    id: 2,
-    name: "Composition 1 - Français",
-    type: "composition",
-    date: "2024-12-16",
-    class: "CM1",
-    subject: "Français",
-    coefficient: 1,
-    isActive: true
-  },
-  {
-    id: 3,
-    name: "1er Trimestre - Mathématiques",
-    type: "trimestre",
-    date: "2024-12-20",
-    class: "CM2",
-    subject: "Mathématiques",
-    coefficient: 2,
-    isActive: false
-  }
-]
-
-const mockGrades: Grade[] = [
-  { id: 1, studentId: 1, examId: 1, grade: 15, remarks: "Bon travail" },
-  { id: 2, studentId: 2, examId: 1, grade: 12, remarks: "Peut mieux faire" },
-  { id: 3, studentId: 3, examId: 1, grade: 18, remarks: "Excellent" },
-  { id: 4, studentId: 4, examId: 1, grade: 8, remarks: "Doit réviser" },
-  { id: 5, studentId: 5, examId: 1, grade: 14, remarks: "Satisfaisant" },
-]
-
 // Composant pour créer un nouvel examen
-function CreateExamModal({ isOpen, onClose, onAdd }) {
+function CreateExamModal({ 
+  isOpen, 
+  onClose, 
+  onAdd, 
+  classes, 
+  subjects,
+  academicYears
+}: { 
+  isOpen: boolean
+  onClose: () => void
+  onAdd: (exam: Omit<Exam, "id" | "created" | "updated">) => Promise<void>
+  classes: { id: string; name: string }[]
+  subjects: { id: string; name: string; coefficient: number }[]
+  academicYears: { id?: string; year: string }[]
+}) {
   const [formData, setFormData] = useState({
     name: "",
-    type: "composition",
-    date: "",
-    class: "",
-    subject: "",
-    coefficient: 1
+    type: "composition" as "composition" | "trimestre" | "semestre" | "annuel",
+    exam_date: "",
+    class_id: "",
+    subject_id: "",
+    coefficient: 1,
+    max_score: 20,
+    duration: 60,
+    instructions: "",
+    is_active: false
   })
 
-  const handleSubmit = (e) => {
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newExam = {
-      id: Date.now(),
-      ...formData,
-      isActive: false
+    if (!selectedAcademicYear) {
+      alert("Veuillez sélectionner une année académique")
+      return
     }
-    onAdd(newExam)
+    const newExam: Omit<Exam, "id" | "created" | "updated"> = {
+      ...formData,
+      academic_year: selectedAcademicYear
+    }
+    await onAdd(newExam)
     setFormData({
       name: "",
       type: "composition",
-      date: "",
-      class: "",
-      subject: "",
-      coefficient: 1
+      exam_date: "",
+      class_id: "",
+      subject_id: "",
+      coefficient: 1,
+      max_score: 20,
+      duration: 60,
+      instructions: "",
+      is_active: false
     })
+    setSelectedAcademicYear("")
     onClose()
   }
 
@@ -169,13 +171,15 @@ function CreateExamModal({ isOpen, onClose, onAdd }) {
             </div>
             <div>
               <label className="text-sm font-medium">Type</label>
-              <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value})}>
+              <Select value={formData.type} onValueChange={(value: "composition" | "trimestre" | "semestre" | "annuel") => setFormData({...formData, type: value})}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="composition">Composition</SelectItem>
                   <SelectItem value="trimestre">Trimestre</SelectItem>
+                  <SelectItem value="semestre">Semestre</SelectItem>
+                  <SelectItem value="annuel">Annuel</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -186,27 +190,23 @@ function CreateExamModal({ isOpen, onClose, onAdd }) {
               <label className="text-sm font-medium">Date</label>
               <Input
                 type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({...formData, date: e.target.value})}
+                value={formData.exam_date}
+                onChange={(e) => setFormData({...formData, exam_date: e.target.value})}
                 required
               />
             </div>
             <div>
               <label className="text-sm font-medium">Classe</label>
-              <Select value={formData.class} onValueChange={(value) => setFormData({...formData, class: value})}>
+              <Select value={formData.class_id} onValueChange={(value: string) => setFormData({...formData, class_id: value})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CP">CP</SelectItem>
-                  <SelectItem value="CE1">CE1</SelectItem>
-                  <SelectItem value="CE2">CE2</SelectItem>
-                  <SelectItem value="CM1">CM1</SelectItem>
-                  <SelectItem value="CM2">CM2</SelectItem>
-                  <SelectItem value="6ème">6ème</SelectItem>
-                  <SelectItem value="5ème">5ème</SelectItem>
-                  <SelectItem value="4ème">4ème</SelectItem>
-                  <SelectItem value="3ème">3ème</SelectItem>
+                  {classes.map((classItem: any) => (
+                    <SelectItem key={classItem.id} value={classItem.id}>
+                      {classItem.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -217,7 +217,7 @@ function CreateExamModal({ isOpen, onClose, onAdd }) {
                 min="1"
                 max="5"
                 value={formData.coefficient}
-                onChange={(e) => setFormData({...formData, coefficient: parseInt(e.target.value)})}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, coefficient: parseInt(e.target.value)})}
                 required
               />
             </div>
@@ -225,14 +225,73 @@ function CreateExamModal({ isOpen, onClose, onAdd }) {
 
           <div>
             <label className="text-sm font-medium">Matière</label>
-            <Select value={formData.subject} onValueChange={(value) => setFormData({...formData, subject: value})}>
+            <Select value={formData.subject_id} onValueChange={(value: string) => setFormData({...formData, subject_id: value})}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner une matière" />
               </SelectTrigger>
               <SelectContent>
-                {mockSubjects.map(subject => (
-                  <SelectItem key={subject.id} value={subject.name}>
+                {subjects.map((subject: any) => (
+                  <SelectItem key={subject.id} value={subject.id}>
                     {subject.name} (coef: {subject.coefficient})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">Note maximale</label>
+              <Input
+                type="number"
+                min="1"
+                value={formData.max_score}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, max_score: parseInt(e.target.value)})}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Durée (minutes)</label>
+              <Input
+                type="number"
+                min="1"
+                value={formData.duration}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, duration: parseInt(e.target.value)})}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Coefficient</label>
+              <Input
+                type="number"
+                min="1"
+                max="5"
+                value={formData.coefficient}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, coefficient: parseInt(e.target.value)})}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Instructions</label>
+            <Input
+              value={formData.instructions}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, instructions: e.target.value})}
+              placeholder="Instructions pour l'examen (optionnel)"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Année académique</label>
+            <Select value={selectedAcademicYear} onValueChange={(value: string) => setSelectedAcademicYear(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une année académique" />
+              </SelectTrigger>
+              <SelectContent>
+                {academicYears.map((year) => (
+                  <SelectItem key={year.id || year.year} value={year.id || year.year}>
+                    {year.year}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -255,38 +314,62 @@ function CreateExamModal({ isOpen, onClose, onAdd }) {
 }
 
 // Composant pour saisir les notes
-function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
-  const [gradeData, setGradeData] = useState(grades || [])
-  const [remarks, setRemarks] = useState({})
+function GradeEntryModal({ 
+  exam, 
+  students, 
+  grades, 
+  isOpen, 
+  onClose, 
+  onSave, 
+  isSaving 
+}: { 
+  exam: Exam
+  students: Student[]
+  grades: Grade[]
+  isOpen: boolean
+  onClose: () => void
+  onSave: (grades: Omit<Grade, "id" | "created" | "updated">[]) => Promise<void>
+  isSaving: boolean
+}) {
+  // Filtrer les étudiants par la classe de l'examen
+  const examStudents = students.filter(student => student.classId === exam.class_id)
+  
+  const [gradeData, setGradeData] = useState<Grade[]>(grades || [])
+  const [remarks, setRemarks] = useState<Record<string, string>>({})
 
-  const handleGradeChange = (studentId, value) => {
+  const handleGradeChange = (studentId: string, value: string) => {
     const numValue = parseFloat(value)
     if (isNaN(numValue) || numValue < 0 || numValue > 20) return
 
-    setGradeData(prev => {
-      const existing = prev.find(g => g.studentId === studentId)
+    setGradeData((prev) => {
+      const existing = prev.find(g => g.student_id === studentId)
       if (existing) {
-        return prev.map(g => g.studentId === studentId ? { ...g, grade: numValue } : g)
+        return prev.map(g => g.student_id === studentId ? { ...g, grade: numValue } : g)
       } else {
-        return [...prev, { id: Date.now(), studentId, examId: exam.id, grade: numValue }]
+        return [...prev, { 
+          id: Date.now().toString(), 
+          student_id: studentId, 
+          exam_id: exam.id, 
+          grade: numValue 
+        }]
       }
     })
   }
 
-  const handleRemarksChange = (studentId, value) => {
-    setRemarks(prev => ({ ...prev, [studentId]: value }))
+  const handleRemarksChange = (studentId: string, value: string) => {
+    setRemarks((prev) => ({ ...prev, [studentId]: value }))
   }
 
-  const handleSave = () => {
-    const gradesWithRemarks = gradeData.map(grade => ({
+  const handleSave = async () => {
+    const gradesWithRemarks: Omit<Grade, "id" | "created" | "updated">[] = gradeData.map((grade) => ({
       ...grade,
-      remarks: remarks[grade.studentId] || ""
+      remarks: remarks[grade.student_id] || ""
     }))
-    onSave(gradesWithRemarks)
+    await onSave(gradesWithRemarks)
     onClose()
   }
 
-  const getGradeStatus = (grade) => {
+  const getGradeStatus = (grade: number) => {
     if (grade >= 16) return { status: "excellent", color: "text-green-600", icon: CheckCircle }
     if (grade >= 14) return { status: "bien", color: "text-blue-600", icon: CheckCircle }
     if (grade >= 12) return { status: "assez bien", color: "text-yellow-600", icon: CheckCircle }
@@ -296,7 +379,7 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[98vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Saisie des notes - {exam.name}</DialogTitle>
           <DialogDescription>
@@ -307,13 +390,13 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
             <div>
-              <strong>Classe:</strong> {exam.class}
+              <strong>Classe:</strong> {exam.expand?.class_id?.name || exam.class_id}
             </div>
             <div>
-              <strong>Matière:</strong> {exam.subject}
+              <strong>Matière:</strong> {exam.expand?.subject_id?.name || exam.subject_id}
             </div>
             <div>
-              <strong>Date:</strong> {exam.date}
+              <strong>Date:</strong> {format(new Date(exam.exam_date), "dd MMMM yyyy", { locale: fr })}
             </div>
             <div>
               <strong>Coefficient:</strong> {exam.coefficient}
@@ -323,15 +406,26 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Élève</TableHead>
-                <TableHead>Note /20</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Appréciation</TableHead>
+                <TableHead className="w-[300px]">Élève</TableHead>
+                <TableHead className="w-[120px] text-center">Note /20</TableHead>
+                <TableHead className="w-[140px] text-center">Statut</TableHead>
+                <TableHead className="w-[300px]">Appréciation</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {students.map((student) => {
-                const grade = gradeData.find(g => g.studentId === student.id)
+              {examStudents.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    <div className="text-muted-foreground">
+                      Aucun élève trouvé pour cette classe. 
+                      <br />
+                      <small>Classe: {exam.class_id} | Total élèves: {students.length}</small>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                examStudents.map((student) => {
+                const grade = gradeData.find(g => g.student_id === student.id)
                 const gradeValue = grade ? grade.grade : ""
                 const status = gradeValue ? getGradeStatus(gradeValue) : null
                 
@@ -350,7 +444,7 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
                         step="0.5"
                         value={gradeValue}
                         onChange={(e) => handleGradeChange(student.id, e.target.value)}
-                        className="w-20"
+                        className="w-full text-center"
                         placeholder="0-20"
                       />
                     </TableCell>
@@ -367,12 +461,13 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
                         value={remarks[student.id] || ""}
                         onChange={(e) => handleRemarksChange(student.id, e.target.value)}
                         placeholder="Appréciation (optionnel)"
-                        className="w-48"
+                        className="w-full"
                       />
                     </TableCell>
                   </TableRow>
                 )
-              })}
+              })
+              )}
             </TableBody>
           </Table>
 
@@ -380,9 +475,13 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
             <Button variant="outline" onClick={onClose}>
               Annuler
             </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Sauvegarder les notes
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <Save className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {isSaving ? "Sauvegarde..." : "Sauvegarder les notes"}
             </Button>
           </div>
         </div>
@@ -392,60 +491,158 @@ function GradeEntryModal({ exam, students, grades, isOpen, onClose, onSave }) {
 }
 
 export default function ExamPage() {
-  const [exams, setExams] = useState(mockExams)
-  const [grades, setGrades] = useState(mockGrades)
-  const [selectedClass, setSelectedClass] = useState("CM2")
+  const { exams, isLoading: examsLoading, fetchExams, createExam, updateExam } = useExams()
+  const { grades, createGrade, updateGrade, getExamGrades, fetchGrades } = useGrades()
+  const { classes, fetchClasses } = useClasses()
+  const { subjects, fetchSubjects } = useSubjects()
+  const { students, fetchStudents } = useStudents()
+  const { academicYears } = useAcademicYears()
+  const { toast } = useToast()
+  
+  const [selectedClass, setSelectedClass] = useState("all")
   const [selectedSubject, setSelectedSubject] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [selectedExam, setSelectedExam] = useState(null)
+  const [selectedExam, setSelectedExam] = useState<Exam | null>(null)
   const [showGradeModal, setShowGradeModal] = useState(false)
+  const [isSavingGrades, setIsSavingGrades] = useState(false)
+  const [examGrades, setExamGrades] = useState<Grade[]>([])
+
+  useEffect(() => {
+    fetchExams()
+    fetchClasses()
+    fetchSubjects()
+    fetchStudents()
+  }, [fetchExams, fetchClasses, fetchSubjects, fetchStudents])
 
   // Filtrage des examens
   const filteredExams = exams.filter(exam => {
-    const matchesClass = selectedClass === "all" || exam.class === selectedClass
-    const matchesSubject = selectedSubject === "all" || exam.subject === selectedSubject
+    const matchesClass = selectedClass === "all" || exam.class_id === selectedClass
+    const matchesSubject = selectedSubject === "all" || exam.subject_id === selectedSubject
     const matchesSearch = exam.name.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesClass && matchesSubject && matchesSearch
   })
 
-  const handleAddExam = (newExam) => {
-    setExams([...exams, newExam])
+  const handleAddExam = async (newExam: Omit<Exam, "id" | "created" | "updated">) => {
+    try {
+      await createExam(newExam)
+      toast({
+        title: "Succès",
+        description: "L'examen a été créé avec succès"
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "La création de l'examen a échoué",
+        variant: "destructive"
+      })
+    }
   }
 
-  const handleSaveGrades = (newGrades) => {
-    setGrades(prev => {
-      const filtered = prev.filter(g => g.examId !== selectedExam.id)
-      return [...filtered, ...newGrades]
-    })
-  }
-
-  const handleActivateExam = (examId) => {
-    setExams(prev => prev.map(exam => ({
-      ...exam,
-      isActive: exam.id === examId
-    })))
-  }
-
-  const handleExportGrades = (examId) => {
-    const examGrades = grades.filter(g => g.examId === examId)
-    const exam = exams.find(e => e.id === examId)
-    
-    // Simulation d'export Excel
-    const data = examGrades.map(grade => {
-      const student = mockStudents.find(s => s.id === grade.studentId)
-      return {
-        "Nom": student?.lastName,
-        "Prénom": student?.firstName,
-        "Classe": exam?.class,
-        "Matière": exam?.subject,
-        "Note": grade.grade,
-        "Appréciation": grade.remarks || ""
+  const handleSaveGrades = async (newGrades: Omit<Grade, "id" | "created" | "updated">[]) => {
+    setIsSavingGrades(true)
+    try {
+      for (const grade of newGrades) {
+        // Vérifier si une note existe déjà pour cet élève et cet examen
+        const existingGrade = examGrades.find(g => 
+          g.student_id === grade.student_id && g.exam_id === grade.exam_id
+        )
+        
+        if (existingGrade) {
+          // Mettre à jour la note existante
+          await updateGrade(existingGrade.id, grade)
+        } else {
+          // Créer une nouvelle note
+          await createGrade(grade)
+        }
       }
-    })
-    
-    console.log("Export des notes:", data)
-    alert("Export Excel généré avec succès!")
+      
+      // Rafraîchir les notes pour l'examen
+      const updatedGrades = await getExamGrades(selectedExam?.id || "")
+      setExamGrades(updatedGrades)
+      
+      toast({
+        title: "Succès",
+        description: "Les notes ont été sauvegardées avec succès"
+      })
+      setShowGradeModal(false)
+      setSelectedExam(null)
+      setExamGrades([])
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "La sauvegarde des notes a échoué",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSavingGrades(false)
+    }
+  }
+
+  const handleToggleExamStatus = async (examId: string, currentStatus: boolean) => {
+    try {
+      await updateExam(examId, { is_active: !currentStatus })
+      toast({
+        title: "Succès",
+        description: `L'examen a été ${!currentStatus ? "activé" : "désactivé"} avec succès`
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: `La ${!currentStatus ? "activation" : "désactivation"} de l'examen a échoué`,
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleOpenGradeModal = async (exam: Exam) => {
+    try {
+      setSelectedExam(exam)
+      
+      // Charger les notes existantes pour cet examen
+      const existingGrades = await getExamGrades(exam.id)
+      setExamGrades(existingGrades)
+      
+      setShowGradeModal(true)
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors du chargement des notes existantes",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleExportGrades = async (examId: string) => {
+    try {
+      const examGrades = await getExamGrades(examId)
+      const exam = exams.find(e => e.id === examId)
+      
+      // Simulation d'export Excel
+      const data = examGrades.map((grade: Grade) => {
+        const student = students.find(s => s.id === grade.student_id)
+        return {
+          "Nom": student?.lastName,
+          "Prénom": student?.firstName,
+          "Classe": exam?.expand?.class_id?.name,
+          "Matière": exam?.expand?.subject_id?.name,
+          "Note": grade.grade,
+          "Appréciation": grade.remarks || ""
+        }
+      })
+      
+      console.log("Export des notes:", data)
+      toast({
+        title: "Export réussi",
+        description: "Les données ont été préparées pour l'export"
+      })
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "L'export des notes a échoué",
+        variant: "destructive"
+      })
+    }
   }
 
   return (
@@ -490,15 +687,11 @@ export default function ExamPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les classes</SelectItem>
-                    <SelectItem value="CP">CP</SelectItem>
-                    <SelectItem value="CE1">CE1</SelectItem>
-                    <SelectItem value="CE2">CE2</SelectItem>
-                    <SelectItem value="CM1">CM1</SelectItem>
-                    <SelectItem value="CM2">CM2</SelectItem>
-                    <SelectItem value="6ème">6ème</SelectItem>
-                    <SelectItem value="5ème">5ème</SelectItem>
-                    <SelectItem value="4ème">4ème</SelectItem>
-                    <SelectItem value="3ème">3ème</SelectItem>
+                    {classes.map((classItem) => (
+                      <SelectItem key={classItem.id} value={classItem.id}>
+                        {classItem.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -507,8 +700,8 @@ export default function ExamPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les matières</SelectItem>
-                    {mockSubjects.map(subject => (
-                      <SelectItem key={subject.id} value={subject.name}>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
                         {subject.name}
                       </SelectItem>
                     ))}
@@ -527,75 +720,77 @@ export default function ExamPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredExams.map((exam) => {
-                  const examGrades = grades.filter(g => g.examId === exam.id)
-                  const hasGrades = examGrades.length > 0
-                  
-                  return (
-                    <div key={exam.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="font-medium">{exam.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {exam.class} • {exam.subject} • Coef: {exam.coefficient} • {exam.date}
+              {examsLoading ? (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-4" />
+                  <p>Chargement des examens...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredExams.map((exam) => {
+                    const examGrades = grades.filter(g => g.exam_id === exam.id)
+                    const hasGrades = examGrades.length > 0
+                    
+                    return (
+                      <div key={exam.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <FileText className="h-5 w-5" />
                           </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant={exam.type === "composition" ? "outline" : "default"}>
-                              {exam.type}
-                            </Badge>
-                            <Badge variant={exam.isActive ? "default" : "secondary"}>
-                              {exam.isActive ? "Actif" : "Inactif"}
-                            </Badge>
-                            {hasGrades && (
-                              <Badge variant="outline" className="text-green-600">
-                                {examGrades.length} notes saisies
+                          <div>
+                            <div className="font-medium">{exam.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {exam.expand?.class_id?.name || exam.class_id} • {exam.expand?.subject_id?.name || exam.subject_id} • Coef: {exam.coefficient} • {format(new Date(exam.exam_date), "dd/MM/yyyy", { locale: fr })}
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Badge variant={exam.type === "composition" ? "outline" : "default"}>
+                                {exam.type}
                               </Badge>
-                            )}
+                              <Badge variant={exam.is_active ? "default" : "secondary"}>
+                                {exam.is_active ? "Actif" : "Inactif"}
+                              </Badge>
+                              {hasGrades && (
+                                <Badge variant="outline" className="text-green-600">
+                                  {examGrades.length} notes saisies
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {!exam.isActive && (
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            size="sm"
+                            variant={exam.is_active ? "secondary" : "default"}
+                            onClick={() => handleToggleExamStatus(exam.id, exam.is_active)}
+                          >
+                            {exam.is_active ? "Désactiver" : "Activer"}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleActivateExam(exam.id)}
+                            onClick={() => handleOpenGradeModal(exam)}
                           >
-                            Activer
+                            <Edit className="h-3 w-3 mr-1" />
+                            Saisir notes
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedExam(exam)
-                            setShowGradeModal(true)
-                          }}
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Saisir notes
-                        </Button>
-                        {hasGrades && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleExportGrades(exam.id)}
-                          >
-                            <Download className="h-3 w-3 mr-1" />
-                            Exporter
-                          </Button>
-                        )}
+                          {hasGrades && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleExportGrades(exam.id)}
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              Exporter
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
 
-              {filteredExams.length === 0 && (
+              {filteredExams.length === 0 && !examsLoading && (
                 <div className="text-center py-8 text-muted-foreground">
                   Aucun examen trouvé avec les critères sélectionnés.
                 </div>
@@ -610,22 +805,26 @@ export default function ExamPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onAdd={handleAddExam}
+        classes={classes}
+        subjects={subjects}
+        academicYears={academicYears}
       />
 
       {selectedExam && (
         <GradeEntryModal
           exam={selectedExam}
-          students={mockStudents.filter(s => s.class === selectedExam.class)}
-          grades={grades.filter(g => g.examId === selectedExam.id)}
+          students={students}
+          grades={examGrades}
           isOpen={showGradeModal}
-          onClose={() => setShowGradeModal(false)}
+          onClose={() => {
+            setShowGradeModal(false)
+            setSelectedExam(null)
+            setExamGrades([])
+          }}
           onSave={handleSaveGrades}
+          isSaving={isSavingGrades}
         />
       )}
     </div>
   )
 }
-
-
-
-

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
@@ -24,106 +24,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-
-// Mock data for teachers with attendance
-const mockTeachersAttendance = [
-  {
-    id: 1,
-    firstName: "Fatoumata",
-    lastName: "Diarra",
-    subject: "Mathématiques",
-    school: "École Primaire de Bamako",
-    status: "present", // present, absent, late
-    arrivalTime: "07:30",
-    photo: "/diverse-teacher-girl.png",
-  },
-  {
-    id: 2,
-    firstName: "Moussa",
-    lastName: "Koné",
-    subject: "Français",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "07:45",
-    photo: "/diverse-teacher-boy.png",
-  },
-  {
-    id: 3,
-    firstName: "Aïcha",
-    lastName: "Traoré",
-    subject: "Histoire-Géographie",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "07:40",
-    photo: "/diverse-teacher-girl.png",
-  },
-  {
-    id: 4,
-    firstName: "Sékou",
-    lastName: "Keita",
-    subject: "Sciences",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "07:35",
-    photo: "/diverse-teacher-boy.png",
-  },
-  {
-    id: 5,
-    firstName: "Aminata",
-    lastName: "Touré",
-    subject: "Anglais",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "07:50",
-    photo: "/diverse-teacher-girl.png",
-  },
-  {
-    id: 6,
-    firstName: "Oumar",
-    lastName: "Diallo",
-    subject: "Éducation physique",
-    school: "École Primaire de Bamako",
-    status: "present",
-    arrivalTime: "07:25",
-    photo: "/diverse-teacher-boy.png",
-  },
-]
-
-// Mock attendance history data
-const mockAttendanceHistory = [
-  {
-    date: "2024-12-20",
-    school: "École Primaire de Bamako",
-    totalTeachers: 6,
-    present: 6,
-    absent: 0,
-    late: 0,
-    attendanceRate: 100,
-  },
-  {
-    date: "2024-12-19",
-    school: "École Primaire de Bamako",
-    totalTeachers: 6,
-    present: 5,
-    absent: 1,
-    late: 0,
-    attendanceRate: 83,
-  },
-  {
-    date: "2024-12-18",
-    school: "École Primaire de Bamako",
-    totalTeachers: 6,
-    present: 6,
-    absent: 0,
-    late: 0,
-    attendanceRate: 100,
-  },
-]
+import { useTeacherAttendance } from "@/hooks/use-teacher-attendance"
+import { useTeachers } from "@/hooks/use-teachers"
+import { useSchoolInfo } from "@/hooks/use-school-info"
 
 // Composant pour le tableau de présence des professeurs
 function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, selectedSchool }: {
   teachers: any[];
-  onAttendanceChange: (teacherId: number, status: string) => void;
+  onAttendanceChange: (teacherId: string, status: string) => void;
   selectedDate: Date;
   selectedSchool: string;
 }) {
@@ -154,6 +62,13 @@ function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, se
             Retard
           </Badge>
         )
+      case "excused":
+        return (
+          <Badge variant="outline" className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Excusé
+          </Badge>
+        )
       default:
         return null
     }
@@ -174,7 +89,6 @@ function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, se
                 <TableHead>Professeur</TableHead>
                 <TableHead>Matière</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead>Heure d'arrivée</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -185,7 +99,7 @@ function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, se
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                          src={teacher.photo || "/placeholder.svg"}
+                          src={teacher.photo || (teacher.gender === "Masculin" ? "/homme.png" : "/femme.png")}
                           alt={`${teacher.firstName} ${teacher.lastName}`}
                         />
                         <AvatarFallback>{getInitials(teacher.firstName, teacher.lastName)}</AvatarFallback>
@@ -201,12 +115,12 @@ function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, se
                     <Badge variant="outline">{teacher.subject}</Badge>
                   </TableCell>
                   <TableCell>{getStatusBadge(teacher.status)}</TableCell>
-                  <TableCell>{teacher.arrivalTime || "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-1">
                       <Button
                         variant={teacher.status === "present" ? "default" : "outline"}
                         size="sm"
+                        title="Présent"
                         onClick={() => onAttendanceChange(teacher.id, "present")}
                         className={teacher.status === "present" ? "bg-green-600 hover:bg-green-700" : "bg-transparent"}
                       >
@@ -215,14 +129,25 @@ function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, se
                       <Button
                         variant={teacher.status === "late" ? "secondary" : "outline"}
                         size="sm"
+                        title="Retard"
                         onClick={() => onAttendanceChange(teacher.id, "late")}
                         className={teacher.status === "late" ? "bg-yellow-600 hover:bg-yellow-700" : "bg-transparent"}
                       >
                         <Clock className="h-3 w-3" />
                       </Button>
                       <Button
+                        variant={teacher.status === "excused" ? "outline" : "outline"}
+                        size="sm"
+                        title="Excusé"
+                        onClick={() => onAttendanceChange(teacher.id, "excused")}
+                        className={teacher.status === "excused" ? "bg-blue-600 hover:bg-blue-700" : "bg-transparent"}
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                      </Button>
+                      <Button
                         variant={teacher.status === "absent" ? "destructive" : "outline"}
                         size="sm"
+                        title="Absent"
                         onClick={() => onAttendanceChange(teacher.id, "absent")}
                         className={teacher.status === "absent" ? "" : "bg-transparent"}
                       >
@@ -243,7 +168,7 @@ function TeacherAttendanceTable({ teachers, onAttendanceChange, selectedDate, se
 // Composant pour les statistiques de présence
 function TeacherAttendanceStats({ stats }: { stats: any }) {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-5">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Professeurs</CardTitle>
@@ -262,7 +187,7 @@ function TeacherAttendanceStats({ stats }: { stats: any }) {
         <CardContent>
           <div className="text-2xl font-bold text-green-600">{stats.present}</div>
           <p className="text-xs text-muted-foreground">
-            {Math.round((stats.present / stats.total) * 100)}% du total
+            {stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0}% du total
           </p>
         </CardContent>
       </Card>
@@ -274,7 +199,7 @@ function TeacherAttendanceStats({ stats }: { stats: any }) {
         <CardContent>
           <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
           <p className="text-xs text-muted-foreground">
-            {Math.round((stats.absent / stats.total) * 100)}% du total
+            {stats.total > 0 ? Math.round((stats.absent / stats.total) * 100) : 0}% du total
           </p>
         </CardContent>
       </Card>
@@ -286,7 +211,19 @@ function TeacherAttendanceStats({ stats }: { stats: any }) {
         <CardContent>
           <div className="text-2xl font-bold text-yellow-600">{stats.late}</div>
           <p className="text-xs text-muted-foreground">
-            {Math.round((stats.late / stats.total) * 100)}% du total
+            {stats.total > 0 ? Math.round((stats.late / stats.total) * 100) : 0}% du total
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Excusés</CardTitle>
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-blue-600">{stats.excused}</div>
+          <p className="text-xs text-muted-foreground">
+            {stats.total > 0 ? Math.round((stats.excused / stats.total) * 100) : 0}% du total
           </p>
         </CardContent>
       </Card>
@@ -313,6 +250,7 @@ function TeacherAttendanceHistory({ history }: { history: any[] }) {
                 <TableHead>Présents</TableHead>
                 <TableHead>Absents</TableHead>
                 <TableHead>Retards</TableHead>
+                <TableHead>Excusés</TableHead>
                 <TableHead>Taux de présence</TableHead>
               </TableRow>
             </TableHeader>
@@ -325,6 +263,7 @@ function TeacherAttendanceHistory({ history }: { history: any[] }) {
                   <TableCell className="text-green-600 font-medium">{record.present}</TableCell>
                   <TableCell className="text-red-600 font-medium">{record.absent}</TableCell>
                   <TableCell className="text-yellow-600 font-medium">{record.late}</TableCell>
+                  <TableCell className="text-blue-600 font-medium">{record.excused || 0}</TableCell>
                   <TableCell>
                     <Badge variant={record.attendanceRate >= 90 ? "default" : "secondary"}>
                       {record.attendanceRate}%
@@ -342,20 +281,128 @@ function TeacherAttendanceHistory({ history }: { history: any[] }) {
 
 export default function TeacherAttendancePage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedSchool, setSelectedSchool] = useState("")
+  
+  const { teachers, fetchTeachers } = useTeachers()
+  const { 
+    saveTeacherAttendance, 
+    getTeacherAttendanceHistory,
+    fetchAttendanceByDate,
+  } = useTeacherAttendance()
+  const { schoolInfo } = useSchoolInfo()
 
-  const [teachersAttendance, setTeachersAttendance] = useState(mockTeachersAttendance)
-  const [attendanceHistory] = useState(mockAttendanceHistory)
+  const [teachersAttendance, setTeachersAttendance] = useState<any[]>([])
+  const [attendanceHistory, setAttendanceHistory] = useState<any[]>([])
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const handleAttendanceChange = (teacherId: number, status: string) => {
+  useEffect(() => {
+    fetchTeachers()
+  }, [fetchTeachers])
+
+  // Initialiser avec le nom de l'école
+  useEffect(() => {
+    if (schoolInfo && !selectedSchool) {
+      setSelectedSchool(schoolInfo.name)
+    }
+  }, [schoolInfo, selectedSchool])
+
+  // Charger les présences existantes quand la date change
+  useEffect(() => {
+    const loadExistingAttendance = async () => {
+      if (teachers.length === 0) return
+      
+      try {
+        const formattedDate = format(selectedDate, "yyyy-MM-dd")
+        console.log("Chargement des présences professeurs pour le", formattedDate)
+        
+        // Récupérer toutes les présences pour cette date
+        const existingAttendance = await fetchAttendanceByDate(formattedDate)
+        console.log("Présences brutes chargées:", existingAttendance)
+        
+        // Mettre à jour l'état des présences avec les données existantes
+        const updatedAttendance = teachers.map(teacher => {
+          const attendanceRecord = existingAttendance.find(record => record.teacher_id === teacher.id)
+          const status = attendanceRecord?.status || "present"
+          console.log(`Professeur ${teacher.first_name} ${teacher.last_name} (ID: ${teacher.id}):`)
+          console.log(`  - Recherche de présence par ID: ${attendanceRecord ? 'TROUVÉ' : 'NON TROUVÉ'}`)
+          console.log(`  - Statut final: ${status}`)
+          
+          return {
+            id: teacher.id,
+            firstName: teacher.first_name,
+            lastName: teacher.last_name,
+            subject: teacher.speciality_names.join(", "),
+            school: schoolInfo?.name || "École Primaire de Bamako",
+            status: status,
+            gender: teacher.gender,
+            photo: teacher.photo || (teacher.gender === "Masculin" ? "/homme.png" : "/femme.png"),
+          }
+        })
+        
+        console.log("Présences finales:", updatedAttendance.map(a => `${a.firstName} ${a.lastName}: ${a.status}`))
+        setTeachersAttendance(updatedAttendance)
+        
+      } catch (error) {
+        console.error("Erreur lors du chargement des présences professeurs:", error)
+      }
+    }
+
+    loadExistingAttendance()
+  }, [selectedDate, teachers, fetchAttendanceByDate, schoolInfo])
+
+  useEffect(() => {
+    // Charger l'historique des présences
+    const loadHistory = async () => {
+      try {
+        const history = await getTeacherAttendanceHistory()
+        console.log("Historique brut:", history)
+        
+        // Grouper les données par date pour calculer les statistiques
+        const groupedHistory = history.reduce((acc: any, record: any) => {
+          const date = record.date.split(' ')[0] // Extraire juste la date
+          if (!acc[date]) {
+            acc[date] = {
+              date: date,
+              school: schoolInfo?.name || "École Primaire de Bamako",
+              totalTeachers: 0,
+              present: 0,
+              absent: 0,
+              late: 0,
+              excused: 0
+            }
+          }
+          acc[date].totalTeachers++
+          if (record.status === 'present') acc[date].present++
+          else if (record.status === 'absent') acc[date].absent++
+          else if (record.status === 'late') acc[date].late++
+          else if (record.status === 'excused') acc[date].excused++
+          
+          return acc
+        }, {} as any)
+        
+        // Convertir en tableau et calculer les taux de présence
+        const formattedHistory = Object.values(groupedHistory).map((record: any) => ({
+          ...record,
+          attendanceRate: Math.round((record.present / record.totalTeachers) * 100)
+        }))
+        
+        console.log("Historique formaté:", formattedHistory)
+        setAttendanceHistory(formattedHistory)
+      } catch (error) {
+        console.error('Erreur chargement historique:', error)
+      }
+    }
+    loadHistory()
+  }, [getTeacherAttendanceHistory, schoolInfo])
+
+  const handleAttendanceChange = (teacherId: string, status: string) => {
     setTeachersAttendance((prev) =>
       prev.map((teacher) =>
         teacher.id === teacherId
           ? {
               ...teacher,
-              status,
-              arrivalTime: status === "absent" ? "" : status === "late" ? "08:15" : "07:30",
+              status
             }
           : teacher,
       ),
@@ -366,19 +413,34 @@ export default function TeacherAttendancePage() {
     setTeachersAttendance((prev) =>
       prev.map((teacher) => ({
         ...teacher,
-        status: "present",
-        arrivalTime: "07:30",
+        status: "present"
       })),
     )
   }
 
   const handleSaveAttendance = async () => {
-    setIsSaving(true)
-    // Simuler une sauvegarde
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsSaving(false)
-    setShowSaveDialog(false)
-    alert("Présences des professeurs sauvegardées avec succès!")
+    try {
+      setIsSaving(true)
+      
+      const formattedDate = format(selectedDate, "yyyy-MM-dd")
+      
+      // Préparer les données pour la sauvegarde
+      const attendanceData = teachersAttendance.map(teacher => ({
+        teacherId: teacher.id,
+        status: teacher.status
+      }))
+
+      // Sauvegarder les présences
+      await saveTeacherAttendance(formattedDate, attendanceData)
+      
+      setIsSaving(false)
+      setShowSaveDialog(false)
+      alert("Présences des professeurs sauvegardées avec succès!")
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error)
+      alert("Erreur lors de la sauvegarde des présences. Veuillez réessayer.")
+      setIsSaving(false)
+    }
   }
 
   // Calculate stats for current selection
@@ -387,7 +449,9 @@ export default function TeacherAttendancePage() {
     present: teachersAttendance.filter((t) => t.status === "present").length,
     absent: teachersAttendance.filter((t) => t.status === "absent").length,
     late: teachersAttendance.filter((t) => t.status === "late").length,
-    attendanceRate: Math.round((teachersAttendance.filter((t) => t.status === "present").length / teachersAttendance.length) * 100),
+    excused: teachersAttendance.filter((t) => t.status === "excused").length,
+    attendanceRate: teachersAttendance.length > 0 ? 
+      Math.round((teachersAttendance.filter((t) => t.status === "present").length / teachersAttendance.length) * 100) : 0,
   }
 
   return (
@@ -413,8 +477,8 @@ export default function TeacherAttendancePage() {
               {/* Date and School Selection */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Sélection de l'école et date</CardTitle>
-                  <CardDescription>Choisissez l'école et la date pour marquer les présences des professeurs</CardDescription>
+                  <CardTitle>Sélection de la date</CardTitle>
+                  <CardDescription>Choisissez la date pour marquer les présences des professeurs</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
@@ -466,7 +530,7 @@ export default function TeacherAttendancePage() {
                 teachers={teachersAttendance}
                 onAttendanceChange={handleAttendanceChange}
                 selectedDate={selectedDate}
-                selectedSchool="École Primaire de Bamako"
+                selectedSchool={selectedSchool}
               />
             </TabsContent>
 

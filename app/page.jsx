@@ -1,14 +1,20 @@
 "use client"
 
 import { useEffect } from "react"
+import { getApiUrl, getAuthToken } from '@/lib/pocketbase'
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Rediriger vers le dashboard
-    router.push("/dashboard")
+    // Vérifier l'authentification et rediriger
+    const authData = localStorage.getItem('pocketbase_auth')
+    if (authData) {
+      router.push('/dashboard')
+    } else {
+      router.push('/login')
+    }
   }, [router])
 
   return (

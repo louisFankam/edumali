@@ -13,15 +13,18 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { useSchoolInfo } from '@/hooks/use-school-info'
 
-export function EditStudentModal({ isOpen, onClose, student, onEdit }) {
+export function EditStudentModal({ isOpen, onClose, student, onEdit, classes }) {
+  const { schoolInfo } = useSchoolInfo()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     dateOfBirth: null,
     gender: "",
     class: "",
-    school: "",
+    school: schoolInfo ? schoolInfo.name : "",
+    nationality: "",
     parentName: "",
     parentPhone: "",
     address: "",
@@ -33,9 +36,10 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit }) {
       setFormData({
         ...student,
         dateOfBirth: new Date(student.dateOfBirth),
+        school: schoolInfo ? schoolInfo.name : "",
       })
     }
-  }, [student])
+  }, [student, schoolInfo])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -116,6 +120,7 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit }) {
                       onSelect={(date) => handleInputChange("dateOfBirth", date)}
                       required
                       locale={fr}
+                      captionLayout="dropdown"
                     />
                   </PopoverContent>
                 </Popover>
@@ -132,6 +137,14 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit }) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Nationalité</Label>
+                <Input
+                  value={formData.nationality}
+                  onChange={(e) => handleInputChange("nationality", e.target.value)}
+                  placeholder="Nationalité de l'élève"
+                />
+              </div>
             </div>
           </div>
 
@@ -146,32 +159,22 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit }) {
                     <SelectValue placeholder="Sélectionner la classe" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CP">CP</SelectItem>
-                    <SelectItem value="CE1">CE1</SelectItem>
-                    <SelectItem value="CE2">CE2</SelectItem>
-                    <SelectItem value="CM1">CM1</SelectItem>
-                    <SelectItem value="CM2">CM2</SelectItem>
-                    <SelectItem value="6ème">6ème</SelectItem>
-                    <SelectItem value="5ème">5ème</SelectItem>
-                    <SelectItem value="4ème">4ème</SelectItem>
-                    <SelectItem value="3ème">3ème</SelectItem>
+                    {classes.map((classe) => (
+                      <SelectItem key={classe.id} value={classe.name}>
+                        {classe.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>École</Label>
-                <Select value={formData.school} onValueChange={(value) => handleInputChange("school", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner l'école" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="École Primaire de Bamako">École Primaire de Bamako</SelectItem>
-                    <SelectItem value="Collège de Sikasso">Collège de Sikasso</SelectItem>
-                    <SelectItem value="École Primaire de Mopti">École Primaire de Mopti</SelectItem>
-                    <SelectItem value="Collège de Gao">Collège de Gao</SelectItem>
-                    <SelectItem value="École Primaire de Kayes">École Primaire de Kayes</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={formData.school}
+                  disabled
+                  readOnly
+                  className="bg-muted"
+                />
               </div>
             </div>
             <div className="space-y-2">
@@ -183,7 +186,8 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit }) {
                 <SelectContent>
                   <SelectItem value="Actif">Actif</SelectItem>
                   <SelectItem value="Inactif">Inactif</SelectItem>
-                  <SelectItem value="Suspendu">Suspendu</SelectItem>
+                  <SelectItem value="Diplômé">Diplômé</SelectItem>
+                  <SelectItem value="Transféré">Transféré</SelectItem>
                 </SelectContent>
               </Select>
             </div>

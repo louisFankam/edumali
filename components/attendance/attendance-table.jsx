@@ -57,7 +57,6 @@ export function AttendanceTable({ students, onAttendanceChange, selectedDate, se
                 <TableHead>Élève</TableHead>
                 <TableHead>Classe</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead>Heure d'arrivée</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -68,7 +67,7 @@ export function AttendanceTable({ students, onAttendanceChange, selectedDate, se
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                          src={student.photo || "/placeholder.svg"}
+                          src={student.photo || student.gender === "Masculin" ? "/homme.png" : "/femme.png"}
                           alt={`${student.firstName} ${student.lastName}`}
                         />
                         <AvatarFallback>{getInitials(student.firstName, student.lastName)}</AvatarFallback>
@@ -84,11 +83,11 @@ export function AttendanceTable({ students, onAttendanceChange, selectedDate, se
                     <Badge variant="outline">{student.class}</Badge>
                   </TableCell>
                   <TableCell>{getStatusBadge(student.status)}</TableCell>
-                  <TableCell>{student.arrivalTime || "-"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-1">
                       <Button
                         variant={student.status === "present" ? "default" : "outline"}
+                        title="Présent"
                         size="sm"
                         onClick={() => onAttendanceChange(student.id, "present")}
                         className={student.status === "present" ? "" : "bg-transparent"}
@@ -97,6 +96,7 @@ export function AttendanceTable({ students, onAttendanceChange, selectedDate, se
                       </Button>
                       <Button
                         variant={student.status === "late" ? "secondary" : "outline"}
+                        title="En retard"
                         size="sm"
                         onClick={() => onAttendanceChange(student.id, "late")}
                         className={student.status === "late" ? "" : "bg-transparent"}
@@ -105,6 +105,7 @@ export function AttendanceTable({ students, onAttendanceChange, selectedDate, se
                       </Button>
                       <Button
                         variant={student.status === "absent" ? "destructive" : "outline"}
+                        title="Absent"
                         size="sm"
                         onClick={() => onAttendanceChange(student.id, "absent")}
                         className={student.status === "absent" ? "" : "bg-transparent"}
