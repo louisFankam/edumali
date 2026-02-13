@@ -180,7 +180,7 @@ export function ReinscriptionConfirmationModal({
                 {/* Sélecteur de classe */}
                 <div className="space-y-2">
                   <Label htmlFor="newClass" className="text-sm font-medium text-green-800">
-                    Nouvelle classe *
+                    Nouvelle classe
                   </Label>
                   <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                     <SelectTrigger id="newClass" className="bg-white">

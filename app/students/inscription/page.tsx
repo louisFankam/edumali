@@ -52,19 +52,26 @@ export default function InscriptionPage() {
     parentName: "",
     parentPhone: "",
     address: "",
-    enrollmentDate: new Date(),
+    enrollmentDate: undefined,
     status: "Actif"
   });
+
+  // Initialiser la date d'inscription après le montage (évite l'erreur d'hydration)
+  useEffect(() => {
+    if (!formData.enrollmentDate) {
+      setFormData(prev => ({ ...prev, enrollmentDate: new Date() }))
+    }
+  }, [])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth || !formData.class || !formData.nationality) {
+    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth || !formData.gender || !formData.class || !formData.nationality || !formData.parentName || !formData.parentPhone || !formData.address) {
       toast({
         title: "Champs obligatoires manquants",
-        description: "Veuillez remplir tous les champs obligatoires (nom, prénom, date de naissance, classe, nationalité).",
+        description: "Veuillez remplir tous les champs obligatoires (nom, prénom, date de naissance, genre, classe, nationalité, nom du parent, téléphone, adresse).",
         variant: "destructive"
       })
       return
@@ -102,7 +109,7 @@ export default function InscriptionPage() {
         parentName: "",
         parentPhone: "",
         address: "",
-        enrollmentDate: new Date(),
+        enrollmentDate: undefined,
         status: "Actif"
       })
 
@@ -134,7 +141,6 @@ export default function InscriptionPage() {
           <PageHeader
             title="Inscription d'un nouvel élève"
             description="Utilisez ce formulaire pour enregistrer un nouvel élève."
-            className=""
           >
             <Button 
               type="submit" 
@@ -191,7 +197,7 @@ export default function InscriptionPage() {
                           <Button
                             variant="outline"
                             className={cn(
-                              "w-full justify-start text-left font-normal bg-transparent",
+                              "w-full justify-start text-left font-normal",
                               !formData.dateOfBirth && "text-muted-foreground",
                             )}
                             disabled={isSubmitting}
@@ -213,16 +219,18 @@ export default function InscriptionPage() {
                             locale={fr}
                             disabled={(date) => date > new Date()}
                             captionLayout="dropdown"
+                            fromDate={new Date()}
                           />
                         </PopoverContent>
                       </Popover>
                     </div>
                     <div className="space-y-2">
-                      <Label>Genre</Label>
-                      <Select 
-                        value={formData.gender} 
+                      <Label>Genre *</Label>
+                      <Select
+                        value={formData.gender}
                         onValueChange={(value) => handleInputChange("gender", value)}
                         disabled={isSubmitting}
+                        required
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner le genre" />
@@ -252,10 +260,11 @@ export default function InscriptionPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Classe *</Label>
-                      <Select 
-                        value={formData.class} 
+                      <Select
+                        value={formData.class}
                         onValueChange={(value) => handleInputChange("class", value)}
                         disabled={isSubmitting || classesLoading}
+                        required
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner la classe" />
@@ -273,7 +282,7 @@ export default function InscriptionPage() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label>Date d'inscription</Label>
+                      <Label>Date d'inscription *</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -292,7 +301,7 @@ export default function InscriptionPage() {
                           <Calendar
                             mode="single"
                             selected={formData.enrollmentDate}
-                            onSelect={(date) => handleInputChange("enrollmentDate", date || new Date())}
+                            onSelect={(date) => handleInputChange("enrollmentDate", date)}
                             initialFocus
                             locale={fr}
                           />
@@ -307,34 +316,37 @@ export default function InscriptionPage() {
                   <h3 className="text-lg font-medium">Informations du parent/tuteur</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="parentName">Nom du parent/tuteur</Label>
+                      <Label htmlFor="parentName">Nom du parent/tuteur *</Label>
                       <Input
                         id="parentName"
                         value={formData.parentName}
                         onChange={(e) => handleInputChange("parentName", e.target.value)}
                         placeholder="Nom complet du parent"
+                        required
                         disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="parentPhone">Téléphone</Label>
+                      <Label htmlFor="parentPhone">Téléphone *</Label>
                       <Input
                         id="parentPhone"
                         value={formData.parentPhone}
                         onChange={(e) => handleInputChange("parentPhone", e.target.value)}
                         placeholder="+223 XX XX XX XX"
+                        required
                         disabled={isSubmitting}
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Adresse</Label>
+                    <Label htmlFor="address">Adresse *</Label>
                     <Textarea
                       id="address"
                       value={formData.address}
                       onChange={(e) => handleInputChange("address", e.target.value)}
                       placeholder="Adresse complète de résidence"
                       rows={3}
+                      required
                       disabled={isSubmitting}
                     />
                   </div>
@@ -345,11 +357,12 @@ export default function InscriptionPage() {
                   <h3 className="text-lg font-medium">Statut de l'élève</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Statut</Label>
-                      <Select 
-                        value={formData.status} 
+                      <Label>Statut *</Label>
+                      <Select
+                        value={formData.status}
                         onValueChange={(value) => handleInputChange("status", value)}
                         disabled={isSubmitting}
+                        required
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner le statut" />

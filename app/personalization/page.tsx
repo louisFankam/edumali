@@ -10,10 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useUserPreferences, type UserPreferences } from "@/hooks/use-user-preferences"
-import { 
+import {
   Moon,
   Sun,
-  Palette,
   Eye,
   Download,
   Save,
@@ -24,22 +23,8 @@ import {
   Monitor,
   Smartphone,
   Zap,
-  Contrast,
-  Plus
+  Contrast
 } from "lucide-react"
-
-const colorOptions = [
-  { name: "Rouge", value: "#ef4444", hex: "#ef4444" },
-  { name: "Bleu", value: "#3b82f6", hex: "#3b82f6" },
-  { name: "Vert", value: "#10b981", hex: "#10b981" },
-  { name: "Violet", value: "#8b5cf6", hex: "#8b5cf6" },
-  { name: "Orange", value: "#f97316", hex: "#f97316" },
-  { name: "Rose", value: "#ec4899", hex: "#ec4899" },
-  { name: "Indigo", value: "#6366f1", hex: "#6366f1" },
-  { name: "Emeraude", value: "#059669", hex: "#059669" },
-  { name: "Cyan", value: "#06b6d4", hex: "#06b6d4" },
-  { name: "Ambre", value: "#f59e0b", hex: "#f59e0b" },
-]
 
 const fontOptions = [
   { name: "Inter", value: "Inter, sans-serif" },
@@ -63,76 +48,6 @@ export default function PersonalizationPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [exportData, setExportData] = useState<string | null>(null)
-  
-  // États pour les color pickers personnalisés
-  const [showColorPickers, setShowColorPickers] = useState({
-    primary: false,
-    secondary: false,
-    accent: false,
-    sidebar: false,
-    sidebar_text: false
-  })
-
-  // Fonction pour ajouter l'option de couleur personnalisée
-  const renderColorOptions = (currentColor: string, colorType: 'primary' | 'secondary' | 'accent' | 'sidebar' | 'sidebar_text') => {
-    const isCustomColor = !colorOptions.some(option => option.value === currentColor)
-    
-    return (
-      <div className="grid grid-cols-6 gap-2 mt-2">
-        {colorOptions.map((color) => (
-          <div
-            key={color.value}
-            className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all ${
-              currentColor === color.value 
-                ? "border-gray-800 scale-110 ring-2 ring-offset-2" 
-                : "border-gray-300 hover:scale-105"
-            }`}
-            style={{ backgroundColor: color.hex }}
-            onClick={() => updatePreference(`${colorType}_color` as keyof UserPreferences, color.value)}
-            title={color.name}
-          />
-        ))}
-        
-        {/* Option "Autre couleur" avec color picker */}
-        <div className="relative">
-          <div
-            className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all flex items-center justify-center ${
-              isCustomColor 
-                ? "border-gray-800 scale-110 ring-2 ring-offset-2" 
-                : "border-gray-300 hover:scale-105 bg-gradient-to-br from-red-400 via-green-400 to-blue-400"
-            }`}
-            onClick={() => setShowColorPickers(prev => ({ ...prev, [colorType]: !prev[colorType] }))}
-            title="Autre couleur"
-          >
-            {isCustomColor && (
-              <div 
-                className="w-6 h-6 rounded-full"
-                style={{ backgroundColor: currentColor }}
-              />
-            )}
-            {!isCustomColor && (
-              <Plus className="h-4 w-4 text-white" />
-            )}
-          </div>
-          
-          {showColorPickers[colorType] && (
-            <div className="absolute top-10 left-0 z-50 bg-white border border-gray-300 rounded-lg p-2 shadow-lg">
-              <input
-                type="color"
-                value={currentColor}
-                onChange={(e) => {
-                  updatePreference(`${colorType}_color` as keyof UserPreferences, e.target.value)
-                  setShowColorPickers(prev => ({ ...prev, [colorType]: false }))
-                }}
-                className="w-16 h-8 border-none cursor-pointer"
-              />
-              <div className="text-xs text-gray-600 mt-1 text-center">Personnalisé</div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
 
   const handleSave = async () => {
     if (!preferences) return
@@ -309,73 +224,6 @@ export default function PersonalizationPage() {
                         <p className="text-xs text-muted-foreground">{desc}</p>
                       </div>
                     ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Couleurs */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Palette className="h-5 w-5" />
-                  <span>Couleurs</span>
-                </CardTitle>
-                <CardDescription>
-                  Personnalisez les couleurs de l'application
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <Label>Couleur principale</Label>
-                    {renderColorOptions(preferences.primary_color, 'primary')}
-                  </div>
-
-                  <div>
-                    <Label>Couleur secondaire</Label>
-                    {renderColorOptions(preferences.secondary_color, 'secondary')}
-                  </div>
-
-                  <div>
-                    <Label>Couleur d'accent</Label>
-                    {renderColorOptions(preferences.accent_color, 'accent')}
-                  </div>
-
-                  <div>
-                    <Label>Couleur du sidebar</Label>
-                    {renderColorOptions(preferences.sidebar_color, 'sidebar')}
-                  </div>
-
-                  <div>
-                    <Label>Couleur du texte du sidebar</Label>
-                    {renderColorOptions(preferences.sidebar_text_color, 'sidebar_text')}
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <span className="text-sm font-medium">Aperçu</span>
-                    <div className="flex space-x-2">
-                      <div 
-                        className="w-6 h-6 rounded-full border border-gray-300"
-                        style={{ backgroundColor: preferences.primary_color }}
-                      />
-                      <div 
-                        className="w-6 h-6 rounded-full border border-gray-300"
-                        style={{ backgroundColor: preferences.secondary_color }}
-                      />
-                      <div 
-                        className="w-6 h-6 rounded-full border border-gray-300"
-                        style={{ backgroundColor: preferences.accent_color }}
-                      />
-                      <div 
-                        className="w-6 h-6 rounded-full border border-gray-300"
-                        style={{ backgroundColor: preferences.sidebar_color }}
-                      />
-                      <div 
-                        className="w-6 h-6 rounded-full border border-gray-300"
-                        style={{ backgroundColor: preferences.sidebar_text_color }}
-                      />
-                    </div>
                   </div>
                 </div>
               </CardContent>

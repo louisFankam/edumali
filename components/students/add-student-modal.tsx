@@ -98,7 +98,7 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Personal Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-center bg-blue-200">Informations personnelles</h3>
+            <h3 className="text-lg font-medium text-center">Informations personnelles</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">Prénom *</Label>
@@ -190,7 +190,7 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
 
           {/* School Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-center bg-blue-200">Informations scolaires</h3>
+            <h3 className="text-lg font-medium text-center">Informations scolaires</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Classe *</Label>
@@ -281,7 +281,7 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
 
           {/* Parent Information */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-center bg-blue-200">Informations du parent/tuteur</h3>
+            <h3 className="text-lg font-medium text-center">Informations du parent/tuteur</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="parentName">Nom du parent/tuteur *</Label>
@@ -321,11 +321,10 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose} 
-              className="bg-transparent"
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
               disabled={isSubmitting}
             >
               Annuler

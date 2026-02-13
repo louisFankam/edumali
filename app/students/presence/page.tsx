@@ -8,6 +8,7 @@ import { AttendanceTable } from "@/components/attendance/attendance-table"
 import { AttendanceStats } from "@/components/attendance/attendance-stats"
 import { AttendanceHistory } from "@/components/attendance/attendance-history"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -20,12 +21,21 @@ import { cn } from "@/lib/utils"
 import { useStudents } from "@/hooks/use-students"
 import { useAttendance } from "@/hooks/use-attendance"
 import { useSchoolInfo } from "@/hooks/use-school-info"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AttendancePage() {
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [selectedClass, setSelectedClass] = useState("all")
   const [selectedSchool, setSelectedSchool] = useState("")
-  
+
+  // Initialiser la date une fois le composant monté (évite l'erreur d'hydration)
+  useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(new Date())
+    }
+  }, [])
+
+  const { toast } = useToast()
   const { students, classes, isLoading, fetchStudents } = useStudents()
   const { saveAttendance, getAttendanceByDate, isLoading: isSaving } = useAttendance()
   const { schoolInfo } = useSchoolInfo()
@@ -107,12 +117,12 @@ export default function AttendancePage() {
         firstName: student.firstName,
         lastName: student.lastName,
         class: student.class,
-        school: "École Primaire de Bamako",
+        school: schoolInfo?.name || "École",
         status: "present", // Valeur par défaut
         photo: student.gender === "Masculin" ? "/homme.png" : "/femme.png",
       }))
     setStudentsAttendance(updatedAttendance)
-  }, [students, selectedClass])
+  }, [students, selectedClass, schoolInfo])
 
   const handleAttendanceChange = (studentId: string, status: string) => {
     setStudentsAttendance((prev) =>
@@ -139,11 +149,15 @@ export default function AttendancePage() {
   const handleSaveAttendance = async () => {
     try {
       const formattedDate = format(selectedDate, "yyyy-MM-dd")
-      
+
       // Récupérer l'ID de la classe sélectionnée
       const selectedClassData = classes.find(c => c.name === selectedClass)
       if (!selectedClassData && selectedClass !== "all") {
-        alert("Classe non trouvée!")
+        toast({
+          title: "Erreur",
+          description: "Classe non trouvée!",
+          variant: "destructive"
+        })
         return
       }
 
@@ -160,10 +174,17 @@ export default function AttendancePage() {
         attendanceData
       )
 
-      alert("Présences sauvegardées avec succès!")
+      toast({
+        title: "Succès",
+        description: "Présences sauvegardées avec succès!"
+      })
     } catch (error) {
       console.error("Erreur lors de la sauvegarde:", error)
-      alert("Erreur lors de la sauvegarde des présences. Veuillez réessayer.")
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la sauvegarde des présences. Veuillez réessayer.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -182,7 +203,7 @@ export default function AttendancePage() {
 
       <main className="flex-1 md:ml-64">
         <div className="p-6 space-y-6">
-          <PageHeader className={''} title="Gestion des Présences" description="Marquer et suivre les présences des élèves">
+          <PageHeader title="Gestion des Présences" description="Marquer et suivre les présences des élèves">
             <div className="flex items-center space-x-2">
               <SchoolYearSelector />
             </div>
@@ -205,12 +226,12 @@ export default function AttendancePage() {
                 <CardContent>
                   <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Date</label>
+                      <Label>Date</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={cn("w-full md:w-48 justify-start text-left font-normal bg-transparent")}
+                            className={cn("w-full md:w-48 justify-start text-left font-normal")}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {format(selectedDate, "dd MMMM yyyy", { locale: fr })}
@@ -229,7 +250,7 @@ export default function AttendancePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">École</label>
+                      <Label>École</Label>
                       <Select value={selectedSchool} onValueChange={setSelectedSchool}>
                         <SelectTrigger className="w-full md:w-64">
                           <SelectValue placeholder="Sélectionner l'école" />
@@ -243,9 +264,9 @@ export default function AttendancePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Classe</label>
+                      <Label>Classe</Label>
                       <Select value={selectedClass} onValueChange={setSelectedClass}>
-                        <SelectTrigger className="w-full md:w-32">
+                        <SelectTrigger className="w-full md:w-64">
                           <SelectValue placeholder="Classe" />
                         </SelectTrigger>
                         <SelectContent>
@@ -260,7 +281,7 @@ export default function AttendancePage() {
                     </div>
 
                     <div className="flex items-end space-x-2">
-                      <Button onClick={handleMarkAllPresent} variant="outline" className="bg-transparent">
+                      <Button onClick={handleMarkAllPresent} variant="outline">
                         <UserCheck className="h-4 w-4 mr-2" />
                         Tous présents
                       </Button>
@@ -318,7 +339,7 @@ export default function AttendancePage() {
                         <p className="text-sm text-muted-foreground mb-3">
                           Statistiques détaillées par classe et période
                         </p>
-                        <Button size="sm" variant="outline" className="w-full bg-transparent">
+                        <Button size="sm" variant="outline" className="w-full">
                           Générer rapport
                         </Button>
                       </CardContent>
@@ -330,7 +351,7 @@ export default function AttendancePage() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-3">Liste des élèves avec absences répétées</p>
-                        <Button size="sm" variant="outline" className="w-full bg-transparent">
+                        <Button size="sm" variant="outline" className="w-full">
                           Générer rapport
                         </Button>
                       </CardContent>
