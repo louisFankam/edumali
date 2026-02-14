@@ -92,11 +92,6 @@ const navigation = [
         icon: DollarSign,
       },
       {
-        name: "Historique des salaires",
-        href: "/teachers/historique-salaire",
-        icon: Building2,
-      },
-      {
         name: "Présence",
         href: "/teachers/presence",
         icon: CalendarCheck,

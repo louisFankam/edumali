@@ -291,7 +291,22 @@ export default function ReinscriptionPage() {
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`
   }
-  
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-700"
+      case "inactive":
+        return "bg-gray-100 text-gray-700"
+      case "transferred":
+        return "bg-blue-100 text-blue-700"
+      case "graduated":
+        return "bg-purple-100 text-purple-700"
+      default:
+        return "bg-gray-100 text-gray-700"
+    }
+  }
+
   const getAge = (dateOfBirth: string) => {
     const today = new Date()
     const birthDate = new Date(dateOfBirth)
@@ -312,27 +327,30 @@ export default function ReinscriptionPage() {
           <PageHeader
             title="Réinscription des élèves"
             description="Recherchez et réinscrivez les élèves des années précédentes pour l'année académique en cours."
-            className=""
-          >
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center space-x-4">
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  Année en cours: {new Date().getFullYear()}-{new Date().getFullYear() + 1}
-                </Badge>
-                <Badge variant="secondary">
-                  {filteredStudents.length} élève(s) trouvé(s)
-                </Badge>
+          />
+
+          {/* Section des statistiques et actions */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg border">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Année en cours:</span>
+                <span className="text-sm font-semibold">{new Date().getFullYear()}-{new Date().getFullYear() + 1}</span>
               </div>
-              <Button 
-                variant="outline" 
-                onClick={clearFilters}
-                className="bg-transparent"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Effacer les filtres
-              </Button>
+              <div className="h-4 w-px bg-border hidden sm:block" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Élèves disponibles:</span>
+                <span className="text-sm font-semibold">{filteredStudents.length}</span>
+              </div>
             </div>
-          </PageHeader>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Effacer les filtres
+            </Button>
+          </div>
 
           {/* Section des filtres */}
           <Card>
@@ -341,7 +359,7 @@ export default function ReinscriptionPage() {
               <CardDescription>Utilisez les filtres ci-dessous pour affiner votre recherche</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Recherche par nom */}
                 <div className="space-y-2">
                   <Label htmlFor="searchQuery">Recherche par nom</Label>
@@ -507,11 +525,7 @@ export default function ReinscriptionPage() {
                               <Badge variant="secondary">{student.previousAcademicYearName}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={
-                                student.previousStatus === "active" ? "default" :
-                                student.previousStatus === "graduated" ? "default" :
-                                student.previousStatus === "transferred" ? "secondary" : "secondary"
-                              }>
+                              <Badge className={getStatusStyle(student.previousStatus)}>
                                 {student.previousStatus === "active" ? "Actif" :
                                  student.previousStatus === "graduated" ? "Diplômé" :
                                  student.previousStatus === "transferred" ? "Transféré" : "Inactif"}
@@ -520,22 +534,20 @@ export default function ReinscriptionPage() {
                             <TableCell>{student.nationality || '-'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end space-x-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   title="Voir les détails"
-                                  onClick={() => handleViewDetails(student)} 
-                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewDetails(student)}
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                  variant="default" 
-                                  size="sm" 
+                                <Button
+                                  variant="default"
+                                  size="sm"
                                   title="Réinscrire l'élève"
                                   onClick={() => handleReinscribeClick(student)}
                                   disabled={isReinscribing}
-                                  className="h-8 px-3"
                                 >
                                   <UserCheck className="h-4 w-4 mr-1" />
                                   Réinscrire
@@ -560,7 +572,6 @@ export default function ReinscriptionPage() {
                           size="sm"
                           onClick={() => setCurrentPage(currentPage - 1)}
                           disabled={currentPage === 1}
-                          className="bg-transparent"
                         >
                           <ChevronLeft className="h-4 w-4" />
                           Précédent
@@ -572,7 +583,6 @@ export default function ReinscriptionPage() {
                               variant={currentPage === page ? "default" : "outline"}
                               size="sm"
                               onClick={() => setCurrentPage(page)}
-                              className={currentPage === page ? "" : "bg-transparent"}
                             >
                               {page}
                             </Button>
@@ -583,7 +593,6 @@ export default function ReinscriptionPage() {
                           size="sm"
                           onClick={() => setCurrentPage(currentPage + 1)}
                           disabled={currentPage === totalPages}
-                          className="bg-transparent"
                         >
                           Suivant
                           <ChevronRight className="h-4 w-4" />
