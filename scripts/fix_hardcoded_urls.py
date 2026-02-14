@@ -23,7 +23,6 @@ FILES_TO_PROCESS = [
     "hooks/use-exam-stats.ts",
     "app/students/reinscription/page.tsx",
     "app/settings/page.tsx",
-    "app/teachers/historique-salaire/page.tsx",
 ]
 
 # Motifs à remplacer
