@@ -1,4 +1,5 @@
 # 📚 EduMali - Système de Gestion Scolaire
+<img width="715" height="355" alt="image" src="https://github.com/user-attachments/assets/18e775bd-5da0-485d-bdd6-71216cb1a351" />
 
 ## 🎯 Vue d'ensemble
 
