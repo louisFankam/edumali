@@ -27,6 +27,7 @@ export function useFinancialStats() {
 
   const fetchFinancialStats = async () => {
     try {
+      console.time('financial:fetch')
       setIsLoading(true)
       setError(null)
       
@@ -97,6 +98,7 @@ export function useFinancialStats() {
       // Données mock en cas d'erreur
       setData(getMockData())
     } finally {
+      console.timeEnd('financial:fetch')
       setIsLoading(false)
     }
   }

@@ -30,6 +30,7 @@ export function useExamStats() {
 
   const fetchExamStats = async () => {
     try {
+      console.time('exam:fetch')
       setIsLoading(true)
       setError(null)
       
@@ -99,6 +100,7 @@ export function useExamStats() {
       // Données mock en cas d'erreur
       setData(getMockData())
     } finally {
+      console.timeEnd('exam:fetch')
       setIsLoading(false)
     }
   }

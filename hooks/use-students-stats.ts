@@ -25,6 +25,7 @@ export function useStudentsStats() {
 
   const fetchStudentsStats = async () => {
     try {
+      console.time('students:fetch')
       setIsLoading(true)
       setError(null)
       
@@ -53,6 +54,7 @@ export function useStudentsStats() {
       // Ne plus utiliser de données mock, simplement afficher l'erreur
       setData(null)
     } finally {
+      console.timeEnd('students:fetch')
       setIsLoading(false)
     }
   }

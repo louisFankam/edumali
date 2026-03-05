@@ -22,6 +22,7 @@ export function useAttendanceStats() {
 
   const fetchAttendanceStats = async () => {
     try {
+      console.time('attendance:fetch')
       setIsLoading(true)
       setError(null)
 
@@ -92,6 +93,7 @@ export function useAttendanceStats() {
       // Données mock en cas d'erreur
       setData(getMockData())
     } finally {
+      console.timeEnd('attendance:fetch')
       setIsLoading(false)
     }
   }
