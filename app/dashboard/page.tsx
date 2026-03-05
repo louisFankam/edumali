@@ -70,18 +70,8 @@ export default function DashboardPage() {
     setTimeout(() => setIsLoading(false), 1000)
   }*/
 
-  if (!studentData || !attendanceData || !financialData || !examData) {
-    return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 md:ml-64 flex items-center justify-center">
-          <div className="text-center">
-            <p>Chargement des données...</p>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  // N'affiche plus une page bloquante : on rend le layout immédiatement
+  // et chaque widget affiche son propre état de chargement.
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -129,20 +119,20 @@ export default function DashboardPage() {
                 <GraduationCap className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{studentData.total}</div>
+                <div className="text-2xl font-bold">{studentData?.total ?? '—'}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  {studentData.growth > 0 ? (
+                  {(studentData?.growth ?? 0) > 0 ? (
                     <ArrowUpRight className="h-3 w-3 text-green-500" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3 text-red-500" />
                   )}
-                  <span className={studentData.growth > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(studentData.growth)}%
+                  <span className={(studentData?.growth ?? 0) > 0 ? "text-green-500" : "text-red-500"}>
+                    {Math.abs(studentData?.growth ?? 0)}%
                   </span>
                   <span>vs mois dernier</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  +{studentData.newThisMonth} nouveaux ce mois
+                  +{studentData?.newThisMonth ?? 0} nouveaux ce mois
                 </p>
               </CardContent>
             </Card>
@@ -153,15 +143,15 @@ export default function DashboardPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{attendanceData.overall}%</div>
+                <div className="text-2xl font-bold">{attendanceData ? `${attendanceData.overall}%` : '—'}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                   {attendanceData.trend > 0 ? (
                     <ArrowUpRight className="h-3 w-3 text-green-500" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3 text-red-500" />
                   )}
-                  <span className={attendanceData.trend > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(attendanceData.trend)}%
+                  <span className={(attendanceData?.trend ?? 0) > 0 ? "text-green-500" : "text-red-500"}>
+                    {Math.abs(attendanceData?.trend ?? 0)}%
                   </span>
                   <span>vs semaine dernière</span>
                 </div>
@@ -175,15 +165,15 @@ export default function DashboardPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(financialData.totalRevenue)}</div>
+                <div className="text-2xl font-bold">{formatCurrency(financialData?.totalRevenue ?? 0)}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                   {financialData.growth > 0 ? (
                     <ArrowUpRight className="h-3 w-3 text-green-500" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3 text-red-500" />
                   )}
-                  <span className={financialData.growth > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(financialData.growth)}%
+                  <span className={(financialData?.growth ?? 0) > 0 ? "text-green-500" : "text-red-500"}>
+                    {Math.abs(financialData?.growth ?? 0)}%
                   </span>
                   <span>vs mois dernier</span>
                 </div>
@@ -199,9 +189,9 @@ export default function DashboardPage() {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{examData.passRate}%</div>
+                <div className="text-2xl font-bold">{examData ? `${examData.passRate}%` : '—'}</div>
                 <div className="text-xs text-muted-foreground">
-                  Moyenne: {examData.averageScore}/20
+                  Moyenne: {examData ? `${examData.averageScore}/20` : '—'}
                 </div>
                 <Progress value={examData.passRate} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -227,7 +217,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {studentData.byClass.map((classData) => (
+                  {(studentData?.byClass || []).map((classData) => (
                     <div key={classData.class} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
@@ -262,7 +252,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {attendanceData.byClass.map((classData) => (
+                  {(attendanceData?.byClass || []).map((classData) => (
                     <div key={classData.class} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -297,7 +287,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {examData.topSubjects.map((subject, index) => (
+                  {(examData?.topSubjects || []).map((subject, index) => (
                     <div key={subject.subject} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
