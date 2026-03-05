@@ -217,7 +217,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(studentData?.byClass || []).map((classData) => (
+                  {(studentData?.byClass || []).filter(Boolean).map((classData) => (
                     <div key={classData.class} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
@@ -252,7 +252,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(attendanceData?.byClass || []).map((classData) => (
+                  {(attendanceData?.byClass || []).filter(Boolean).map((classData) => (
                     <div key={classData.class} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -287,7 +287,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(examData?.topSubjects || []).map((subject, index) => (
+                  {(examData?.topSubjects || []).filter(Boolean).map((subject, index) => (
                     <div key={subject.subject} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
