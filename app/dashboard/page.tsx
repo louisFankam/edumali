@@ -145,7 +145,7 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{attendanceData ? `${attendanceData.overall}%` : '—'}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  {attendanceData.trend > 0 ? (
+                  {(attendanceData?.trend ?? 0) > 0 ? (
                     <ArrowUpRight className="h-3 w-3 text-green-500" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3 text-red-500" />
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                   </span>
                   <span>vs semaine dernière</span>
                 </div>
-                <Progress value={attendanceData.overall} className="mt-2" />
+                <Progress value={attendanceData?.overall ?? 0} className="mt-2" />
               </CardContent>
             </Card>
 
@@ -167,7 +167,7 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(financialData?.totalRevenue ?? 0)}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  {financialData.growth > 0 ? (
+                  {(financialData?.growth ?? 0) > 0 ? (
                     <ArrowUpRight className="h-3 w-3 text-green-500" />
                   ) : (
                     <ArrowDownRight className="h-3 w-3 text-red-500" />
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                   <span>vs mois dernier</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Moyenne: {formatCurrency(financialData.monthlyAverage)}/mois
+                  Moyenne: {formatCurrency(financialData?.monthlyAverage ?? 0)}/mois
                 </p>
               </CardContent>
             </Card>
@@ -193,9 +193,9 @@ export default function DashboardPage() {
                 <div className="text-xs text-muted-foreground">
                   Moyenne: {examData ? `${examData.averageScore}/20` : '—'}
                 </div>
-                <Progress value={examData.passRate} className="mt-2" />
+                <Progress value={examData?.passRate ?? 0} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {examData.topSubjects.length} matières évaluées
+                  {examData?.topSubjects?.length ?? 0} matières évaluées
                 </p>
               </CardContent>
             </Card>
