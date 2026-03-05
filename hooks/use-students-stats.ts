@@ -25,7 +25,8 @@ export function useStudentsStats() {
 
   const fetchStudentsStats = async () => {
     try {
-      console.time('students:fetch')
+      const _studentsTimer = `students:fetch:${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+      console.time(_studentsTimer)
       setIsLoading(true)
       setError(null)
       
@@ -54,7 +55,7 @@ export function useStudentsStats() {
       // Ne plus utiliser de données mock, simplement afficher l'erreur
       setData(null)
     } finally {
-      console.timeEnd('students:fetch')
+      try { console.timeEnd(_studentsTimer) } catch {}
       setIsLoading(false)
     }
   }

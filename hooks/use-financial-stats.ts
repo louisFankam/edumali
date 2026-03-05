@@ -27,7 +27,8 @@ export function useFinancialStats() {
 
   const fetchFinancialStats = async () => {
     try {
-      console.time('financial:fetch')
+      const _financialTimer = `financial:fetch:${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+      console.time(_financialTimer)
       setIsLoading(true)
       setError(null)
       
@@ -98,7 +99,7 @@ export function useFinancialStats() {
       // Données mock en cas d'erreur
       setData(getMockData())
     } finally {
-      console.timeEnd('financial:fetch')
+      try { console.timeEnd(_financialTimer) } catch {}
       setIsLoading(false)
     }
   }

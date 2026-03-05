@@ -261,13 +261,13 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-sm font-medium">{classData.rate}%</p>
                           <div className="flex items-center space-x-1">
-                            {classData.trend > 0 ? (
+                            {(classData?.trend ?? 0) > 0 ? (
                               <ArrowUpRight className="h-3 w-3 text-green-500" />
                             ) : (
                               <ArrowDownRight className="h-3 w-3 text-red-500" />
                             )}
-                            <span className={`text-xs ${classData.trend > 0 ? "text-green-500" : "text-red-500"}`}>
-                              {Math.abs(classData.trend)}%
+                            <span className={`text-xs ${(classData?.trend ?? 0) > 0 ? "text-green-500" : "text-red-500"}`}>
+                              {Math.abs(classData?.trend ?? 0)}%
                             </span>
                           </div>
                         </div>

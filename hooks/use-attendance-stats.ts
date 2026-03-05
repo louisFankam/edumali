@@ -22,7 +22,8 @@ export function useAttendanceStats() {
 
   const fetchAttendanceStats = async () => {
     try {
-      console.time('attendance:fetch')
+      const _attendanceTimer = `attendance:fetch:${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+      console.time(_attendanceTimer)
       setIsLoading(true)
       setError(null)
 
@@ -93,7 +94,7 @@ export function useAttendanceStats() {
       // Données mock en cas d'erreur
       setData(getMockData())
     } finally {
-      console.timeEnd('attendance:fetch')
+      try { console.timeEnd(_attendanceTimer) } catch {}
       setIsLoading(false)
     }
   }

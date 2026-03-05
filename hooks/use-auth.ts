@@ -60,7 +60,8 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     try {
-      console.time('auth:login')
+      const _authTimer = `auth:login:${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+      console.time(_authTimer)
       // 1. Authentification de l'utilisateur avec PocketBase
       await pb.collection('users').authWithPassword(email, password)
       
@@ -90,7 +91,7 @@ export function useAuth() {
       if (schoolData) {
         setSchoolInfo(schoolData)
       }
-      console.timeEnd('auth:login')
+      try { console.timeEnd(_authTimer) } catch {}
       router.push('/dashboard')
       return true
       

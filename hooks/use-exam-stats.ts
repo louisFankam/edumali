@@ -30,7 +30,8 @@ export function useExamStats() {
 
   const fetchExamStats = async () => {
     try {
-      console.time('exam:fetch')
+      const _examTimer = `exam:fetch:${Date.now()}-${Math.random().toString(36).slice(2,8)}`
+      console.time(_examTimer)
       setIsLoading(true)
       setError(null)
       
@@ -100,7 +101,7 @@ export function useExamStats() {
       // Données mock en cas d'erreur
       setData(getMockData())
     } finally {
-      console.timeEnd('exam:fetch')
+      try { console.timeEnd(_examTimer) } catch {}
       setIsLoading(false)
     }
   }
