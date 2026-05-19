@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Bell } from "lucide-react"
 import Link from "next/link"
-import { useNotifications } from "@/hooks/use-notifications"
 
 export function NotificationBellMain() {
-  const { unreadCount, isLoading } = useNotifications()
+  const unreadCount = 0
+  const isLoading = false
 
   return (
     <Link href="/notifications">

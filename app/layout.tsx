@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ErrorBoundary } from "@/components/error-boundary"
 import "./globals.css"
 
+
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   display: "swap",
@@ -29,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="fr" className={`${spaceGrotesk.variable} ${dmSans.variable}`}>
+    <html lang="fr" className={`${spaceGrotesk.variable} ${dmSans.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider>
           <ErrorBoundary>

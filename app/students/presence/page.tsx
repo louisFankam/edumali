@@ -1,12 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
-import { AttendanceTable } from "@/components/attendance/attendance-table"
-import { AttendanceStats } from "@/components/attendance/attendance-stats"
-import { AttendanceHistory } from "@/components/attendance/attendance-history"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -14,355 +11,204 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, UserCheck } from "lucide-react"
+import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { useStudents } from "@/hooks/use-students"
-import { useAttendance } from "@/hooks/use-attendance"
-import { useSchoolInfo } from "@/hooks/use-school-info"
-import { useToast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+
+// Mock Data
+const MOCK_CLASSES = [
+  { id: "1", name: "1ère Année" },
+  { id: "2", name: "2ème Année" },
+]
+
+const MOCK_STUDENTS = [
+  { id: "s_1", firstName: "Amadou", lastName: "Diallo", class: "1ère Année", gender: "Masculin" },
+  { id: "s_2", firstName: "Fatoumata", lastName: "Traoré", class: "1ère Année", gender: "Féminin" },
+  { id: "s_3", firstName: "Issa", lastName: "Coulibaly", class: "2ème Année", gender: "Masculin" },
+]
 
 export default function AttendancePage() {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
-  const [selectedClass, setSelectedClass] = useState("all")
-  const [selectedSchool, setSelectedSchool] = useState("")
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [selectedClass, setSelectedClass] = useState("1ère Année")
+  const [attendance, setAttendance] = useState<Record<string, string>>({})
 
-  // Initialiser la date une fois le composant monté (évite l'erreur d'hydration)
-  useEffect(() => {
-    if (!selectedDate) {
-      setSelectedDate(new Date())
-    }
-  }, [])
-
-  const { toast } = useToast()
-  const { students, classes, isLoading, fetchStudents } = useStudents()
-  const { saveAttendance, getAttendanceByDate, isLoading: isSaving } = useAttendance()
-  const { schoolInfo } = useSchoolInfo()
-
-  useEffect(() => {
-    fetchStudents()
-  }, [fetchStudents])
-
-  // Initialiser avec la première classe disponible
-  useEffect(() => {
-    if (classes.length > 0 && selectedClass === "all") {
-      setSelectedClass(classes[0].name)
-    }
-  }, [classes, selectedClass])
-
-  // Initialiser avec le nom de l'école
-  useEffect(() => {
-    if (schoolInfo && !selectedSchool) {
-      setSelectedSchool(schoolInfo.name)
-    }
-  }, [schoolInfo, selectedSchool])
-
-  // Charger les présences existantes quand la date ou la classe change
-  useEffect(() => {
-    const loadExistingAttendance = async () => {
-      if (students.length === 0) return
-      
-      try {
-        const formattedDate = format(selectedDate, "yyyy-MM-dd")
-        console.log("Chargement des présences pour le", formattedDate)
-        
-        // Récupérer toutes les présences pour cette date
-        const existingAttendance = await getAttendanceByDate(formattedDate)
-        console.log("Présences brutes chargées:", existingAttendance)
-        
-        // Filtrer les étudiants selon la classe sélectionnée
-        const filteredStudents = selectedClass === "all" 
-          ? students 
-          : students.filter(student => student.class === selectedClass)
-        
-        console.log("Étudiants filtrés pour la classe", selectedClass, ":", filteredStudents.map(s => `${s.firstName} ${s.lastName} (ID: ${s.id})`))
-        
-        // Mettre à jour l'état des présences avec les données existantes
-        const updatedAttendance = filteredStudents.map(student => {
-          // Le student_id dans la base contient bien l'UUID de l'étudiant
-          const attendanceRecord = existingAttendance.find(record => record.student_id === student.id)
-          const status = attendanceRecord?.status || "present"
-          console.log(`Étudiant ${student.firstName} ${student.lastName} (ID: ${student.id}):`)
-          console.log(`  - Recherche de présence par ID: ${attendanceRecord ? 'TROUVÉ' : 'NON TROUVÉ'}`)
-          console.log(`  - Statut final: ${status}`)
-          
-          return {
-            ...student,
-            status: status
-          }
-        })
-        
-        console.log("Présences finales:", updatedAttendance.map(a => `${a.firstName} ${a.lastName}: ${a.status}`))
-        setStudentsAttendance(updatedAttendance)
-        
-      } catch (error) {
-        console.error("Erreur lors du chargement des présences:", error)
-      }
-    }
-
-    loadExistingAttendance()
-  }, [selectedDate, selectedClass, students, getAttendanceByDate])
-
-  // État local pour gérer les présences
-  const [studentsAttendance, setStudentsAttendance] = useState<any[]>([])
-
-  
-  useEffect(() => {
-    // Mettre à jour les données de présence quand les étudiants changent
-    const updatedAttendance = students
-      .filter(student => selectedClass === "all" || student.class === selectedClass)
-      .map(student => ({
-        id: student.id,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        class: student.class,
-        school: schoolInfo?.name || "École",
-        status: "present", // Valeur par défaut
-        photo: student.gender === "Masculin" ? "/homme.png" : "/femme.png",
-      }))
-    setStudentsAttendance(updatedAttendance)
-  }, [students, selectedClass, schoolInfo])
+  const filteredStudents = useMemo(() => {
+    return MOCK_STUDENTS.filter(s => s.class === selectedClass)
+  }, [selectedClass])
 
   const handleAttendanceChange = (studentId: string, status: string) => {
-    setStudentsAttendance((prev) =>
-      prev.map((student) =>
-        student.id === studentId
-          ? {
-              ...student,
-              status
-            }
-          : student,
-      ),
-    )
+    setAttendance(prev => ({ ...prev, [studentId]: status }))
   }
 
   const handleMarkAllPresent = () => {
-    setStudentsAttendance((prev) =>
-      prev.map((student) => ({
-        ...student,
-        status: "present"
-      })),
-    )
+    const newAttendance = { ...attendance }
+    filteredStudents.forEach(s => { newAttendance[s.id] = "present" })
+    setAttendance(newAttendance)
   }
 
-  const handleSaveAttendance = async () => {
-    try {
-      const formattedDate = format(selectedDate, "yyyy-MM-dd")
-
-      // Récupérer l'ID de la classe sélectionnée
-      const selectedClassData = classes.find(c => c.name === selectedClass)
-      if (!selectedClassData && selectedClass !== "all") {
-        toast({
-          title: "Erreur",
-          description: "Classe non trouvée!",
-          variant: "destructive"
-        })
-        return
-      }
-
-      // Préparer les données pour la sauvegarde
-      const attendanceData = studentsAttendance.map(student => ({
-        studentId: student.id, // Utiliser l'UUID comme dans la base
-        status: student.status
-      }))
-
-      // Sauvegarder les présences
-      await saveAttendance(
-        formattedDate,
-        selectedClassData?.id || "all",
-        attendanceData
-      )
-
-      toast({
-        title: "Succès",
-        description: "Présences sauvegardées avec succès!"
-      })
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde:", error)
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la sauvegarde des présences. Veuillez réessayer.",
-        variant: "destructive"
-      })
-    }
-  }
-
-  // Calculate stats for current selection
-  const currentStats = {
-    total: studentsAttendance.length,
-    present: studentsAttendance.filter((s) => s.status === "present").length,
-    absent: studentsAttendance.filter((s) => s.status === "absent").length,
-    late: studentsAttendance.filter((s) => s.status === "late").length,
-    attendanceRate: Math.round((studentsAttendance.filter((s) => s.status === "present").length / studentsAttendance.length) * 100),
-  }
+  const stats = useMemo(() => {
+    const studentsInClass = filteredStudents
+    const total = studentsInClass.length
+    const statuses = studentsInClass.map(s => attendance[s.id] || "present")
+    const present = statuses.filter(s => s === "present").length
+    const absent = statuses.filter(s => s === "absent").length
+    const late = statuses.filter(s => s === "late").length
+    return { total, present, absent, late }
+  }, [filteredStudents, attendance])
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-
       <main className="flex-1 md:ml-64">
         <div className="p-6 space-y-6">
-          <PageHeader title="Gestion des Présences" description="Marquer et suivre les présences des élèves">
-            <div className="flex items-center space-x-2">
-              <SchoolYearSelector />
-            </div>
+          <PageHeader title="Présences Élèves" description="Suivi quotidien des absences et retards">
+            <SchoolYearSelector />
           </PageHeader>
 
           <Tabs defaultValue="daily" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="daily">Présences du jour</TabsTrigger>
               <TabsTrigger value="history">Historique</TabsTrigger>
-              <TabsTrigger value="reports">Rapports</TabsTrigger>
             </TabsList>
 
             <TabsContent value="daily" className="space-y-6">
-              {/* Date and Class Selection */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Sélection de la classe et date</CardTitle>
-                  <CardDescription>Choisissez la classe et la date pour marquer les présences</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
-                    <div className="space-y-2">
-                      <Label>Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn("w-full md:w-48 justify-start text-left font-normal")}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(selectedDate, "dd MMMM yyyy", { locale: fr })}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={selectedDate}
-                            onSelect={setSelectedDate}
-                            locale={fr}
-                            required
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>École</Label>
-                      <Select value={selectedSchool} onValueChange={setSelectedSchool}>
-                        <SelectTrigger className="w-full md:w-64">
-                          <SelectValue placeholder="Sélectionner l'école" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={schoolInfo?.name || "École Primaire de Bamako"}>
-                            {schoolInfo?.name || "École Primaire de Bamako"}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Classe</Label>
-                      <Select value={selectedClass} onValueChange={setSelectedClass}>
-                        <SelectTrigger className="w-full md:w-64">
-                          <SelectValue placeholder="Classe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Toutes les classes</SelectItem>
-                          {classes.map((classItem) => (
-                            <SelectItem key={classItem.id} value={classItem.name}>
-                              {classItem.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-end space-x-2">
-                      <Button onClick={handleMarkAllPresent} variant="outline">
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Tous présents
-                      </Button>
-                      <Button onClick={handleSaveAttendance} disabled={isSaving}>
-                {isSaving ? "Sauvegarde en cours..." : "Sauvegarder"}
-              </Button>
-                    </div>
+                <CardHeader><CardTitle>Filtres</CardTitle></CardHeader>
+                <CardContent className="flex flex-col md:flex-row gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-48 justify-start bg-transparent">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(selectedDate, "dd MMMM yyyy", { locale: fr })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} locale={fr} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Classe</Label>
+                    <Select value={selectedClass} onValueChange={setSelectedClass}>
+                      <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {MOCK_CLASSES.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleMarkAllPresent} variant="outline" className="bg-transparent">
+                      Tous présents
+                    </Button>
+                    <Button onClick={() => alert("Sauvegardé")} className="bg-green-600 hover:bg-green-700">
+                      Sauvegarder
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Current Stats */}
-              <AttendanceStats stats={currentStats} />
+              <div className="grid gap-4 md:grid-cols-4">
+                <StatCard title="Total" value={stats.total} icon={CalendarIcon} color="text-foreground" />
+                <StatCard title="Présents" value={stats.present} icon={UserCheck} color="text-green-600" />
+                <StatCard title="Absents" value={stats.absent} icon={UserX} color="text-red-600" />
+                <StatCard title="Retards" value={stats.late} icon={Clock} color="text-yellow-600" />
+              </div>
 
-              {/* Attendance Table */}
-              <AttendanceTable
-                students={studentsAttendance}
-                onAttendanceChange={handleAttendanceChange}
-                selectedDate={selectedDate}
-                selectedClass={selectedClass}
-              />
-            </TabsContent>
-
-            <TabsContent value="history" className="space-y-6">
-              <AttendanceHistory history={[]} classes={classes} />
-            </TabsContent>
-
-            <TabsContent value="reports" className="space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle>Rapports de présence</CardTitle>
-                  <CardDescription>Générer des rapports détaillés sur les présences</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Rapport mensuel</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Présences de tous les élèves pour le mois en cours
-                        </p>
-                        <Button size="sm" className="w-full">
-                          Générer rapport
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Rapport par classe</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Statistiques détaillées par classe et période
-                        </p>
-                        <Button size="sm" variant="outline" className="w-full">
-                          Générer rapport
-                        </Button>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Élèves absents</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground mb-3">Liste des élèves avec absences répétées</p>
-                        <Button size="sm" variant="outline" className="w-full">
-                          Générer rapport
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Élève</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredStudents.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell>
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>{s.firstName[0]}{s.lastName[0]}</AvatarFallback>
+                              </Avatar>
+                              <div className="font-medium">{s.firstName} {s.lastName}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={attendance[s.id] || "present"} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-1">
+                              {["present", "late", "absent"].map((status) => (
+                                <Button
+                                  key={status}
+                                  variant={(attendance[s.id] || "present") === status ? "default" : "outline"}
+                                  size="sm"
+                                  className={cn("h-8 w-8 p-0", (attendance[s.id] || "present") === status ? getStatusColor(status) : "bg-transparent")}
+                                  onClick={() => handleAttendanceChange(s.id, status)}
+                                >
+                                  {getStatusIcon(status)}
+                                </Button>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
+            
+            <TabsContent value="history">
+              <Card><CardContent className="p-8 text-center text-muted-foreground">Historique simulation</CardContent></Card>
             </TabsContent>
           </Tabs>
         </div>
       </main>
     </div>
   )
+}
+
+function StatCard({ title, value, icon: Icon, color }: any) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className={cn("h-4 w-4", color)} />
+      </CardHeader>
+      <CardContent><div className={cn("text-2xl font-bold", color)}>{value}</div></CardContent>
+    </Card>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const labels: any = { present: "Présent", absent: "Absent", late: "Retard" }
+  const variants: any = { present: "default", absent: "destructive", late: "secondary" }
+  return <Badge variant={variants[status]}>{labels[status]}</Badge>
+}
+
+function getStatusIcon(status: string) {
+  switch (status) {
+    case "present": return <UserCheck className="h-3 w-3" />
+    case "absent": return <UserX className="h-3 w-3" />
+    case "late": return <Clock className="h-3 w-3" />
+    default: return <AlertCircle className="h-3 w-3" />
+  }
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "present": return "bg-green-600 hover:bg-green-700"
+    case "late": return "bg-yellow-600 hover:bg-yellow-700 text-white"
+    case "absent": return "bg-red-600 hover:bg-red-700"
+    default: return ""
+  }
 }

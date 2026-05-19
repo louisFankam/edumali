@@ -30,9 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
-import { useStudents } from "@/hooks/use-students"
 import { useSchoolInfo } from "@/hooks/use-school-info"
-import { useAttendance } from "@/hooks/use-attendance"
 import { pb, COLLECTIONS } from "@/lib/pocketbase"
 
 const ITEMS_PER_PAGE = 10

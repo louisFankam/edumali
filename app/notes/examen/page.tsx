@@ -24,12 +24,6 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react"
-import { useExams } from "@/hooks/use-exams"
-import { useGrades } from "@/hooks/use-grades"
-import { useClasses } from "@/hooks/use-classes"
-import { useSubjects } from "@/hooks/use-subjects"
-import { useStudents } from "@/hooks/use-students"
-import { useAcademicYears } from "@/hooks/use-academic-years"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -89,6 +83,13 @@ interface Grade {
     }
   }
 }
+
+const INITIAL_EXAMS: Exam[] = []
+const INITIAL_GRADES: Grade[] = []
+const INITIAL_CLASSES: { id: string; name: string }[] = []
+const INITIAL_SUBJECTS: Subject[] = []
+const INITIAL_STUDENTS: Student[] = []
+const INITIAL_ACADEMIC_YEARS: { id: string; year: string }[] = []
 
 // Composant pour créer un nouvel examen
 function CreateExamModal({ 
@@ -491,12 +492,13 @@ function GradeEntryModal({
 }
 
 export default function ExamPage() {
-  const { exams, isLoading: examsLoading, fetchExams, createExam, updateExam } = useExams()
-  const { grades, createGrade, updateGrade, getExamGrades, fetchGrades } = useGrades()
-  const { classes, fetchClasses } = useClasses()
-  const { subjects, fetchSubjects } = useSubjects()
-  const { students, fetchStudents } = useStudents()
-  const { academicYears } = useAcademicYears()
+  const [exams, setExams] = useState<Exam[]>(INITIAL_EXAMS)
+  const [grades, setGrades] = useState<Grade[]>(INITIAL_GRADES)
+  const [classes] = useState(INITIAL_CLASSES)
+  const [subjects] = useState(INITIAL_SUBJECTS)
+  const [students] = useState(INITIAL_STUDENTS)
+  const [academicYears] = useState(INITIAL_ACADEMIC_YEARS)
+  const examsLoading = false
   const { toast } = useToast()
   
   const [selectedClass, setSelectedClass] = useState("all")
@@ -508,13 +510,6 @@ export default function ExamPage() {
   const [isSavingGrades, setIsSavingGrades] = useState(false)
   const [examGrades, setExamGrades] = useState<Grade[]>([])
 
-  useEffect(() => {
-    fetchExams()
-    fetchClasses()
-    fetchSubjects()
-    fetchStudents()
-  }, [fetchExams, fetchClasses, fetchSubjects, fetchStudents])
-
   // Filtrage des examens
   const filteredExams = exams.filter(exam => {
     const matchesClass = selectedClass === "all" || exam.class_id === selectedClass
@@ -525,7 +520,17 @@ export default function ExamPage() {
 
   const handleAddExam = async (newExam: Omit<Exam, "id" | "created" | "updated">) => {
     try {
-      await createExam(newExam)
+      setExams((currentExams) => [
+        ...currentExams,
+        {
+          ...newExam,
+          id: crypto.randomUUID(),
+          expand: {
+            class_id: classes.find((classItem) => classItem.id === newExam.class_id),
+            subject_id: subjects.find((subject) => subject.id === newExam.subject_id),
+          },
+        },
+      ])
       toast({
         title: "Succès",
         description: "L'examen a été créé avec succès"
@@ -550,15 +555,25 @@ export default function ExamPage() {
         
         if (existingGrade) {
           // Mettre à jour la note existante
-          await updateGrade(existingGrade.id, grade)
+          setGrades((currentGrades) =>
+            currentGrades.map((currentGrade) =>
+              currentGrade.id === existingGrade.id ? { ...currentGrade, ...grade } : currentGrade
+            )
+          )
         } else {
           // Créer une nouvelle note
-          await createGrade(grade)
+          setGrades((currentGrades) => [
+            ...currentGrades,
+            {
+              ...grade,
+              id: crypto.randomUUID(),
+            },
+          ])
         }
       }
       
       // Rafraîchir les notes pour l'examen
-      const updatedGrades = await getExamGrades(selectedExam?.id || "")
+      const updatedGrades = grades.filter((grade) => grade.exam_id === selectedExam?.id)
       setExamGrades(updatedGrades)
       
       toast({
@@ -581,7 +596,11 @@ export default function ExamPage() {
 
   const handleToggleExamStatus = async (examId: string, currentStatus: boolean) => {
     try {
-      await updateExam(examId, { is_active: !currentStatus })
+      setExams((currentExams) =>
+        currentExams.map((exam) =>
+          exam.id === examId ? { ...exam, is_active: !currentStatus } : exam
+        )
+      )
       toast({
         title: "Succès",
         description: `L'examen a été ${!currentStatus ? "activé" : "désactivé"} avec succès`
@@ -600,7 +619,7 @@ export default function ExamPage() {
       setSelectedExam(exam)
       
       // Charger les notes existantes pour cet examen
-      const existingGrades = await getExamGrades(exam.id)
+      const existingGrades = grades.filter((grade) => grade.exam_id === exam.id)
       setExamGrades(existingGrades)
       
       setShowGradeModal(true)
@@ -615,7 +634,7 @@ export default function ExamPage() {
 
   const handleExportGrades = async (examId: string) => {
     try {
-      const examGrades = await getExamGrades(examId)
+      const examGrades = grades.filter((grade) => grade.exam_id === examId)
       const exam = exams.find(e => e.id === examId)
       
       // Simulation d'export Excel

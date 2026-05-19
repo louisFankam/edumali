@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { User, Calendar, MapPin, Phone, GraduationCap, Building2, UserCheck, AlertTriangle } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
-import type { Class } from "@/hooks/use-classes"
+
+interface Class {
+  id: string
+  name: string
+}
 
 interface ReinscriptionConfirmationModalProps {
   isOpen: boolean

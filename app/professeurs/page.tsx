@@ -3,7 +3,8 @@
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Users, UserPlus, GraduationCap } from "lucide-react"
 
 export default function ProfesseursPage() {
   return (

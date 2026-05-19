@@ -22,11 +22,33 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react"
-import { useNotifications, Notification } from "@/hooks/use-notifications"
-import Link from "next/link"
+
+interface Notification {
+  id: string
+  type: "info" | "warning" | "error" | "success"
+  title: string
+  message: string
+  created: string
+  is_read: boolean
+  category: "absence" | "payment" | "exam" | "general"
+  priority?: "high" | "medium" | "low"
+  expand?: {
+    target_class_id?: {
+      name: string
+    }
+    target_student_id?: {
+      first_name: string
+    }
+  }
+}
+
+const INITIAL_NOTIFICATIONS: Notification[] = []
 
 export default function NotificationsPage() {
-  const { notifications, isLoading, error, unreadCount, markAsRead, markAllAsRead, refresh } = useNotifications()
+  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
+  const [isLoading, setIsLoading] = useState(false)
+  const error = ""
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedPriority, setSelectedPriority] = useState<string>("all")
   const [showRead, setShowRead] = useState(true)
@@ -73,15 +95,22 @@ export default function NotificationsPage() {
   }
 
   const handleMarkAsRead = async (id: string) => {
-    await markAsRead(id)
+    setNotifications((currentNotifications) =>
+      currentNotifications.map((notification) =>
+        notification.id === id ? { ...notification, is_read: true } : notification
+      )
+    )
   }
 
   const handleMarkAllAsRead = async () => {
-    await markAllAsRead()
+    setNotifications((currentNotifications) =>
+      currentNotifications.map((notification) => ({ ...notification, is_read: true }))
+    )
   }
 
   const handleRefresh = async () => {
-    await refresh()
+    setIsLoading(true)
+    setTimeout(() => setIsLoading(false), 300)
   }
 
   // Fonctions de pagination

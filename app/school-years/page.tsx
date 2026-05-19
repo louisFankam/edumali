@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AcademicYear } from "@/hooks/use-academic-years"
 import { Sidebar } from "@/components/sidebar"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearsTable } from "@/components/school-years/school-years-table"
@@ -14,21 +13,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Calendar, Archive, TrendingUp } from "lucide-react"
-import { useAcademicYears } from "@/hooks/use-academic-years"
+
+interface AcademicYear {
+  id?: string
+  year: string
+  start_date: string
+  end_date: string
+  status: "active" | "archived" | "upcoming" | string
+  total_students?: number
+  total_teachers?: number
+  periods?: Array<{
+    name: string
+    startDate: string
+    endDate: string
+  }>
+  holidays?: Array<{
+    name: string
+    startDate: string
+    endDate: string
+  }>
+  created?: string
+  updated?: string
+}
 
 export default function SchoolYearsPage() {
-  const {
-    academicYears,
-    isLoading,
-    error,
-    createAcademicYear,
-    updateAcademicYear,
-    activateAcademicYear,
-    archiveAcademicYear,
-    getActiveAcademicYear,
-    calculateTotals,
-    getStats,
-  } = useAcademicYears()
+  const currentYear = new Date().getFullYear()
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([
+    {
+      id: "local-academic-year",
+      year: `${currentYear}-${currentYear + 1}`,
+      start_date: `${currentYear}-09-01`,
+      end_date: `${currentYear + 1}-06-30`,
+      status: "active",
+      total_students: 0,
+      total_teachers: 0,
+      periods: [],
+      holidays: [],
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
+    },
+  ])
+  const isLoading = false
+  const error = ""
 
   const [selectedSchoolYear, setSelectedSchoolYear] = useState<AcademicYear | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -36,6 +62,58 @@ export default function SchoolYearsPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false)
   const [yearTotals, setYearTotals] = useState<{[key: string]: {students: number, teachers: number}}>({})
+
+  const createAcademicYear = async (newSchoolYear: Omit<AcademicYear, 'id' | 'created' | 'updated'>) => {
+    setAcademicYears((currentYears) => [
+      ...currentYears,
+      {
+        ...newSchoolYear,
+        id: crypto.randomUUID(),
+        created: new Date().toISOString(),
+        updated: new Date().toISOString(),
+      },
+    ])
+    return true
+  }
+
+  const updateAcademicYear = async (schoolYearId: string, updatedYear: Partial<AcademicYear>) => {
+    setAcademicYears((currentYears) =>
+      currentYears.map((year) =>
+        year.id === schoolYearId ? { ...year, ...updatedYear, updated: new Date().toISOString() } : year
+      )
+    )
+    return true
+  }
+
+  const activateAcademicYear = async (schoolYearId: string) => {
+    setAcademicYears((currentYears) =>
+      currentYears.map((year) => ({
+        ...year,
+        status: year.id === schoolYearId ? "active" : year.status === "active" ? "archived" : year.status,
+      }))
+    )
+  }
+
+  const archiveAcademicYear = async (schoolYearId: string) => {
+    await updateAcademicYear(schoolYearId, { status: "archived" })
+  }
+
+  const calculateTotals = async (schoolYearId: string) => {
+    const schoolYear = academicYears.find((year) => year.id === schoolYearId)
+    return {
+      students: schoolYear?.total_students || 0,
+      teachers: schoolYear?.total_teachers || 0,
+    }
+  }
+
+  const getActiveAcademicYear = () => academicYears.find((year) => year.status === "active") || null
+
+  const getStats = () => ({
+    activeYear: getActiveAcademicYear()?.year || "Aucune",
+    totalYears: academicYears.length,
+    archivedYears: academicYears.filter((year) => year.status === "archived").length,
+    upcomingYears: academicYears.filter((year) => year.status === "upcoming").length,
+  })
 
   const handleCreateSchoolYear = async (newSchoolYear: Omit<AcademicYear, 'id' | 'created' | 'updated'>) => {
     const success = await createAcademicYear(newSchoolYear)

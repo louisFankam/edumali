@@ -8,19 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { useAuth } from '@/hooks/use-auth'
-import { useStudentsStats } from '@/hooks/use-students-stats'
-import { useAttendanceStats } from '@/hooks/use-attendance-stats'
-import { useFinancialStats } from '@/hooks/use-financial-stats'
-import { useExamStats } from '@/hooks/use-exam-stats'
 import { 
   GraduationCap,
   Users,
   FileText,
   Clock,
-  Settings,
   TrendingUp,
-  Calendar,
   DollarSign,
   ArrowUpRight,
   ArrowDownRight,
@@ -33,28 +26,52 @@ import Link from "next/link"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
 import { AlertsSection } from "@/components/alerts/alerts-section"
 
+// Données en dur pour le mode front-only
+const DASHBOARD_DATA = {
+  students: {
+    total: 450,
+    growth: 5.2,
+    newThisMonth: 12,
+    byClass: [
+      { name: "1ère Année", count: 45, capacity: 50, percentage: 90 },
+      { name: "2ème Année", count: 42, capacity: 50, percentage: 84 },
+      { name: "3ème Année", count: 48, capacity: 50, percentage: 96 },
+      { name: "4ème Année", count: 40, capacity: 50, percentage: 80 },
+    ]
+  },
+  attendance: {
+    overall: 92,
+    trend: 2.1,
+    byClass: [
+      { class: "1ère A", rate: 95, trend: 1.5 },
+      { class: "2ème A", rate: 88, trend: -0.5 },
+      { class: "3ème A", rate: 94, trend: 2.0 },
+    ]
+  },
+  financial: {
+    totalRevenue: 15000000,
+    growth: 8.5,
+    monthlyAverage: 1250000,
+    outstandingPayments: 2000000
+  },
+  exams: {
+    passRate: 78,
+    averageScore: 14.5,
+    topSubjects: [
+      { subject: "Mathématiques", average: 15.2, students: 120 },
+      { subject: "Français", average: 14.8, students: 120 },
+      { subject: "Sciences", average: 16.0, students: 45 },
+    ]
+  }
+}
+
 export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("month")
-  // const [isLoading, setIsLoading] = useState(false)
-  const { user, logout, isAuthenticated } = useAuth()
-
-  // écupération des statistiques
-  const { data: studentData, isLoading: studentsLoading, refetch: refetchStudents } = useStudentsStats()
-  const { data: attendanceData, isLoading: attendanceLoading, refetch: refetchAttendance } = useAttendanceStats()
-  const { data: financialData, isLoading: financialLoading, refetch: refetchFinancial } = useFinancialStats()
-  const { data: examData, isLoading: examLoading, refetch: refetchExam } = useExamStats()
-
-  if (!isAuthenticated) {
-    return null // La redirection est gérée dans le hook
-  }
-
-  const isLoading = studentsLoading || attendanceLoading || financialLoading || examLoading
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleRefresh = () => {
-    refetchStudents()
-    refetchAttendance()
-    refetchFinancial()
-    refetchExam()
+    setIsLoading(true)
+    setTimeout(() => setIsLoading(false), 500)
   }
 
   const formatCurrency = (amount: number) => {
@@ -65,23 +82,7 @@ export default function DashboardPage() {
     }).format(amount)
   }
 
-  /**const handleRefresh = () => {
-    setIsLoading(true)
-    setTimeout(() => setIsLoading(false), 1000)
-  }*/
-
-  if (!studentData || !attendanceData || !financialData || !examData) {
-    return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 md:ml-64 flex items-center justify-center">
-          <div className="text-center">
-            <p>Chargement des données...</p>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  const data = DASHBOARD_DATA
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -93,7 +94,6 @@ export default function DashboardPage() {
             <PageHeader
               title="Tableau de bord"
               description="Vue d'ensemble de l'établissement scolaire"
-              className=""
             >
               <NotificationBellMain />
             </PageHeader>
@@ -129,20 +129,14 @@ export default function DashboardPage() {
                 <GraduationCap className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{studentData.total}</div>
+                <div className="text-2xl font-bold">{data.students.total}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  {studentData.growth > 0 ? (
-                    <ArrowUpRight className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 text-red-500" />
-                  )}
-                  <span className={studentData.growth > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(studentData.growth)}%
-                  </span>
+                  <ArrowUpRight className="h-3 w-3 text-green-500" />
+                  <span className="text-green-500">{data.students.growth}%</span>
                   <span>vs mois dernier</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  +{studentData.newThisMonth} nouveaux ce mois
+                  +{data.students.newThisMonth} nouveaux ce mois
                 </p>
               </CardContent>
             </Card>
@@ -153,19 +147,13 @@ export default function DashboardPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{attendanceData.overall}%</div>
+                <div className="text-2xl font-bold">{data.attendance.overall}%</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  {attendanceData.trend > 0 ? (
-                    <ArrowUpRight className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 text-red-500" />
-                  )}
-                  <span className={attendanceData.trend > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(attendanceData.trend)}%
-                  </span>
+                  <ArrowUpRight className="h-3 w-3 text-green-500" />
+                  <span className="text-green-500">{data.attendance.trend}%</span>
                   <span>vs semaine dernière</span>
                 </div>
-                <Progress value={attendanceData.overall} className="mt-2" />
+                <Progress value={data.attendance.overall} className="mt-2" />
               </CardContent>
             </Card>
 
@@ -175,20 +163,14 @@ export default function DashboardPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(financialData.totalRevenue)}</div>
+                <div className="text-2xl font-bold">{formatCurrency(data.financial.totalRevenue)}</div>
                 <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  {financialData.growth > 0 ? (
-                    <ArrowUpRight className="h-3 w-3 text-green-500" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 text-red-500" />
-                  )}
-                  <span className={financialData.growth > 0 ? "text-green-500" : "text-red-500"}>
-                    {Math.abs(financialData.growth)}%
-                  </span>
+                  <ArrowUpRight className="h-3 w-3 text-green-500" />
+                  <span className="text-green-500">{data.financial.growth}%</span>
                   <span>vs mois dernier</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Moyenne: {formatCurrency(financialData.monthlyAverage)}/mois
+                  Moyenne: {formatCurrency(data.financial.monthlyAverage)}/mois
                 </p>
               </CardContent>
             </Card>
@@ -199,21 +181,19 @@ export default function DashboardPage() {
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{examData.passRate}%</div>
+                <div className="text-2xl font-bold">{data.exams.passRate}%</div>
                 <div className="text-xs text-muted-foreground">
-                  Moyenne: {examData.averageScore}/20
+                  Moyenne: {data.exams.averageScore}/20
                 </div>
-                <Progress value={examData.passRate} className="mt-2" />
+                <Progress value={data.exams.passRate} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {examData.topSubjects.length} matières évaluées
+                  {data.exams.topSubjects.length} matières évaluées
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Graphiques et analyses détaillées */}
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Répartition par classe */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -227,11 +207,11 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {studentData.byClass.map((classData) => (
-                    <div key={classData.class} className="flex items-center justify-between">
+                  {data.students.byClass.map((classData) => (
+                    <div key={classData.name} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-medium text-red-600">{classData.name}</span>
+                          <span className="text-sm font-medium text-red-600">{classData.name.substring(0,2)}</span>
                         </div>
                         <div>
                           <p className="text-sm font-medium">{classData.count}/{classData.capacity}</p>
@@ -248,125 +228,9 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Taux de présence par classe */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Présence par classe
-                  <Button variant="ghost" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Exporter
-                  </Button>
-                </CardTitle>
-                <CardDescription>Taux de présence hebdomadaire</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {attendanceData.byClass.map((classData) => (
-                    <div key={classData.class} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-medium text-blue-600">{classData.class}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{classData.rate}%</p>
-                          <div className="flex items-center space-x-1">
-                            {classData.trend > 0 ? (
-                              <ArrowUpRight className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <ArrowDownRight className="h-3 w-3 text-red-500" />
-                            )}
-                            <span className={`text-xs ${classData.trend > 0 ? "text-green-500" : "text-red-500"}`}>
-                              {Math.abs(classData.trend)}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <Progress value={classData.rate} className="w-20" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Meilleures matières */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Meilleures matières</CardTitle>
-                <CardDescription>Moyennes par matière</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {examData.topSubjects.map((subject, index) => (
-                    <div key={subject.subject} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-medium text-green-600">{index + 1}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{subject.subject}</p>
-                          <p className="text-xs text-muted-foreground">{subject.students} élèves</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{subject.average}/20</p>
-                        <Badge variant="secondary" className="text-xs">
-                          {subject.average >= 15 ? "Excellent" : subject.average >= 12 ? "Bon" : "Moyen"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Alertes et actions rapides */}
-            {/*<Card>
-              <CardHeader>
-                <CardTitle>Alertes importantes</CardTitle>
-                <CardDescription>Actions requises</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-red-800">Paiements en retard</p>
-                      <p className="text-xs text-red-600">{formatCurrency(financialData.outstandingPayments)} à récupérer</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="text-red-600 border-red-300">
-                      Voir
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-orange-800">Absences non justifiées</p>
-                      <p className="text-xs text-orange-600">3 élèves absents depuis 3+ jours</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="text-orange-600 border-orange-300">
-                      Voir
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-blue-800">Examens à venir</p>
-                      <p className="text-xs text-blue-600">2 examens cette semaine</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-300">
-                      Voir
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card> */}
             <AlertsSection />
           </div>
 
-          {/* Accès rapides */}
           <Card>
             <CardHeader>
               <CardTitle>Accès rapides</CardTitle>
@@ -374,69 +238,28 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Link href="/students/inscription">
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <GraduationCap className="h-5 w-5 text-blue-600" />
+                {[
+                  { title: "Inscription", sub: "Inscrire un élève", href: "/students/inscription", icon: GraduationCap, color: "bg-blue-100 text-blue-600" },
+                  { title: "Saisir notes", sub: "Entrer les notes", href: "/notes/examen", icon: FileText, color: "bg-purple-100 text-purple-600" },
+                  { title: "Emploi du temps", sub: "Gérer planning", href: "/planning/emploi-du-temps", icon: Clock, color: "bg-orange-100 text-orange-600" },
+                  { title: "Finances", sub: "Gérer paiements", href: "/finances", icon: DollarSign, color: "bg-green-100 text-green-600" },
+                ].map((item) => (
+                  <Link href={item.href} key={item.title}>
+                    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 ${item.color} rounded-lg flex items-center justify-center`}>
+                            <item.icon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">{item.sub}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">Nouvelle inscription</p>
-                          <p className="text-sm text-muted-foreground">Inscrire un élève</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                <Link href="/notes/examen">
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Saisir notes</p>
-                          <p className="text-sm text-muted-foreground">Entrer les notes</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                <Link href="/planning/emploi-du-temps">
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                          <Clock className="h-5 w-5 text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Emploi du temps</p>
-                          <p className="text-sm text-muted-foreground">Gérer planning</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                <Link href="/finances">
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                          <DollarSign className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Finances</p>
-                          <p className="text-sm text-muted-foreground">Gérer paiements</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
               </div>
             </CardContent>
           </Card>

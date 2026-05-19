@@ -1,6 +1,5 @@
 "use client"
 
-import { useDashboardAlerts } from "@/hooks/use-dashboard-alerts"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -42,8 +41,38 @@ const alertConfig = {
   }
 }
 
+// Données en dur pour le mode front-only
+const MOCK_ALERTS = [
+  {
+    id: "alert_1",
+    type: "payment" as const,
+    title: "Paiements en retard",
+    urgency: "high",
+    description: "12 élèves ont des mensualités impayées",
+    amount: 450000,
+    link: "/finances"
+  },
+  {
+    id: "alert_2",
+    type: "attendance" as const,
+    title: "Absences non justifiées",
+    urgency: "medium",
+    description: "3 élèves absents depuis 3+ jours",
+    link: "/students/presence"
+  },
+  {
+    id: "alert_3",
+    type: "exam" as const,
+    title: "Examens à venir",
+    urgency: "low",
+    description: "L'examen de Mathématiques commence demain",
+    link: "/planning/examens"
+  }
+]
+
 export function AlertsSection() {
-  const { alerts, isLoading } = useDashboardAlerts()
+  const alerts = MOCK_ALERTS
+  const isLoading = false
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -72,23 +101,6 @@ export function AlertsSection() {
                 <div className="h-8 w-16 bg-gray-300 rounded"></div>
               </div>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (alerts.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Alertes importantes</CardTitle>
-          <CardDescription>Aucune action requise pour le moment</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4 text-muted-foreground">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Tout est sous contrôle</p>
           </div>
         </CardContent>
       </Card>
@@ -137,7 +149,7 @@ export function AlertsSection() {
                   <Button 
                     size="sm" 
                     variant="outline"
-                    className={config.lightTextColor.replace('text-', 'text-') + ' border-current'}
+                    className="border-current"
                   >
                     Voir
                   </Button>

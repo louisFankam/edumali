@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useStudents } from "@/hooks/use-students"
 import { 
   Settings,
   Plus,
@@ -37,10 +36,6 @@ import {
   DollarSign
 } from "lucide-react"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
-import { useClasses } from "@/hooks/use-classes"
-import { useSubjects } from "@/hooks/use-subjects"
-import { useTeachers } from "@/hooks/use-teachers"
-import { useSchool } from "@/hooks/use-school"
 
 // Types pour les données
 interface Class {
@@ -146,7 +141,7 @@ function ClassModal({
   teacher_id: classData?.teacher_id || "",
   color: classData?.color || "bg-blue-100 text-blue-700",
   academic_year: classData?.academic_year || selectedAcademicYear?.id || "", // Utilisez academic_year ici
-  status: classData?.status !== undefined ? (classData.status === 'active' ? true : false) : true
+  status: classData?.status === "inactive" ? "inactive" : "active"
 })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -316,7 +311,7 @@ function ClassModal({
             <input
               type="checkbox"
               id="status"
-              checked={formData.status === 'active' || formData.status === true}
+              checked={formData.status === 'active'}
               onChange={(e) => setFormData({...formData, status: e.target.checked ? 'active' : 'inactive'})}
               className="rounded border-gray-300"
               disabled={isSubmitting}
@@ -363,7 +358,7 @@ function SubjectModal({
     coefficient: subjectData?.coefficient || 1,
     color: subjectData?.color || "bg-blue-100 text-blue-700",
     description: subjectData?.description || "",
-    status: subjectData?.status !== undefined ? (subjectData.status === 'active' ? true : false) : true
+    status: subjectData?.status === "inactive" ? "inactive" : "active"
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -496,7 +491,7 @@ function SubjectModal({
             <input
               type="checkbox"
               id="status"
-              checked={formData.status === 'active' || formData.status === true}
+              checked={formData.status === 'active'}
               onChange={(e) => setFormData({...formData, status: e.target.checked ? 'active' : 'inactive'})}
               className="rounded border-gray-300"
               disabled={isSubmitting}
@@ -812,10 +807,20 @@ function UserAccountModal({
 }
 
 export default function SettingsPage() {
-  const { classes, isLoading: classesLoading, fetchClasses, createClass, updateClass, deleteClass } = useClasses()
-  const { subjects, isLoading: subjectsLoading, fetchSubjects, createSubject, updateSubject, deleteSubject } = useSubjects()
-  const { teachers, isLoading: teachersLoading, fetchTeachers } = useTeachers()
-  const { schoolInfo, isLoading: schoolLoading, updateSchoolInfo, fetchSchoolInfo } = useSchool()
+  const [classes, setClasses] = useState<Class[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [teachers] = useState<Teacher[]>([])
+  const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>({
+    id: "local-school",
+    name: "École Primaire de Bamako",
+    address: "",
+    phone: "",
+    email: "",
+    director: "",
+    founded_year: new Date().getFullYear(),
+    logo: "",
+    website: "",
+  })
   
   const [showClassModal, setShowClassModal] = useState(false)
   const [showSubjectModal, setShowSubjectModal] = useState(false)
@@ -855,56 +860,35 @@ export default function SettingsPage() {
 
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null)
 
-  const fetchAcademicYears = async () => {
-    try {
-      const token = getAuthToken()
-      if (!token) throw new Error('Non authentifié')
-      
-      const response = await fetch(
-        getApiUrl('collections/edumali_academic_years/records?sort=-year'),
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      )
-
-      if (!response.ok) throw new Error('Erreur lors de la récupération des années académiques')
-
-      const result = await response.json()
-      const years: AcademicYear[] = result.items
-
-      setAcademicYears(years)
-      
-      // Sélectionner l'année active par défaut, ou la plus récente si aucune n'est active
-      const activeYear = years.find(year => year.status === 'active') || years[0] || null
-      setSelectedAcademicYear(activeYear)
-      
-    } catch (err) {
-      console.error('Erreur années académiques:', err)
+  const fetchAcademicYears = () => {
+    const currentYear = new Date().getFullYear()
+    const activeYear: AcademicYear = {
+      id: "local-academic-year",
+      year: `${currentYear}-${currentYear + 1}`,
+      start_date: `${currentYear}-09-01`,
+      end_date: `${currentYear + 1}-06-30`,
+      status: "active",
+      created: new Date().toISOString(),
+      updated: new Date().toISOString(),
     }
+
+    setAcademicYears([activeYear])
+    setSelectedAcademicYear(activeYear)
   }
 
   useEffect(() => {
-    // Charger les données au montage du composant
-    fetchClasses()
-    fetchSubjects()
-    fetchTeachers()
     fetchAcademicYears()
-    fetchSchoolInfo()
     setUserAccount(getUserAccount())
-  }, [fetchClasses, fetchSubjects, fetchTeachers])
+  }, [])
 
 
   useEffect(() => {
     console.log('School info state:', schoolInfo)
-    console.log('School loading state:', schoolLoading)
-    console.log('School error state:', Error)
     
     // Vérifier le cache localStorage
     const cached = localStorage.getItem('school_info')
     console.log('Cached school info:', cached ? JSON.parse(cached) : 'No cache')
-  }, [schoolInfo, schoolLoading, Error])
+  }, [schoolInfo])
 
   useEffect(() => {
     if (schoolInfo) {
@@ -913,7 +897,14 @@ export default function SettingsPage() {
   }, [schoolInfo])
 
   const handleAddClass = async (classData: any) => {
-    await createClass(classData)
+    const newClass: Class = {
+      ...classData,
+      id: crypto.randomUUID(),
+      current_students: 0,
+      teacher_name: teachers.find((teacher) => teacher.id === classData.teacher_id)?.full_name || "",
+      status: classData.status === true ? "active" : classData.status || "active",
+    }
+    setClasses((currentClasses) => [...currentClasses, newClass])
   }
 
   const handleEditClass = (classItem: Class) => {
@@ -923,21 +914,37 @@ export default function SettingsPage() {
 
   const handleSaveClass = async (classData: any) => {
     if (selectedClass) {
-      await updateClass(selectedClass.id, classData)
+      setClasses((currentClasses) =>
+        currentClasses.map((classItem) =>
+          classItem.id === selectedClass.id
+            ? {
+                ...classItem,
+                ...classData,
+                teacher_name: teachers.find((teacher) => teacher.id === classData.teacher_id)?.full_name || classItem.teacher_name,
+                status: classData.status === true ? "active" : classData.status || "inactive",
+              }
+            : classItem
+        )
+      )
     } else {
-      await createClass(classData)
+      await handleAddClass(classData)
     }
     setSelectedClass(null)
   }
 
   const handleDeleteClass = async (classId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette classe ?")) {
-      await deleteClass(classId)
+      setClasses((currentClasses) => currentClasses.filter((classItem) => classItem.id !== classId))
     }
   }
 
   const handleAddSubject = async (subjectData: any) => {
-    await createSubject(subjectData)
+    const newSubject: Subject = {
+      ...subjectData,
+      id: crypto.randomUUID(),
+      status: subjectData.status || "active",
+    }
+    setSubjects((currentSubjects) => [...currentSubjects, newSubject])
   }
 
   const handleEditSubject = (subjectItem: Subject) => {
@@ -947,16 +954,26 @@ export default function SettingsPage() {
 
   const handleSaveSubject = async (subjectData: any) => {
     if (selectedSubject) {
-      await updateSubject(selectedSubject.id, subjectData)
+      setSubjects((currentSubjects) =>
+        currentSubjects.map((subject) =>
+          subject.id === selectedSubject.id
+            ? {
+                ...subject,
+                ...subjectData,
+                status: subjectData.status || "inactive",
+              }
+            : subject
+        )
+      )
     } else {
-      await createSubject(subjectData)
+      await handleAddSubject(subjectData)
     }
     setSelectedSubject(null)
   }
 
   const handleDeleteSubject = async (subjectId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette matière ?")) {
-      await deleteSubject(subjectId)
+      setSubjects((currentSubjects) => currentSubjects.filter((subject) => subject.id !== subjectId))
     }
   }
 
@@ -965,9 +982,9 @@ export default function SettingsPage() {
     
     setIsSavingSchool(true)
     try {
-      await updateSchoolInfo(schoolFormData)
       // Mettre à jour le localStorage
       const updatedSchoolInfo = { ...schoolInfo, ...schoolFormData }
+      setSchoolInfo(updatedSchoolInfo)
       localStorage.setItem('school_info', JSON.stringify(updatedSchoolInfo))
     } catch (error) {
       console.error('Erreur sauvegarde école:', error)
@@ -978,45 +995,21 @@ export default function SettingsPage() {
 
   const handleSaveUserAccount = async (userData: any) => {
     try {
-      const token = getAuthToken()
-      if (!token) throw new Error('Non authentifié')
-
-      // Préparer les données à envoyer
-      const dataToSend: any = {
-        full_name: userData.full_name,
-        email: userData.email,
-        phone: userData.phone || ''
+      const updatedUser: UserAccount = {
+        ...userAccount,
+        ...userData,
+        id: userData.id || userAccount?.id || crypto.randomUUID(),
+        status: userData.status || userAccount?.status || "active",
+        role: userData.role || userAccount?.role || "admin",
+        username: userData.username || userData.email,
+        last_login: userAccount?.last_login || "",
+        avatar: userAccount?.avatar || "",
       }
-
-      // Ajouter les champs de mot de passe seulement si un nouveau mot de passe est fourni
-      if (userData.password) {
-        dataToSend.oldPassword = userData.oldPassword || ''
-        dataToSend.password = userData.password
-        dataToSend.passwordConfirm = userData.passwordConfirm
-      }
-
-      const response = await fetch(
-        getApiUrl(`collections/users/records/${userData.id}`),
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(dataToSend)
-        }
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Erreur lors de la modification')
-      }
-
-      const updatedUser = await response.json()
       setUserAccount(updatedUser)
       
       // Mettre à jour le localStorage
-      const currentAuthData = JSON.parse(authData)
+      const authData = localStorage.getItem('pocketbase_auth')
+      const currentAuthData = authData ? JSON.parse(authData) : { record: {} }
       currentAuthData.record = { ...currentAuthData.record, ...updatedUser }
       localStorage.setItem('pocketbase_auth', JSON.stringify(currentAuthData))
     
@@ -1026,7 +1019,7 @@ export default function SettingsPage() {
     }
   }
 
-  const isLoading = classesLoading || subjectsLoading || teachersLoading || schoolLoading
+  const isLoading = false
 
   if (isLoading) {
     return (
