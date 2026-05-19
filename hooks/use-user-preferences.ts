@@ -60,6 +60,7 @@ export function useUserPreferences() {
 
   const resetPreferences = useCallback(async () => {
     setPreferences(defaultPreferences)
+    return true
   }, [])
 
   return {

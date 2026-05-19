@@ -40,6 +40,8 @@
   --sidebar-ring: rgba(220, 38, 38, 0.5);
   
   /* Variables pour la personnalisation */
+  --font-dm-sans: "Inter", "Segoe UI", Arial, sans-serif;
+  --font-space-grotesk: "Segoe UI", Arial, sans-serif;
   --font-size: 16px;
   --font-family: 'Inter', sans-serif;
 }
@@ -79,6 +81,8 @@
   --sidebar-ring: rgba(220, 38, 38, 0.5);
   
   /* Variables pour la personnalisation */
+  --font-dm-sans: "Inter", "Segoe UI", Arial, sans-serif;
+  --font-space-grotesk: "Segoe UI", Arial, sans-serif;
   --font-size: 16px;
   --font-family: 'Inter', sans-serif;
 }
@@ -262,14 +266,6 @@
   [data-no-animations="true"] * {
     transition: none !important;
     animation: none !important;
-    transform: none !important;
-  }
-  
-  [data-no-animations="true"] .hover\\:scale-105:hover {
-    transform: none !important;
-  }
-  
-  [data-no-animations="true"] .hover\\:scale-110:hover {
     transform: none !important;
   }
   

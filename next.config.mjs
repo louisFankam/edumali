@@ -6,6 +6,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  webpack: (config) => {
+    config.stats = "errors-warnings"
+    return config
+  },
   images: {
     unoptimized: true,
   },
