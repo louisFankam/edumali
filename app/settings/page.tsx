@@ -838,7 +838,7 @@ export default function SettingsPage() {
 
   // Récupérer les données utilisateur depuis localStorage
   const getUserAccount = (): UserAccount | null => {
-    const authData = localStorage.getItem('pocketbase_auth')
+    const authData = localStorage.getItem('edumali_auth')
     if (!authData) return null
     try {
       const { record } = JSON.parse(authData)
@@ -1008,10 +1008,10 @@ export default function SettingsPage() {
       setUserAccount(updatedUser)
       
       // Mettre à jour le localStorage
-      const authData = localStorage.getItem('pocketbase_auth')
+      const authData = localStorage.getItem('edumali_auth')
       const currentAuthData = authData ? JSON.parse(authData) : { record: {} }
       currentAuthData.record = { ...currentAuthData.record, ...updatedUser }
-      localStorage.setItem('pocketbase_auth', JSON.stringify(currentAuthData))
+      localStorage.setItem('edumali_auth', JSON.stringify(currentAuthData))
     
     } catch (error) {
       console.error('Erreur modification utilisateur:', error)

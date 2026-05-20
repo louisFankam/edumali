@@ -12,8 +12,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DesignConfigurator } from "@/components/documents/design-configurator"
-import { documentGenerator } from "@/lib/document-generator"
-import { documentStorage } from "@/lib/document-storage"
 import { 
   FileText,
   Download,
@@ -37,6 +35,40 @@ const documentTypes = {
   emploi_temps: { label: "Emplois du temps", icon: Calendar, color: "bg-green-100 text-green-800" },
   rapport: { label: "Rapports", icon: FileText, color: "bg-purple-100 text-purple-800" },
   certificat: { label: "Certificats", icon: FileText, color: "bg-orange-100 text-orange-800" }
+}
+
+const DOCUMENT_STORAGE_KEY = "edumali_documents"
+
+const readDocuments = () => {
+  if (typeof window === "undefined") return []
+
+  try {
+    return JSON.parse(localStorage.getItem(DOCUMENT_STORAGE_KEY) || "[]")
+  } catch {
+    return []
+  }
+}
+
+const writeDocuments = (documents) => {
+  localStorage.setItem(DOCUMENT_STORAGE_KEY, JSON.stringify(documents))
+}
+
+const getDocumentStats = (documents) => ({
+  total: documents.length,
+  bulletins: documents.filter((doc) => doc.type === "bulletin").length,
+  emplois_temps: documents.filter((doc) => doc.type === "emploi_temps").length,
+  rapports: documents.filter((doc) => doc.type === "rapport").length,
+  certificats: documents.filter((doc) => doc.type === "certificat").length,
+})
+
+const downloadJson = (filename, payload) => {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 export default function DocumentsPage() {
@@ -63,8 +95,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     const loadStats = async () => {
-      const documentStats = await documentGenerator.getDocumentStats()
-      setStats(documentStats)
+      setStats(getDocumentStats(documents))
     }
     loadStats()
   }, [documents])
@@ -72,7 +103,7 @@ export default function DocumentsPage() {
   const loadDocuments = async () => {
     setIsLoading(true)
     try {
-      const docs = await documentGenerator.getAllDocuments()
+      const docs = readDocuments()
       setDocuments(docs)
     } catch (error) {
       console.error('Erreur lors du chargement des documents:', error)
@@ -90,7 +121,9 @@ export default function DocumentsPage() {
 
   const handleDownload = async (documentId) => {
     try {
-      await documentGenerator.downloadDocument(documentId)
+      const documentToDownload = documents.find((doc) => doc.id === documentId)
+      if (!documentToDownload) throw new Error("Document introuvable")
+      downloadJson(`${documentToDownload.name || "document"}.json`, documentToDownload)
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error)
       alert('Erreur lors du téléchargement du document')
@@ -100,7 +133,9 @@ export default function DocumentsPage() {
   const handleDelete = async (documentId) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
       try {
-        await documentGenerator.deleteDocument(documentId)
+        const nextDocuments = documents.filter((doc) => doc.id !== documentId)
+        writeDocuments(nextDocuments)
+        setDocuments(nextDocuments)
         loadDocuments()
       } catch (error) {
         console.error('Erreur lors de la suppression:', error)
@@ -120,7 +155,7 @@ export default function DocumentsPage() {
 
   const handleExportMetadata = async () => {
     try {
-      await documentStorage.exportMetadata()
+      downloadJson("edumali-documents-metadata.json", documents)
     } catch (error) {
       console.error('Erreur lors de l\'export:', error)
       alert('Erreur lors de l\'export des métadonnées')
@@ -131,7 +166,13 @@ export default function DocumentsPage() {
     const file = event.target.files[0]
     if (file) {
       try {
-        const count = await documentStorage.importMetadata(file)
+        const text = await file.text()
+        const importedDocuments = JSON.parse(text)
+        if (!Array.isArray(importedDocuments)) {
+          throw new Error("Format de métadonnées invalide")
+        }
+        writeDocuments(importedDocuments)
+        const count = importedDocuments.length
         alert(`${count} documents importés avec succès`)
         loadDocuments()
       } catch (error) {
@@ -144,7 +185,10 @@ export default function DocumentsPage() {
   const handleCleanup = async () => {
     if (confirm("Voulez-vous nettoyer les métadonnées orphelines ?")) {
       try {
-        const count = await documentStorage.cleanupOrphanedMetadata()
+        const uniqueDocuments = Array.from(new Map(documents.map((doc) => [doc.id, doc])).values())
+        writeDocuments(uniqueDocuments)
+        setDocuments(uniqueDocuments)
+        const count = documents.length - uniqueDocuments.length
         alert(`${count} métadonnées orphelines supprimées`)
         loadDocuments()
       } catch (error) {

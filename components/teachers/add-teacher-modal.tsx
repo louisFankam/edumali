@@ -13,7 +13,6 @@ import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { getCurrentUserId } from "@/lib/pocketbase"
 
 interface Subject {
   id: string
@@ -62,7 +61,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
     salary: 150000,
     status: "active",
     photo: "",
-    user_id: getCurrentUserId() || "system",
+    user_id: "system",
     gender: "Masculin",
     contrat: "mensuel",
     speciality: []
@@ -88,7 +87,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
         salary: 150000,
         status: "active",
         photo: "",
-        user_id: getCurrentUserId() || "system",
+        user_id: "system",
         gender: "Masculin",
         contrat: "mensuel",
         speciality: []

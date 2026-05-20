@@ -1,155 +1,157 @@
-# 📚 EduMali - Système de Gestion Scolaire
+# EduMali
 
-## 🎯 Vue d'ensemble
+Application de gestion scolaire avec Next.js (App Router), TypeScript, Drizzle ORM et SQLite.
 
-**EduMali** est une application web moderne de gestion scolaire développée avec Next.js et React, conçue pour simplifier l'administration d'un établissement scolaire.
+## État actuel du backend (audit rapide)
 
-## ✨ Fonctionnalités principales
+### Ce qui est déjà bien
+- Base SQLite branchée via Drizzle dans `lib/db.ts`.
+- Schéma Drizzle centralisé dans `lib/models/schema.ts`.
+- `drizzle.config.ts` présent et correctement orienté vers SQLite.
+- TypeScript strict activé.
 
-### 🏠 Tableau de bord
-- Statistiques en temps réel
-- Accès rapide aux sections principales
-- Activité récente
-- Notifications importantes
+### Statut après implémentation
+- Auth implémentée côté serveur (`app/api/auth/*`) avec validation Zod.
+- Session par cookie `httpOnly` signé (HMAC SHA-256).
+- Séparation en couches active: `controller -> service -> repository -> models`.
+- Migration versionnée créée dans `drizzle/` et appliquée sur SQLite.
+- Seed automatique de l’utilisateur unique au démarrage si la table `users` est vide.
 
-### 👥 Gestion des élèves
-- Inscription et profils complets
-- Informations détaillées (personnelles, familiales, académiques)
-- Photos de profil
-- Statut d'inscription (actif/inactif)
+## Architecture backend recommandée (en gardant `models` et `controller`)
 
-### 👨‍🏫 Gestion des professeurs
-- Profils enseignants détaillés
-- Matières enseignées
-- Tarifs et disponibilités
-- Statut d'emploi
+Tu veux garder les noms `models` et `controller`: très bien. On structure autour de ça.
 
-### 📊 Système de notes
-- Gestion des examens personnalisables
-- Saisie des notes (échelle 0-20)
-- Coefficients par matière
-- Calcul automatique des moyennes
-- Export Excel
+### Arborescence cible
 
-### 📋 Bulletins scolaires
-- Génération automatique depuis les notes
-- Templates personnalisables
-- Appréciations des professeurs
-- Mentions automatiques
-- Export PDF
-
-### 📅 Gestion des présences
-- Suivi quotidien des présences/absences
-- Calendrier interactif
-- Statistiques automatiques
-- Justificatifs
-- Notifications d'absences
-
-### ⏰ Planning et emploi du temps
-- Emploi du temps par classe
-- Interface drag & drop
-- Créneaux personnalisables
-- Gestion des conflits
-- Planning d'examens
-- Export Excel
-
-### 💰 Gestion financière
-- Suivi des paiements
-- Échéances
-- Rapports financiers
-- Alertes de retard
-- Export des données
-
-### 🔔 Système de notifications
-- Notifications en temps réel
-- Catégorisation (absences, paiements, examens)
-- Système de priorité
-- Pagination
-- Actions rapides
-
-### ⚙️ Paramètres et configuration
-- Gestion des classes
-- Gestion des matières
-- Attribution des matières aux classes
-- Informations de l'école
-- Gestion du compte utilisateur
-
-### 🎨 Personnalisation
-- Thèmes (clair/sombre/auto)
-- Couleurs personnalisables
-- Paramètres d'affichage
-- Préférences utilisateur
-
-## 🛠️ Technologies utilisées
-
-- **Next.js 14** : Framework React avec App Router
-- **React 18** : Bibliothèque UI avec hooks modernes
-- **TypeScript** : Typage statique
-- **Tailwind CSS** : Framework CSS utilitaire
-- **shadcn/ui** : Composants UI modernes
-- **Lucide React** : Icônes
-- **date-fns** : Manipulation des dates
-
-## 🚀 Installation
-
-```bash
-# Cloner le repository
-git clone [url-du-repo]
-cd school-management-mali
-
-# Installer les dépendances
-npm install
-
-# Démarrer le serveur
-npm run dev
+```txt
+app/
+  (auth)/
+  api/
+  ...
+lib/
+  db.ts
+  models/
+    schema.ts
+    user.model.ts
+    ...
+  controller/
+    auth.controller.ts
+    student.controller.ts
+    ...
+  services/
+    auth.service.ts
+    student.service.ts
+    ...
+  repositories/
+    user.repository.ts
+    student.repository.ts
+    ...
+  validations/
+    auth.schema.ts
+    student.schema.ts
+    ...
+  guards/
+    auth.guard.ts
+    role.guard.ts
+  auth/
+    session.ts
+    password.ts
+drizzle/
+  0000_init.sql
+  meta/
 ```
 
-## 📖 Guide d'utilisation
+### Rôles des couches
+- `models/`: définition des tables Drizzle + types inférés.
+- `repositories/`: accès DB pur (requêtes Drizzle).
+- `services/`: logique métier, orchestration, transactions.
+- `controller/`: point d’entrée backend (Server Actions / Route Handlers), validation + authz + appel service.
+- `validations/`: schémas Zod pour toutes les entrées externes.
+- `guards/`: contrôle d’accès (session + rôles).
 
-### Connexion
-- URL : http://localhost:3000
-- Identifiants : admin / admin123
+### Flux recommandé
+`Client Component` -> `Server Action` (ou `app/api/.../route.ts`) -> `controller` -> `service` -> `repository` -> `models` -> SQLite
 
-### Gestion des élèves
-1. Ajouter un élève : Bouton "Nouvel élève"
-2. Modifier : Icône d'édition
-3. Présences : Section "Présences"
+## Sécurité backend à appliquer maintenant
 
-### Système de notes
-1. Créer un examen : "Notes > Examen"
-2. Saisir les notes : Interface 0-20
-3. Bulletins : "Notes > Bulletin"
+- Validation Zod systématique dans chaque `controller`.
+- Contrôle de session/role avant chaque mutation.
+- Hash de mot de passe (`argon2` recommandé) + comparaison côté serveur uniquement.
+- Cookies `httpOnly`, `secure`, `sameSite=lax|strict`.
+- Zéro secret côté client (`NEXT_PUBLIC_*` uniquement pour valeurs publiques).
+- Requêtes Drizzle paramétrées uniquement (éviter SQL brut concaténé).
 
-### Planning
-1. Emploi du temps : Drag & drop
-2. Examens : Gestion des salles
-3. Export : Format Excel
+## Migration SQLite avec Drizzle (quand tu modifies un model)
 
-## 📱 Responsive Design
+## 1) Modifier le schéma
+- Éditer `lib/models/schema.ts` (ajout/suppression/rename de colonne/table).
 
-L'application s'adapte à tous les écrans :
-- Desktop : Interface complète
-- Tablet : Adaptation des grilles
-- Mobile : Interface optimisée
+## 2) Générer une migration SQL versionnée
 
-## 🔒 Sécurité
-
-- Authentification sécurisée
-- Validation des données
-- Protection des routes
-
-## 🚀 Déploiement
-
-### Vercel (Recommandé)
 ```bash
-npm i -g vercel
-vercel
+pnpm drizzle-kit generate
 ```
 
-## 📄 Licence
+Effet:
+- Crée des fichiers dans `drizzle/` (SQL + metadata).
+- Ces fichiers doivent être commités dans Git.
 
-Licence MIT
+## 3) Appliquer la migration à SQLite
 
----
+```bash
+pnpm drizzle-kit migrate
+```
 
-**EduMali** - Simplifiez la gestion de votre établissement scolaire ! 🎓
+Effet:
+- Exécute les migrations SQL sur `edumali_db/data.db`.
+- Met à jour la structure réelle de la base.
+
+## 4) Vérifier
+
+```bash
+pnpm drizzle-kit studio
+```
+
+Tu vérifies les tables/colonnes et les données après migration.
+
+## Important: `generate + migrate` vs `push`
+
+- `generate + migrate` (recommandé): historique versionné, reproductible, propre pour équipe/prod.
+- `push` (à éviter en prod): applique directement les changements sans historique SQL propre.
+
+## Cas concret: modification d’un model
+
+Exemple: tu ajoutes `role` dans `users`.
+
+1. Modifier `lib/models/schema.ts`.
+2. `pnpm drizzle-kit generate` -> nouveau fichier SQL créé.
+3. `pnpm drizzle-kit migrate` -> SQLite est alignée.
+4. Adapter `validations/`, `controller/`, `services/` pour utiliser le nouveau champ.
+
+## Conseils pratiques pour éviter les erreurs de migration
+
+- Toujours faire un backup de `edumali_db/data.db` avant une migration sensible.
+- Ne jamais éditer manuellement une migration déjà appliquée.
+- Créer une nouvelle migration corrective si nécessaire.
+- En CI/CD: exécuter `drizzle-kit migrate` au déploiement backend.
+
+## Commandes utiles à ajouter dans `package.json`
+
+```json
+{
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  }
+}
+```
+
+## Conclusion architecture
+
+Ta base est bonne pour démarrer, mais le backend n’est pas encore “production-ready”.  
+Priorité immédiate:
+1. Implémenter auth réelle côté serveur (remplacer le mock de `use-auth`).
+2. Mettre en place `validations` Zod effectives.
+3. Introduire `services` + `repositories` tout en gardant `models` et `controller`.
+4. Démarrer le versioning des migrations Drizzle (`drizzle/`).

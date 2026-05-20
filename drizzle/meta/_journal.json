@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1779273419915,
+      "tag": "0000_big_forge",
+      "breakpoints": true
+    }
+  ]
+}

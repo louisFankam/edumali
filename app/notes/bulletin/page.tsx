@@ -24,7 +24,16 @@ import {
   Printer,
   Settings
 } from "lucide-react"
-import { documentGenerator } from "@/lib/document-generator"
+
+const downloadJson = (filename, payload) => {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 // Types pour les données
 interface Student {
@@ -476,12 +485,12 @@ export default function BulletinPage() {
         accentColor: '#f59e0b'
       }
 
-      for (const reportCard of reportCards) {
-        const student = mockStudents.find(s => s.id === reportCard.studentId)
-        if (student) {
-          await documentGenerator.generateBulletin(student, reportCard, designConfig)
-        }
-      }
+      const bulletins = reportCards.map((reportCard) => ({
+        student: mockStudents.find(s => s.id === reportCard.studentId),
+        reportCard,
+        designConfig,
+      }))
+      downloadJson("bulletins-edumali.json", bulletins)
       
       alert("Bulletins générés avec succès!")
     } catch (error) {
@@ -499,12 +508,12 @@ export default function BulletinPage() {
         accentColor: '#f59e0b'
       }
 
-      for (const reportCard of reportCards) {
-        const student = mockStudents.find(s => s.id === reportCard.studentId)
-        if (student) {
-          await documentGenerator.generateBulletin(student, reportCard, designConfig)
-        }
-      }
+      const bulletins = reportCards.map((reportCard) => ({
+        student: mockStudents.find(s => s.id === reportCard.studentId),
+        reportCard,
+        designConfig,
+      }))
+      downloadJson("export-bulletins-edumali.json", bulletins)
       
       alert("Export PDF de tous les bulletins généré!")
     } catch (error) {
@@ -740,7 +749,6 @@ export default function BulletinPage() {
     </div>
   )
 }
-
 
 
 

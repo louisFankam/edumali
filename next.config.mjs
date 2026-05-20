@@ -6,6 +6,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ["better-sqlite3"],
   webpack: (config) => {
     config.stats = "errors-warnings"
     return config

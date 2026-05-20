@@ -3,36 +3,60 @@
 import { useState, useEffect } from "react"
 
 interface User {
-  id: string
+  id: number
   email: string
-  full_name: string
-  role: string
+  fullName: string
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>({
-    id: "admin_1",
-    email: "admin@edumali.ml",
-    full_name: "Administrateur",
-    role: "admin"
-  })
-  const [isAuthenticated, setIsAuthenticated] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const logout = () => {
-    console.log("Logout mocked")
-    setIsAuthenticated(false)
-    setUser(null)
-  }
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const response = await fetch("/api/auth/session", { cache: "no-store" })
+        if (!response.ok) {
+          setIsAuthenticated(false)
+          setUser(null)
+          return
+        }
 
-  const login = async (email: string, _password: string) => {
-    const nextUser = {
-      id: "admin_1",
-      email,
-      full_name: "Administrateur",
-      role: "admin",
+        const data = await response.json()
+        setUser(data.user)
+        setIsAuthenticated(true)
+      } catch {
+        setIsAuthenticated(false)
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    setUser(nextUser)
+    fetchSession()
+  }, [])
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    setIsAuthenticated(false)
+    setUser(null)
+    window.location.href = "/login"
+  }
+
+  const login = async (email: string, password: string, rememberMe = false) => {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, rememberMe }),
+    })
+
+    const data = await response.json()
+    if (!response.ok || !data.ok) {
+      throw new Error(data?.message ?? "Email ou mot de passe incorrect")
+    }
+
+    setUser(data.user)
     setIsAuthenticated(true)
   }
 
@@ -41,6 +65,6 @@ export function useAuth() {
     isAuthenticated,
     login,
     logout,
-    isLoading: false
+    isLoading
   }
 }

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { 
+import {
   Eye,
   EyeOff,
   Lock,
@@ -28,15 +28,28 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  
+  const [dbStatus, setDbStatus] = useState<"checking" | "success" | "error">("checking")
+
   const router = useRouter()
   const { login, isAuthenticated, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard')
+      router.push("/dashboard")
     }
   }, [isAuthenticated, router])
+
+  useEffect(() => {
+    const checkDb = async () => {
+      try {
+        const response = await fetch("/api/health/db", { cache: "no-store" })
+        setDbStatus(response.ok ? "success" : "error")
+      } catch {
+        setDbStatus("error")
+      }
+    }
+    checkDb()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -44,7 +57,7 @@ export default function LoginPage() {
     setSuccess("")
 
     try {
-      await login(formData.email, formData.password)
+      await login(formData.email, formData.password, formData.rememberMe)
       setSuccess("Connexion réussie ! Redirection...")
       // La redirection est gérée par le useEffect
     } catch (err: any) {
@@ -88,16 +101,29 @@ export default function LoginPage() {
               Connectez-vous avec votre email et mot de passe
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
-            {/* Messages d'erreur/succès */}
+            {dbStatus === "success" && (
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>Connexion base de donnees: SUCCESS</AlertDescription>
+              </Alert>
+            )}
+
+            {dbStatus === "error" && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Connexion base de donnees: ECHEC</AlertDescription>
+              </Alert>
+            )}
+
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             {success && (
               <Alert className="border-green-200 bg-green-50 text-green-800">
                 <CheckCircle className="h-4 w-4" />
@@ -166,7 +192,7 @@ export default function LoginPage() {
                 <Checkbox
                   id="rememberMe"
                   checked={formData.rememberMe}
-                  onCheckedChange={(checked) => handleInputChange("rememberMe", checked)}
+                  onCheckedChange={(checked) => handleInputChange("rememberMe", checked === true)}
                   disabled={authLoading}
                 />
                 <Label
@@ -201,7 +227,7 @@ export default function LoginPage() {
               </h3>
               <div className="text-xs text-gray-600 space-y-1">
                 <p><strong>Email :</strong> admin@edumali.ml</p>
-                <p><strong>Mot de passe :</strong> admin123</p>
+                <p><strong>Mot de passe :</strong> admin12345</p>
               </div>
             </div>
 

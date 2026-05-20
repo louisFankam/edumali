@@ -24,7 +24,16 @@ import {
   CheckCircle,
   XCircle
 } from "lucide-react"
-import { documentGenerator } from "@/lib/document-generator"
+
+const downloadJson = (filename, payload) => {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 // Types pour les données
 interface Subject {
@@ -871,7 +880,7 @@ export default function EmploiDuTempsPage() {
         accentColor: '#f59e0b'
       }
 
-      documentGenerator.generateSchedule(scheduleData, designConfig)
+      downloadJson(`emploi-du-temps-${selectedClass}.json`, { scheduleData, designConfig })
       alert("Emploi du temps exporté en Excel avec succès!")
     } catch (error) {
       console.error("Erreur lors de l'export:", error)
@@ -1072,5 +1081,4 @@ export default function EmploiDuTempsPage() {
     </div>
   )
 }
-
 
