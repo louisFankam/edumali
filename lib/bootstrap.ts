@@ -47,6 +47,59 @@ async function ensureAuthSchema(db: any) {
   await db.run(sql`DROP TABLE users`);
   await db.run(sql`ALTER TABLE users_auth_migration RENAME TO users`);
   await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS classes (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name text NOT NULL UNIQUE,
+      level integer,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  await db.run(sql`
+    INSERT OR IGNORE INTO classes (id, name, level) VALUES
+      (1, '1ère Année', 1),
+      (2, '2ème Année', 2),
+      (3, '3ème Année', 3),
+      (4, '4ème Année', 4),
+      (5, '5ème Année', 5),
+      (6, '6ème Année', 6)
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS students (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      first_name text NOT NULL,
+      last_name text NOT NULL,
+      gender text NOT NULL CHECK(gender IN ('Masculin', 'Féminin')),
+      birth_date text NOT NULL,
+      nationality text,
+      photo text,
+      parent_name text NOT NULL,
+      parent_phone text NOT NULL,
+      address text,
+      class_id integer NOT NULL REFERENCES classes(id),
+      registration_date text NOT NULL,
+      status text NOT NULL DEFAULT 'Actif' CHECK(status IN ('Actif', 'Inactif')),
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  const countRow = db.get(sql`SELECT COUNT(*) as count FROM students`) as { count: number } | undefined;
+  const studentCount = countRow?.count ?? 0;
+
+  if (studentCount === 0) {
+    await db.run(sql`
+      INSERT INTO students (first_name, last_name, gender, birth_date, nationality, parent_name, parent_phone, class_id, registration_date, status)
+      VALUES
+        ('Amadou', 'Diallo', 'Masculin', '2015-05-12', 'Malienne', 'Moussa Diallo', '70123456', 1, '2024-09-01', 'Actif'),
+        ('Fatoumata', 'Traoré', 'Féminin', '2015-08-22', 'Malienne', 'Oumar Traoré', '66123456', 1, '2024-09-05', 'Actif')
+    `);
+    console.log("[EduMali] 2 élèves de démonstration créés");
+  }
 }
 
 export async function initializeApp() {
