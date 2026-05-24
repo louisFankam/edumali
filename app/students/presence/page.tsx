@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
@@ -61,10 +61,7 @@ export default function AttendancePage() {
   }, [filteredStudents, attendance])
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Présences Élèves" description="Suivi quotidien des absences et retards">
             <SchoolYearSelector />
           </PageHeader>
@@ -171,9 +168,7 @@ export default function AttendancePage() {
               <Card><CardContent className="p-8 text-center text-muted-foreground">Historique simulation</CardContent></Card>
             </TabsContent>
           </Tabs>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }
 

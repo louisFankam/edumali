@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -217,11 +217,7 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title="Gestion des Documents"
             description="Gérez et personnalisez tous vos documents générés"
@@ -447,8 +443,7 @@ export default function DocumentsPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </main>
+
 
       {/* Modal de configuration du design global */}
       <Dialog open={showDesignModal} onOpenChange={setShowDesignModal}>
@@ -473,34 +468,13 @@ export default function DocumentsPage() {
           <DialogHeader>
             <DialogTitle>Prévisualisation du document</DialogTitle>
             <DialogDescription>
-              {selectedDocument?.name}
+              Aperçu du document avant téléchargement
             </DialogDescription>
           </DialogHeader>
           {selectedDocument && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <strong>Type:</strong> {documentTypes[selectedDocument.type]?.label}
-                </div>
-                <div>
-                  <strong>Généré pour:</strong> {selectedDocument.generated_for}
-                </div>
-                <div>
-                  <strong>Taille:</strong> {formatFileSize(selectedDocument.file_size)}
-                </div>
-                <div>
-                  <strong>Date:</strong> {formatDate(selectedDocument.created_at)}
-                </div>
-              </div>
-              
-              <div className="border rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Configuration du design</h4>
-                <pre className="text-xs bg-muted p-2 rounded overflow-auto">
-                  {JSON.stringify(selectedDocument.design_config, null, 2)}
-                </pre>
-              </div>
-              
-              <div className="flex justify-end space-x-2">
+              <DocumentPreview document={selectedDocument} designConfig={designConfig} />
+              <div className="flex justify-end space-x-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setSelectedDocument(null)}>
                   Fermer
                 </Button>
@@ -513,6 +487,6 @@ export default function DocumentsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </AppLayout>
   )
 }

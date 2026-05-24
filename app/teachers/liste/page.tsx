@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -147,11 +147,7 @@ export default function TeachersListPage() {
   }, [teachers])
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion des Professeurs" description="Gérer le personnel enseignant et administratif">
             <div className="flex items-center space-x-2">
               <NotificationBellMain />
@@ -262,9 +258,7 @@ export default function TeachersListPage() {
               />
             </>
           )}
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }
 

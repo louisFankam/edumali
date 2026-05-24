@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -665,11 +665,7 @@ export default function ExamPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title="Gestion des Examens"
             description="Créer des examens et saisir les notes des élèves"
@@ -816,8 +812,7 @@ export default function ExamPage() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </main>
+
 
       {/* Modals */}
       <CreateExamModal
@@ -844,6 +839,6 @@ export default function ExamPage() {
           isSaving={isSavingGrades}
         />
       )}
-    </div>
+      </AppLayout>
   )
 }

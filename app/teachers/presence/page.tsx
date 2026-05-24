@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
@@ -67,10 +67,7 @@ export default function TeacherAttendancePage() {
   }, [teachersAttendance])
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Présences des Professeurs" description="Suivre les présences quotidiennes du personnel">
             <SchoolYearSelector />
           </PageHeader>
@@ -215,9 +212,7 @@ export default function TeacherAttendancePage() {
               </div>
             </DialogContent>
           </Dialog>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }
 

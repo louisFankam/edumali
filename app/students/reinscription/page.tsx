@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -47,10 +47,7 @@ export default function ReinscriptionPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Réinscription" description="Réinscrire les anciens élèves pour la nouvelle année" />
 
           <Card>
@@ -109,8 +106,6 @@ export default function ReinscriptionPage() {
               </Table>
             </CardContent>
           </Card>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

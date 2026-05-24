@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { SalariesTable } from "@/components/salaries/salaries-table"
@@ -194,11 +194,7 @@ export default function SalariesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion des Salaires" description="Gérer les salaires et paiements du personnel">
             <div className="flex items-center space-x-2">
               <SchoolYearSelector />
@@ -413,8 +409,6 @@ export default function SalariesPage() {
             teacher={selectedTeacher}
             history={paymentHistory}
           />
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

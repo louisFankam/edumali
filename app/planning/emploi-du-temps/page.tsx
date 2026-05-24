@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -273,8 +273,8 @@ function ScheduleGrid({ schedule, onUpdateSchedule, onSubjectDrop, onEditSlot, o
           >
             ×
           </button>
-        </div>
-      )
+          </div>
+    )
     }
 
     return (
@@ -311,7 +311,7 @@ function ScheduleGrid({ schedule, onUpdateSchedule, onSubjectDrop, onEditSlot, o
         >
           +
         </button>
-      </div>
+        </div>
     )
   }
 
@@ -395,7 +395,7 @@ function ScheduleGrid({ schedule, onUpdateSchedule, onSubjectDrop, onEditSlot, o
           ))}
         </tbody>
       </table>
-    </div>
+      </div>
   )
 }
 
@@ -415,7 +415,7 @@ function SubjectList({ subjects, onSubjectDrag }) {
           <div className="text-sm opacity-75">{subject.teacher}</div>
         </div>
       ))}
-    </div>
+      </div>
   )
 }
 
@@ -511,7 +511,7 @@ function CustomSlotModal({ isOpen, onClose, onSave, days }) {
           Créer le créneau
         </Button>
       </div>
-    </div>
+      </div>
   )
 }
 
@@ -907,11 +907,7 @@ export default function EmploiDuTempsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title="Emploi du temps"
             description="Gérer les emplois du temps des classes avec glisser-déposer"
@@ -1044,9 +1040,6 @@ export default function EmploiDuTempsPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </main>
-
       {/* Modal d'édition */}
       <EditSlotModal
         slot={selectedSlot}
@@ -1078,7 +1071,7 @@ export default function EmploiDuTempsPage() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+        </AppLayout>
   )
 }
 

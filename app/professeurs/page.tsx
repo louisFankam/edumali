@@ -1,6 +1,6 @@
 "use client"
 
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,11 +8,7 @@ import { Users, UserPlus, GraduationCap } from "lucide-react"
 
 export default function ProfesseursPage() {
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Professeurs" description="Gestion du personnel enseignant">
             <Button variant="default">
               <UserPlus className="h-4 w-4 mr-2" />
@@ -73,8 +69,6 @@ export default function ProfesseursPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

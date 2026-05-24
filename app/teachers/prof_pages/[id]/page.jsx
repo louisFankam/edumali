@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useParams } from "next/navigation"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -145,11 +145,7 @@ export default function TeacherProfilePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title={`Profil de ${teacher.fullName}`}
             description={`${teacher.teachingInfo.specialization} - ${teacher.teachingInfo.experience} d'expérience`}
@@ -548,8 +544,6 @@ export default function TeacherProfilePage() {
             onClose={() => setIsEditModalOpen(false)}
             teacher={teacher}
           />
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

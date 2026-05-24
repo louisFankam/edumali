@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearsTable } from "@/components/school-years/school-years-table"
 import { CreateSchoolYearModal } from "@/components/school-years/create-school-year-modal"
@@ -188,11 +188,7 @@ export default function SchoolYearsPage() {
   const stats = getStats()
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion des Années Scolaires" description="Gérer les années scolaires et périodes">
             <Button onClick={() => setIsCreateModalOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -455,8 +451,6 @@ export default function SchoolYearsPage() {
             schoolYear={selectedSchoolYear}
             onArchive={handleArchiveSchoolYear}
           />
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

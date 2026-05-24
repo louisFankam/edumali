@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -182,9 +182,7 @@ export default function NotificationsPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 md:ml-64 flex items-center justify-center">
+      <AppLayout>
           <Card className="w-full max-w-md mx-4">
             <CardContent className="p-6 text-center">
               <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -196,17 +194,12 @@ export default function NotificationsPage() {
               </Button>
             </CardContent>
           </Card>
-        </main>
-      </div>
+        </AppLayout>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <div className="flex justify-between items-center">
             <PageHeader
               title="Notifications"
@@ -514,8 +507,6 @@ export default function NotificationsPage() {
               </Card>
             )}
           </div>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

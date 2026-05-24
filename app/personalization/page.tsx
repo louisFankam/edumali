@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -118,42 +118,28 @@ export default function PersonalizationPage() {
 
   if (prefsLoading) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 md:ml-64">
-          <div className="p-6">
+      <AppLayout>
             <div className="flex items-center justify-center h-64">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
               <span className="ml-2 text-muted-foreground">Chargement des préférences...</span>
             </div>
-          </div>
-        </main>
-      </div>
+          </AppLayout>
     )
   }
 
   if (error || !preferences) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 md:ml-64">
-          <div className="p-6">
+      <AppLayout>
             <div className="text-center">
               <p className="text-red-500 mb-4">Erreur de chargement des préférences</p>
               <Button onClick={() => window.location.reload()}>Réessayer</Button>
             </div>
-          </div>
-        </main>
-      </div>
+          </AppLayout>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title="Personnalisation"
             description="Personnalisez l'apparence et le comportement de l'application"
@@ -431,9 +417,7 @@ export default function PersonalizationPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }
 

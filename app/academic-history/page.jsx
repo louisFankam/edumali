@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
@@ -198,11 +198,7 @@ export default function AcademicHistoryPage() {
   })
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title="Historique Académique"
             description="Suivi des résultats scolaires et progression des élèves"
@@ -498,8 +494,6 @@ export default function AcademicHistoryPage() {
             onOpenChange={setShowProgressionModal}
             student={selectedStudent}
           />
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

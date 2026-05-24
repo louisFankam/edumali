@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -1023,24 +1023,17 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <main className="flex-1 md:ml-64 flex items-center justify-center">
+      <AppLayout>
           <div className="flex flex-col items-center space-y-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg text-muted-foreground">Chargement des paramètres...</p>
           </div>
-        </main>
-      </div>
+        </AppLayout>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader
             title="Paramètres"
             description="Configurez les paramètres de l'école et gérez les données de base"
@@ -1551,8 +1544,6 @@ export default function SettingsPage() {
             onSave={handleSaveUserAccount}
             userData={userAccount}
           />
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

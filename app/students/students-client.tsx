@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { StudentsTable } from "@/components/students/students-table"
@@ -118,11 +118,7 @@ export function StudentsClient() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion des Élèves" description="Gérer les inscriptions et profils des élèves">
             <div className="flex items-center space-x-2">
               <NotificationBellMain />
@@ -211,9 +207,7 @@ export function StudentsClient() {
               />
             </>
           )}
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }
 

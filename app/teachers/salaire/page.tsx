@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,10 +119,7 @@ export default function SalairesPage() {
   const handleExport = () => alert("Export simulation (PDF)")
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion des Salaires" description="Calcul et suivi des rémunérations">
             <Button onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
@@ -165,9 +162,6 @@ export default function SalairesPage() {
               />
             </CardContent>
           </Card>
-        </div>
-      </main>
-
       {selectedSalary && (
         <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
           <DialogContent className="max-w-2xl">
@@ -178,7 +172,7 @@ export default function SalairesPage() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+        </AppLayout>
   )
 }
 
@@ -228,7 +222,7 @@ function TableLayout({ data, onView, calculate }: any) {
           })}
         </tbody>
       </table>
-    </div>
+      </div>
   )
 }
 
@@ -250,6 +244,6 @@ function SalaryDetailContent({ salary, calc }: any) {
         <div className="flex justify-between"><span>Majoration / Prime</span><span>{calc.majoration.toLocaleString()} FCFA</span></div>
         <div className="flex justify-between border-t pt-2 font-bold text-lg"><span>Total Net</span><span className="text-green-600">{calc.total.toLocaleString()} FCFA</span></div>
       </div>
-    </div>
+      </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { AttendanceTable } from "@/components/attendance/attendance-table"
@@ -153,11 +153,7 @@ export default function AttendancePage() {
   currentStats.attendanceRate = Math.round((currentStats.present / currentStats.total) * 100)
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion des Présences" description="Marquer et suivre les présences des élèves">
             <div className="flex items-center space-x-2">
               <SchoolYearSelector />
@@ -319,8 +315,6 @@ export default function AttendancePage() {
               </Card>
             </TabsContent>
           </Tabs>
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }

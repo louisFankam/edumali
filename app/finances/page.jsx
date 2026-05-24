@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
@@ -230,11 +230,7 @@ export default function FinancesPage() {
   })
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-
-      <main className="flex-1 md:ml-64">
-        <div className="p-6 space-y-6">
+    <AppLayout>
           <PageHeader title="Gestion Financière" description="Suivi des frais de scolarité et paiements">
             <div className="flex items-center space-x-2">
               <NotificationBellMain />
@@ -554,8 +550,6 @@ export default function FinancesPage() {
           <InvoiceModal open={showInvoiceModal} onOpenChange={setShowInvoiceModal} student={selectedStudent} />
 
           <FinancialReportModal open={showReportModal} onOpenChange={setShowReportModal} />
-        </div>
-      </main>
-    </div>
+        </AppLayout>
   )
 }
