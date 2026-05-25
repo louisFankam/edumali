@@ -54,6 +54,7 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit, classes }) 
     if (formData.firstName && formData.lastName && formData.dateOfBirth) {
       const selectedClass = classes.find(c => c.name === formData.class)
       onEdit({
+        id: student.id,
         firstName: formData.firstName,
         lastName: formData.lastName,
         gender: formData.gender,

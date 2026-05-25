@@ -1,44 +1,71 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle } from "lucide-react"
+import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-
-// Mock Data
-const MOCK_CLASSES = [
-  { id: "1", name: "1ère Année" },
-  { id: "2", name: "2ème Année" },
-]
-
-const MOCK_STUDENTS = [
-  { id: "s_1", firstName: "Amadou", lastName: "Diallo", class: "1ère Année", gender: "Masculin" },
-  { id: "s_2", firstName: "Fatoumata", lastName: "Traoré", class: "1ère Année", gender: "Féminin" },
-  { id: "s_3", firstName: "Issa", lastName: "Coulibaly", class: "2ème Année", gender: "Masculin" },
-]
+import { useStudents } from "@/hooks/use-students"
+import { useClasses } from "@/hooks/use-classes"
+import { useAttendanceByDateClass, useAttendanceStats } from "@/hooks/use-attendance"
 
 export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [selectedClass, setSelectedClass] = useState("1ère Année")
+  const [selectedClassId, setSelectedClassId] = useState("")
   const [attendance, setAttendance] = useState<Record<string, string>>({})
+  const { students, isLoading: studentsLoading } = useStudents(selectedClassId ? { classId: selectedClassId } : undefined)
+  const { classes, isLoading: classesLoading } = useClasses()
+  const { records, load: loadAttendance, save: saveAttendance } = useAttendanceByDateClass()
+  const { stats: attStats, load: loadStats } = useAttendanceStats()
+
+  const dateStr = format(selectedDate, "yyyy-MM-dd")
+
+  useEffect(() => {
+    if (selectedClassId) {
+      loadStats({ classId: selectedClassId, from: dateStr, to: dateStr })
+    }
+  }, [selectedClassId, dateStr, loadStats])
+
+  // When students load, try to load existing attendance
+  useEffect(() => {
+    if (selectedClassId && students.length > 0) {
+      loadAttendance(dateStr, selectedClassId).then(() => {
+        // set attendance from existing records
+      })
+    }
+  }, [selectedClassId, dateStr, students.length, loadAttendance])
+
+  useEffect(() => {
+    if (records.length > 0) {
+      const map: Record<string, string> = {}
+      const statusMap: Record<string, string> = { présent: "present", absent: "absent", retard: "late", congé: "congé" }
+      records.forEach(r => { map[r.studentId] = statusMap[r.status] || "present" })
+      setAttendance(map)
+    } else {
+      // Default all to present
+      const map: Record<string, string> = {}
+      students.forEach(s => { map[s.id] = "present" })
+      setAttendance(map)
+    }
+  }, [records, students])
 
   const filteredStudents = useMemo(() => {
-    return MOCK_STUDENTS.filter(s => s.class === selectedClass)
-  }, [selectedClass])
+    if (!selectedClassId) return []
+    return students
+  }, [students, selectedClassId])
 
   const handleAttendanceChange = (studentId: string, status: string) => {
     setAttendance(prev => ({ ...prev, [studentId]: status }))
@@ -50,15 +77,34 @@ export default function AttendancePage() {
     setAttendance(newAttendance)
   }
 
+  const handleSave = async () => {
+    const statusMap: Record<string, string> = { present: "présent", absent: "absent", late: "retard", congé: "congé" }
+    const records = filteredStudents.map(s => ({
+      studentId: Number(s.id),
+      classId: Number(selectedClassId),
+      date: dateStr,
+      status: statusMap[attendance[s.id]] || "présent",
+    }))
+    const res = await saveAttendance(records)
+    if (res.ok) alert("Présences sauvegardées")
+  }
+
   const stats = useMemo(() => {
-    const studentsInClass = filteredStudents
-    const total = studentsInClass.length
-    const statuses = studentsInClass.map(s => attendance[s.id] || "present")
+    const total = filteredStudents.length
+    const statuses = filteredStudents.map(s => attendance[s.id] || "present")
     const present = statuses.filter(s => s === "present").length
     const absent = statuses.filter(s => s === "absent").length
     const late = statuses.filter(s => s === "late").length
     return { total, present, absent, late }
   }, [filteredStudents, attendance])
+
+  if (classesLoading) {
+    return (
+      <AppLayout>
+        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin" /></div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>
@@ -92,80 +138,90 @@ export default function AttendancePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Classe</Label>
-                    <Select value={selectedClass} onValueChange={setSelectedClass}>
-                      <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                      <SelectTrigger className="w-48"><SelectValue placeholder="Choisir une classe" /></SelectTrigger>
                       <SelectContent>
-                        {MOCK_CLASSES.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={handleMarkAllPresent} variant="outline" className="bg-transparent">
+                    <Button onClick={handleMarkAllPresent} variant="outline" className="bg-transparent" disabled={!selectedClassId}>
                       Tous présents
                     </Button>
-                    <Button onClick={() => alert("Sauvegardé")} className="bg-green-600 hover:bg-green-700">
+                    <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700" disabled={!selectedClassId}>
                       Sauvegarder
                     </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <StatCard title="Total" value={stats.total} icon={CalendarIcon} color="text-foreground" />
-                <StatCard title="Présents" value={stats.present} icon={UserCheck} color="text-green-600" />
-                <StatCard title="Absents" value={stats.absent} icon={UserX} color="text-red-600" />
-                <StatCard title="Retards" value={stats.late} icon={Clock} color="text-yellow-600" />
-              </div>
+              {!selectedClassId ? (
+                <Card><CardContent className="p-12 text-center text-muted-foreground">Sélectionnez une classe</CardContent></Card>
+              ) : studentsLoading ? (
+                <Card><CardContent className="p-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <StatCard title="Total" value={stats.total} icon={CalendarIcon} color="text-foreground" />
+                    <StatCard title="Présents" value={stats.present} icon={UserCheck} color="text-green-600" />
+                    <StatCard title="Absents" value={stats.absent} icon={UserX} color="text-red-600" />
+                    <StatCard title="Retards" value={stats.late} icon={Clock} color="text-yellow-600" />
+                  </div>
 
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Élève</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredStudents.map((s) => (
-                        <TableRow key={s.id}>
-                          <TableCell>
-                            <div className="flex items-center space-x-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback>{s.firstName[0]}{s.lastName[0]}</AvatarFallback>
-                              </Avatar>
-                              <div className="font-medium">{s.firstName} {s.lastName}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={attendance[s.id] || "present"} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-1">
-                              {["present", "late", "absent"].map((status) => (
-                                <Button
-                                  key={status}
-                                  variant={(attendance[s.id] || "present") === status ? "default" : "outline"}
-                                  size="sm"
-                                  className={cn("h-8 w-8 p-0", (attendance[s.id] || "present") === status ? getStatusColor(status) : "bg-transparent")}
-                                  onClick={() => handleAttendanceChange(s.id, status)}
-                                >
-                                  {getStatusIcon(status)}
-                                </Button>
-                              ))}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                  <Card>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Élève</TableHead>
+                            <TableHead>Statut</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStudents.map((s) => (
+                            <TableRow key={s.id}>
+                              <TableCell>
+                                <div className="flex items-center space-x-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarFallback>{s.firstName[0]}{s.lastName[0]}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="font-medium">{s.firstName} {s.lastName}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={attendance[s.id] || "present"} />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end space-x-1">
+                                  {["present", "late", "absent"].map((status) => (
+                                    <Button
+                                      key={status}
+                                      variant={(attendance[s.id] || "present") === status ? "default" : "outline"}
+                                      size="sm"
+                                      className={cn("h-8 w-8 p-0", (attendance[s.id] || "present") === status ? getStatusColor(status) : "bg-transparent")}
+                                      onClick={() => handleAttendanceChange(s.id, status)}
+                                    >
+                                      {getStatusIcon(status)}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </TabsContent>
-            
+
             <TabsContent value="history">
-              <Card><CardContent className="p-8 text-center text-muted-foreground">Historique simulation</CardContent></Card>
+              <Card><CardContent className="p-8 text-center text-muted-foreground">
+                {selectedClassId ? "Historique - fonctionnalité à venir" : "Sélectionnez une classe"}
+              </CardContent></Card>
             </TabsContent>
           </Tabs>
         </AppLayout>
