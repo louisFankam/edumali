@@ -12,7 +12,7 @@ export function useClasses() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/classes", { cache: "no-store" })
+    window.fetch("/api/classes", { cache: "no-store" })
       .then(r => r.json())
       .then(json => { if (json.ok) setClasses(json.data) })
       .finally(() => setIsLoading(false))
