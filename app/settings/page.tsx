@@ -868,14 +868,14 @@ export default function SettingsPage() {
         id: c.id,
         name: c.name,
         level: String(c.level ?? ""),
-        capacity: 0,
+        capacity: c.capacity ?? 0,
         current_students: 0,
-        total_fee: 0,
-        teacher_id: "",
+        total_fee: c.totalFee ?? 0,
+        teacher_id: c.teacherId ?? "",
         teacher_name: "",
-        color: "",
-        academic_year: "",
-        status: "active",
+        color: c.color ?? "",
+        academic_year: c.academicYear ?? "",
+        status: c.status ?? "active",
       })))
     }
   }, [apiClasses])
@@ -964,7 +964,16 @@ export default function SettingsPage() {
   }, [schoolInfo])
 
   const handleAddClass = async (classData: any) => {
-    await createClassApi({ name: classData.name })
+    await createClassApi({
+      name: classData.name,
+      level: classData.level && !isNaN(Number(classData.level)) ? Number(classData.level) : null,
+      capacity: classData.capacity ?? null,
+      totalFee: classData.total_fee ?? null,
+      teacherId: classData.teacher_id ? Number(classData.teacher_id) : null,
+      color: classData.color,
+      academicYear: classData.academic_year,
+      status: classData.status === true ? "active" : classData.status || "active",
+    })
   }
 
   const handleEditClass = (classItem: Class) => {
@@ -973,10 +982,20 @@ export default function SettingsPage() {
   }
 
   const handleSaveClass = async (classData: any) => {
+    const payload = {
+      name: classData.name,
+      level: classData.level && !isNaN(Number(classData.level)) ? Number(classData.level) : null,
+      capacity: classData.capacity ?? null,
+      totalFee: classData.total_fee ?? null,
+      teacherId: classData.teacher_id ? Number(classData.teacher_id) : null,
+      color: classData.color,
+      academicYear: classData.academic_year,
+      status: classData.status === true ? "active" : classData.status || "active",
+    }
     if (selectedClass) {
-      await updateClassApi(selectedClass.id, { name: classData.name })
+      await updateClassApi(selectedClass.id, payload)
     } else {
-      await handleAddClass(classData)
+      await createClassApi(payload)
     }
     setSelectedClass(null)
   }

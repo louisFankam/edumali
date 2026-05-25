@@ -8,7 +8,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await req.json();
-    const data = await editClass(id, { name: body.name, level: body.level ?? null });
+    const data = await editClass(id, {
+      name: body.name,
+      level: body.level ?? null,
+      capacity: body.capacity ?? null,
+      totalFee: body.totalFee ?? null,
+      teacherId: body.teacherId ?? null,
+      color: body.color,
+      academicYear: body.academicYear,
+      status: body.status,
+    });
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

@@ -13,6 +13,12 @@ export const classes = sqliteTable("classes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
   level: integer("level"),
+  capacity: integer("capacity").default(0),
+  totalFee: real("total_fee").default(0),
+  teacherId: integer("teacher_id"),
+  color: text("color").default("#6366f1"),
+  academicYear: text("academic_year").default(""),
+  status: text("status", { enum: ["active", "inactive"] }).notNull().default("active"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

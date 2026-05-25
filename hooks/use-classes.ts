@@ -6,6 +6,12 @@ export interface ClassData {
   id: string
   name: string
   level: number | null
+  capacity?: number | null
+  totalFee?: number | null
+  teacherId?: string | null
+  color?: string
+  academicYear?: string
+  status?: string
 }
 
 export function useClasses() {
@@ -22,7 +28,11 @@ export function useClasses() {
 
   useEffect(() => { load() }, [load])
 
-  const create = async (input: { name: string; level?: number }) => {
+  const create = async (input: {
+    name: string; level?: number | null; capacity?: number | null;
+    totalFee?: number | null; teacherId?: number | null; color?: string;
+    academicYear?: string; status?: string;
+  }) => {
     const res = await window.fetch("/api/classes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -33,7 +43,11 @@ export function useClasses() {
     return json
   }
 
-  const update = async (id: string, input: { name?: string; level?: number | null }) => {
+  const update = async (id: string, input: {
+    name?: string; level?: number | null; capacity?: number | null;
+    totalFee?: number | null; teacherId?: number | null; color?: string;
+    academicYear?: string; status?: string;
+  }) => {
     const res = await window.fetch(`/api/classes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

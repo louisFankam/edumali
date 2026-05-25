@@ -30,7 +30,12 @@ function mapStudent(s: any) {
 
 function mapClass(c: any) {
   if (!c) return null;
-  return { id: String(c.id), name: c.name, level: c.level };
+  return {
+    id: String(c.id), name: c.name, level: c.level,
+    capacity: c.capacity, totalFee: c.totalFee,
+    teacherId: c.teacherId ? String(c.teacherId) : null,
+    color: c.color, academicYear: c.academicYear, status: c.status,
+  };
 }
 
 export async function getStudents(filters?: { search?: string; classId?: string }) {
@@ -129,12 +134,20 @@ export async function getClasses() {
   return rows.map(mapClass);
 }
 
-export async function addClass(input: { name: string; level?: number }) {
+export async function addClass(input: {
+  name: string; level?: number | null; capacity?: number | null;
+  totalFee?: number | null; teacherId?: number | null; color?: string;
+  academicYear?: string; status?: string;
+}) {
   const created = await createClass(input);
   return mapClass(created);
 }
 
-export async function editClass(id: string, input: { name?: string; level?: number | null }) {
+export async function editClass(id: string, input: {
+  name?: string; level?: number | null; capacity?: number | null;
+  totalFee?: number | null; teacherId?: number | null; color?: string;
+  academicYear?: string; status?: string;
+}) {
   const updated = await updateClass(Number(id), input);
   return mapClass(updated);
 }

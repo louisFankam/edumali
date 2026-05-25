@@ -53,10 +53,23 @@ async function ensureAuthSchema(db: any) {
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       name text NOT NULL UNIQUE,
       level integer,
+      capacity integer DEFAULT 0,
+      total_fee real DEFAULT 0,
+      teacher_id integer,
+      color text DEFAULT '#6366f1',
+      academic_year text DEFAULT '',
+      status text NOT NULL DEFAULT 'active',
       created_at integer,
       updated_at integer
     )
   `);
+
+  try { await db.run(sql`ALTER TABLE classes ADD COLUMN capacity integer DEFAULT 0`); } catch {}
+  try { await db.run(sql`ALTER TABLE classes ADD COLUMN total_fee real DEFAULT 0`); } catch {}
+  try { await db.run(sql`ALTER TABLE classes ADD COLUMN teacher_id integer`); } catch {}
+  try { await db.run(sql`ALTER TABLE classes ADD COLUMN color text DEFAULT '#6366f1'`); } catch {}
+  try { await db.run(sql`ALTER TABLE classes ADD COLUMN academic_year text DEFAULT ''`); } catch {}
+  try { await db.run(sql`ALTER TABLE classes ADD COLUMN status text NOT NULL DEFAULT 'active'`); } catch {}
 
   await db.run(sql`
     INSERT OR IGNORE INTO classes (id, name, level) VALUES

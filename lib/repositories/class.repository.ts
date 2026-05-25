@@ -10,12 +10,20 @@ export async function findClassById(id: number) {
   return db.query.classes.findFirst({ where: eq(classes.id, id) });
 }
 
-export async function createClass(input: { name: string; level?: number | null }) {
+export async function createClass(input: {
+  name: string; level?: number | null; capacity?: number | null;
+  totalFee?: number | null; teacherId?: number | null; color?: string;
+  academicYear?: string; status?: string;
+}) {
   const [created] = await db.insert(classes).values(input).returning();
   return created;
 }
 
-export async function updateClass(id: number, input: { name?: string; level?: number | null }) {
+export async function updateClass(id: number, input: {
+  name?: string; level?: number | null; capacity?: number | null;
+  totalFee?: number | null; teacherId?: number | null; color?: string;
+  academicYear?: string; status?: string;
+}) {
   const [updated] = await db.update(classes).set({ ...input, updatedAt: new Date() }).where(eq(classes.id, id)).returning();
   return updated;
 }
