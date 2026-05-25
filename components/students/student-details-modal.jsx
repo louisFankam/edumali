@@ -38,7 +38,7 @@ export function StudentDetailsModal({ isOpen, onClose, student }) {
             </Avatar>
             <div className="flex-1">
               <h2 className="text-2xl font-serif font-bold">{student.firstName} {student.lastName}</h2>
-              <p className="text-muted-foreground">{getAge(student.dateOfBirth)} ans • {student.gender}</p>
+              <p className="text-muted-foreground">{getAge(student.birthDate)} ans • {student.gender}</p>
               <Badge variant={student.status === "Actif" ? "default" : "secondary"} className="mt-2">{student.status}</Badge>
             </div>
           </div>
@@ -53,7 +53,7 @@ export function StudentDetailsModal({ isOpen, onClose, student }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Date de naissance</p>
-                  <p className="flex items-center"><Calendar className="h-4 w-4 mr-2" />{format(new Date(student.dateOfBirth), "dd MMMM yyyy", { locale: fr })}</p>
+                  <p className="flex items-center"><Calendar className="h-4 w-4 mr-2" />{format(new Date(student.birthDate), "dd MMMM yyyy", { locale: fr })}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Genre</p>

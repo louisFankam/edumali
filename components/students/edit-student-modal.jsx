@@ -34,9 +34,17 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit, classes }) 
   useEffect(() => {
     if (student) {
       setFormData({
-        ...student,
-        dateOfBirth: new Date(student.dateOfBirth),
+        firstName: student.firstName,
+        lastName: student.lastName,
+        dateOfBirth: new Date(student.birthDate),
+        gender: student.gender,
+        class: student.className || "",
         school: schoolInfo ? schoolInfo.name : "",
+        nationality: student.nationality || "",
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        address: student.address || "",
+        status: student.status || "Actif",
       })
     }
   }, [student, schoolInfo])
@@ -44,9 +52,18 @@ export function EditStudentModal({ isOpen, onClose, student, onEdit, classes }) 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (formData.firstName && formData.lastName && formData.dateOfBirth) {
+      const selectedClass = classes.find(c => c.name === formData.class)
       onEdit({
-        ...formData,
-        dateOfBirth: format(formData.dateOfBirth, "yyyy-MM-dd"),
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        gender: formData.gender,
+        birthDate: format(formData.dateOfBirth, "yyyy-MM-dd"),
+        nationality: formData.nationality,
+        parentName: formData.parentName,
+        parentPhone: formData.parentPhone,
+        address: formData.address,
+        classId: selectedClass?.id ?? student.classId,
+        status: formData.status,
       })
       onClose()
     }

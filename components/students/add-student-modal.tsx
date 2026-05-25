@@ -54,10 +54,18 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
     if (formData.firstName && formData.lastName && formData.dateOfBirth && formData.class) {
       setIsSubmitting(true)
       try {
+        const selectedClass = classes.find(c => c.name === formData.class)
         await onAdd({
-          ...formData,
-          dateOfBirth: format(formData.dateOfBirth, "yyyy-MM-dd"),
-          enrollmentDate: format(formData.enrollmentDate, "yyyy-MM-dd"),
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          gender: formData.gender,
+          birthDate: format(formData.dateOfBirth, "yyyy-MM-dd"),
+          nationality: formData.nationality,
+          parentName: formData.parentName,
+          parentPhone: formData.parentPhone,
+          address: formData.address,
+          classId: selectedClass?.id ?? "",
+          status: formData.status,
         })
         setFormData({
           firstName: "",
