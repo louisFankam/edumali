@@ -88,6 +88,83 @@ async function ensureAuthSchema(db: any) {
     )
   `);
 
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS school_info (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name text NOT NULL DEFAULT '',
+      address text DEFAULT '',
+      phone text DEFAULT '',
+      email text DEFAULT '',
+      website text DEFAULT '',
+      director text DEFAULT '',
+      logo_url text DEFAULT '',
+      founded_year integer,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS academic_years (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name text NOT NULL,
+      start_date text NOT NULL,
+      end_date text NOT NULL,
+      is_current integer NOT NULL DEFAULT 0,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS subjects (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name text NOT NULL,
+      code text DEFAULT '',
+      coefficient integer DEFAULT 1,
+      hours_per_week integer DEFAULT 0,
+      description text DEFAULT '',
+      color text DEFAULT '#6366f1',
+      status text NOT NULL DEFAULT 'Actif' CHECK(status IN ('Actif', 'Inactif')),
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  // Seed school_info if empty
+  const schoolRow = db.get(sql`SELECT COUNT(*) as count FROM school_info`) as { count: number } | undefined;
+  if (schoolRow?.count === 0) {
+    const schoolName = process.env.SCHOOL_NAME ?? "École de Démonstration";
+    await db.run(sql`INSERT INTO school_info (name) VALUES (${schoolName})`);
+    console.log(`[EduMali] École créée: ${schoolName}`);
+  }
+
+  // Seed current academic year if empty
+  const yearRow = db.get(sql`SELECT COUNT(*) as count FROM academic_years`) as { count: number } | undefined;
+  if (yearRow?.count === 0) {
+    const currentYear = new Date().getFullYear();
+    await db.run(sql`
+      INSERT INTO academic_years (name, start_date, end_date, is_current)
+      VALUES (${`${currentYear}-${currentYear + 1}`}, ${`${currentYear}-09-01`}, ${`${currentYear + 1}-08-31`}, 1)
+    `);
+    console.log(`[EduMali] Année scolaire créée: ${currentYear}-${currentYear + 1}`);
+  }
+
+  // Seed sample subjects if empty
+  const subjRow = db.get(sql`SELECT COUNT(*) as count FROM subjects`) as { count: number } | undefined;
+  if (subjRow?.count === 0) {
+    await db.run(sql`
+      INSERT INTO subjects (name, code, coefficient, hours_per_week, color) VALUES
+        ('Français', 'FR', 4, 6, '#ef4444'),
+        ('Mathématiques', 'MA', 4, 6, '#3b82f6'),
+        ('Sciences', 'SC', 3, 4, '#22c55e'),
+        ('Histoire-Géographie', 'HG', 2, 3, '#f59e0b'),
+        ('Anglais', 'AN', 2, 3, '#8b5cf6'),
+        ('Education Physique', 'EP', 1, 2, '#ec4899')
+    `);
+    console.log("[EduMali] 6 matières de démonstration créées");
+  }
+
   const countRow = db.get(sql`SELECT COUNT(*) as count FROM students`) as { count: number } | undefined;
   const studentCount = countRow?.count ?? 0;
 

@@ -36,6 +36,8 @@ import {
   DollarSign
 } from "lucide-react"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
+import { useSchoolInfo, useAcademicYears, useSubjects } from "@/hooks/use-settings"
+import { useClasses } from "@/hooks/use-classes"
 
 // Types pour les données
 interface Class {
@@ -807,12 +809,17 @@ function UserAccountModal({
 }
 
 export default function SettingsPage() {
+  const { schoolInfo: apiSchoolInfo, isLoading: schoolLoading, save: saveSchool } = useSchoolInfo()
+  const { subjects: apiSubjects, isLoading: subjectsLoading, create: createSubject, update: updateSubject, remove: deleteSubject } = useSubjects()
+  const { classes: apiClasses, isLoading: classesLoading } = useClasses()
+  const { years: apiYears, currentYear, isLoading: yearsLoading, create: createYear, update: updateYear, remove: removeYear } = useAcademicYears()
+
   const [classes, setClasses] = useState<Class[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [teachers] = useState<Teacher[]>([])
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>({
     id: "local-school",
-    name: "École Primaire de Bamako",
+    name: "",
     address: "",
     phone: "",
     email: "",
@@ -822,6 +829,39 @@ export default function SettingsPage() {
     website: "",
   })
   
+  useEffect(() => {
+    if (apiSchoolInfo) {
+      setSchoolInfo({
+        id: apiSchoolInfo.id,
+        name: apiSchoolInfo.name,
+        address: apiSchoolInfo.address,
+        phone: apiSchoolInfo.phone,
+        email: apiSchoolInfo.email,
+        director: apiSchoolInfo.director,
+        founded_year: apiSchoolInfo.foundedYear ?? new Date().getFullYear(),
+        logo: apiSchoolInfo.logoUrl,
+        website: apiSchoolInfo.website,
+      })
+    }
+  }, [apiSchoolInfo])
+
+  useEffect(() => {
+    if (apiSubjects.length > 0) {
+      setSubjects(apiSubjects.map(s => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        teacher_number: 0,
+        teacher_name: "",
+        hours_per_week: s.hoursPerWeek,
+        coefficient: s.coefficient,
+        color: s.color,
+        description: s.description,
+        status: s.status === "Actif" ? "active" : "inactive",
+      })))
+    }
+  }, [apiSubjects])
+
   const [showClassModal, setShowClassModal] = useState(false)
   const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [showUserAccountModal, setShowUserAccountModal] = useState(false)
@@ -834,6 +874,32 @@ export default function SettingsPage() {
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>([])
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<AcademicYear | null>(null)
+
+  useEffect(() => {
+    if (apiYears.length > 0) {
+      setAcademicYears(apiYears.map(y => ({
+        id: y.id,
+        year: y.name,
+        start_date: y.startDate,
+        end_date: y.endDate,
+        status: y.isCurrent ? "active" : "inactive",
+        created: "",
+        updated: "",
+      })))
+      const current = apiYears.find(y => y.isCurrent)
+      if (current) {
+        setSelectedAcademicYear({
+          id: current.id,
+          year: current.name,
+          start_date: current.startDate,
+          end_date: current.endDate,
+          status: "active",
+          created: "",
+          updated: "",
+        })
+      }
+    }
+  }, [apiYears])
 
 
   // Récupérer les données utilisateur depuis localStorage
@@ -860,24 +926,7 @@ export default function SettingsPage() {
 
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null)
 
-  const fetchAcademicYears = () => {
-    const currentYear = new Date().getFullYear()
-    const activeYear: AcademicYear = {
-      id: "local-academic-year",
-      year: `${currentYear}-${currentYear + 1}`,
-      start_date: `${currentYear}-09-01`,
-      end_date: `${currentYear + 1}-06-30`,
-      status: "active",
-      created: new Date().toISOString(),
-      updated: new Date().toISOString(),
-    }
-
-    setAcademicYears([activeYear])
-    setSelectedAcademicYear(activeYear)
-  }
-
   useEffect(() => {
-    fetchAcademicYears()
     setUserAccount(getUserAccount())
   }, [])
 
@@ -938,54 +987,72 @@ export default function SettingsPage() {
     }
   }
 
-  const handleAddSubject = async (subjectData: any) => {
-    const newSubject: Subject = {
-      ...subjectData,
-      id: crypto.randomUUID(),
-      status: subjectData.status || "active",
-    }
-    setSubjects((currentSubjects) => [...currentSubjects, newSubject])
-  }
-
   const handleEditSubject = (subjectItem: Subject) => {
     setSelectedSubject(subjectItem)
     setShowSubjectModal(true)
   }
 
   const handleSaveSubject = async (subjectData: any) => {
-    if (selectedSubject) {
-      setSubjects((currentSubjects) =>
-        currentSubjects.map((subject) =>
-          subject.id === selectedSubject.id
-            ? {
-                ...subject,
-                ...subjectData,
-                status: subjectData.status || "inactive",
-              }
-            : subject
-        )
-      )
-    } else {
-      await handleAddSubject(subjectData)
+    try {
+      if (selectedSubject) {
+        await updateSubject(selectedSubject.id, {
+          name: subjectData.name,
+          code: subjectData.code,
+          coefficient: subjectData.coefficient,
+          hoursPerWeek: subjectData.hours_per_week,
+          description: subjectData.description,
+          color: subjectData.color,
+          status: subjectData.status === "active" ? "Actif" : "Inactif",
+        })
+      } else {
+        await createSubject({
+          name: subjectData.name,
+          code: subjectData.code,
+          coefficient: subjectData.coefficient,
+          hoursPerWeek: subjectData.hours_per_week,
+          description: subjectData.description,
+          color: subjectData.color,
+          status: "Actif",
+        })
+      }
+    } catch (e) {
+      console.error('Erreur sauvegarde matière:', e)
     }
     setSelectedSubject(null)
   }
 
   const handleDeleteSubject = async (subjectId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette matière ?")) {
-      setSubjects((currentSubjects) => currentSubjects.filter((subject) => subject.id !== subjectId))
+      await deleteSubject(subjectId)
     }
   }
 
   const handleSaveSchoolInfo = async () => {
     if (!schoolInfo) return
-    
     setIsSavingSchool(true)
     try {
-      // Mettre à jour le localStorage
-      const updatedSchoolInfo = { ...schoolInfo, ...schoolFormData }
-      setSchoolInfo(updatedSchoolInfo)
-      localStorage.setItem('school_info', JSON.stringify(updatedSchoolInfo))
+      const updated = await saveSchool({
+        name: schoolFormData.name ?? schoolInfo.name,
+        address: schoolFormData.address ?? schoolInfo.address,
+        phone: schoolFormData.phone ?? schoolInfo.phone,
+        email: schoolFormData.email ?? schoolInfo.email,
+        website: schoolFormData.website ?? schoolInfo.website,
+        director: schoolFormData.director ?? schoolInfo.director,
+        foundedYear: schoolFormData.founded_year ?? schoolInfo.founded_year,
+      })
+      if (updated) {
+        setSchoolInfo({
+          id: updated.id,
+          name: updated.name,
+          address: updated.address,
+          phone: updated.phone,
+          email: updated.email,
+          director: updated.director,
+          founded_year: updated.foundedYear ?? schoolInfo.founded_year,
+          logo: updated.logoUrl,
+          website: updated.website,
+        })
+      }
     } catch (error) {
       console.error('Erreur sauvegarde école:', error)
     } finally {
