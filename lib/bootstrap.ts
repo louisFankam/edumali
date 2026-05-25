@@ -131,6 +131,62 @@ async function ensureAuthSchema(db: any) {
     )
   `);
 
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS fee_types (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name text NOT NULL,
+      amount real NOT NULL DEFAULT 0,
+      period text NOT NULL DEFAULT 'annuel' CHECK(period IN ('mensuel', 'trimestriel', 'annuel', 'unique')),
+      description text DEFAULT '',
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS payments (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      student_id integer NOT NULL REFERENCES students(id),
+      fee_type_id integer REFERENCES fee_types(id),
+      amount real NOT NULL,
+      method text NOT NULL DEFAULT 'espèces' CHECK(method IN ('espèces', 'virement', 'chèque', 'mobile_money')),
+      reference text,
+      date text NOT NULL,
+      status text NOT NULL DEFAULT 'payé' CHECK(status IN ('payé', 'en_attente', 'annulé')),
+      notes text,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS attendance (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      student_id integer NOT NULL REFERENCES students(id),
+      class_id integer NOT NULL REFERENCES classes(id),
+      date text NOT NULL,
+      status text NOT NULL DEFAULT 'présent' CHECK(status IN ('présent', 'absent', 'retard', 'congé')),
+      justification text,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+  await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS att_student_date ON attendance (student_id, date)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS enrollments (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      student_id integer NOT NULL REFERENCES students(id),
+      class_id integer NOT NULL REFERENCES classes(id),
+      academic_year_id integer NOT NULL REFERENCES academic_years(id),
+      enrollment_date text NOT NULL,
+      status text NOT NULL DEFAULT 'inscrit' CHECK(status IN ('inscrit', 'réinscrit', 'transféré', 'sorti')),
+      notes text,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
   // Seed school_info if empty
   const schoolRow = db.get(sql`SELECT COUNT(*) as count FROM school_info`) as { count: number } | undefined;
   if (schoolRow?.count === 0) {
