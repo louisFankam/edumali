@@ -7,7 +7,7 @@ import {
   countStudents,
   type NewStudent,
 } from "@/lib/repositories/student.repository";
-import { findAllClasses, findClassById, createClass } from "@/lib/repositories/class.repository";
+import { findAllClasses, findClassById, createClass, updateClass, deleteClass } from "@/lib/repositories/class.repository";
 
 function mapStudent(s: any) {
   if (!s) return null;
@@ -132,4 +132,13 @@ export async function getClasses() {
 export async function addClass(input: { name: string; level?: number }) {
   const created = await createClass(input);
   return mapClass(created);
+}
+
+export async function editClass(id: string, input: { name?: string; level?: number | null }) {
+  const updated = await updateClass(Number(id), input);
+  return mapClass(updated);
+}
+
+export async function removeClass(id: string) {
+  await deleteClass(Number(id));
 }

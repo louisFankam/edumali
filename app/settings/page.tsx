@@ -811,7 +811,7 @@ function UserAccountModal({
 export default function SettingsPage() {
   const { schoolInfo: apiSchoolInfo, isLoading: schoolLoading, save: saveSchool } = useSchoolInfo()
   const { subjects: apiSubjects, isLoading: subjectsLoading, create: createSubject, update: updateSubject, remove: deleteSubject } = useSubjects()
-  const { classes: apiClasses, isLoading: classesLoading } = useClasses()
+  const { classes: apiClasses, isLoading: classesLoading, create: createClassApi, update: updateClassApi, remove: removeClassApi } = useClasses()
   const { years: apiYears, currentYear, isLoading: yearsLoading, create: createYear, update: updateYear, remove: removeYear } = useAcademicYears()
 
   const [classes, setClasses] = useState<Class[]>([])
@@ -861,6 +861,24 @@ export default function SettingsPage() {
       })))
     }
   }, [apiSubjects])
+
+  useEffect(() => {
+    if (apiClasses.length > 0) {
+      setClasses(apiClasses.map(c => ({
+        id: c.id,
+        name: c.name,
+        level: String(c.level ?? ""),
+        capacity: 0,
+        current_students: 0,
+        total_fee: 0,
+        teacher_id: "",
+        teacher_name: "",
+        color: "",
+        academic_year: "",
+        status: "active",
+      })))
+    }
+  }, [apiClasses])
 
   const [showClassModal, setShowClassModal] = useState(false)
   const [showSubjectModal, setShowSubjectModal] = useState(false)
@@ -946,14 +964,7 @@ export default function SettingsPage() {
   }, [schoolInfo])
 
   const handleAddClass = async (classData: any) => {
-    const newClass: Class = {
-      ...classData,
-      id: crypto.randomUUID(),
-      current_students: 0,
-      teacher_name: teachers.find((teacher) => teacher.id === classData.teacher_id)?.full_name || "",
-      status: classData.status === true ? "active" : classData.status || "active",
-    }
-    setClasses((currentClasses) => [...currentClasses, newClass])
+    await createClassApi({ name: classData.name })
   }
 
   const handleEditClass = (classItem: Class) => {
@@ -963,18 +974,7 @@ export default function SettingsPage() {
 
   const handleSaveClass = async (classData: any) => {
     if (selectedClass) {
-      setClasses((currentClasses) =>
-        currentClasses.map((classItem) =>
-          classItem.id === selectedClass.id
-            ? {
-                ...classItem,
-                ...classData,
-                teacher_name: teachers.find((teacher) => teacher.id === classData.teacher_id)?.full_name || classItem.teacher_name,
-                status: classData.status === true ? "active" : classData.status || "inactive",
-              }
-            : classItem
-        )
-      )
+      await updateClassApi(selectedClass.id, { name: classData.name })
     } else {
       await handleAddClass(classData)
     }
@@ -983,7 +983,7 @@ export default function SettingsPage() {
 
   const handleDeleteClass = async (classId: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cette classe ?")) {
-      setClasses((currentClasses) => currentClasses.filter((classItem) => classItem.id !== classId))
+      await removeClassApi(classId)
     }
   }
 
