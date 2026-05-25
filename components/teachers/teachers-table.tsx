@@ -21,7 +21,7 @@ interface Teacher {
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string
-  gender: "Masculin" | "Feminin"
+  gender: "Masculin" | "Féminin"
   contrat: "horaire" | "mensuel"
   speciality: string[]
   speciality_names: string[]
@@ -145,7 +145,7 @@ export function TeachersTable({ teachers, isLoading = false, error = null, onVie
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage
-                          src={teacher.photo || teacher.gender === "Masculin" ? "/homme.png" : "/femme.png"}
+                          src={teacher.photo || (teacher.gender === "Masculin" ? "/homme.png" : "/femme.png")}
                           alt={`${teacher.first_name} ${teacher.last_name}`}
                         />
                         <AvatarFallback>{getInitials(teacher.first_name, teacher.last_name)}</AvatarFallback>

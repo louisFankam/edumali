@@ -26,10 +26,13 @@ export interface ClassData {
 interface StudentFilters {
   search?: string
   classId?: string
+  page?: number
+  limit?: number
 }
 
 export function useStudents(filters?: StudentFilters) {
   const [students, setStudents] = useState<StudentData[]>([])
+  const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,16 +43,19 @@ export function useStudents(filters?: StudentFilters) {
       const params = new URLSearchParams()
       if (filters?.search) params.set("search", filters.search)
       if (filters?.classId) params.set("classId", filters.classId)
+      if (filters?.page) params.set("page", String(filters.page))
+      if (filters?.limit) params.set("limit", String(filters.limit))
       const res = await window.fetch(`/api/students?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
       if (!json.ok) throw new Error(json.message)
       setStudents(json.data)
+      if (json.pagination) setTotal(json.pagination.total)
     } catch (e) {
       setError(String(e))
     } finally {
       setIsLoading(false)
     }
-  }, [filters?.search, filters?.classId])
+  }, [filters?.search, filters?.classId, filters?.page, filters?.limit])
 
   useEffect(() => { load() }, [load])
 
@@ -84,7 +90,7 @@ export function useStudents(filters?: StudentFilters) {
     await load()
   }
 
-  return { students, isLoading, error, refetch: load, addStudent, editStudent, deleteStudent }
+  return { students, total, isLoading, error, refetch: load, addStudent, editStudent, deleteStudent }
 }
 
 export function useStudent(id: string | undefined) {

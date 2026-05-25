@@ -38,7 +38,7 @@ interface TeacherFormData {
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string
-  gender: "Masculin" | "Feminin"
+  gender: "Masculin" | "Féminin"
   contrat: "horaire" | "mensuel"
   speciality: string[]
 }
@@ -62,7 +62,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
     status: "active",
     photo: "",
     user_id: "system",
-    gender: "Masculin",
+    gender: "Masculin" as const,
     contrat: "mensuel",
     speciality: []
   })
@@ -222,7 +222,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
             </div>
             <div className="space-y-2">
               <Label htmlFor="gender">Genre *</Label>
-              <Select value={formData.gender} onValueChange={(value: "Masculin" | "Feminin") => 
+              <Select value={formData.gender} onValueChange={(value: "Masculin" | "Féminin") => 
                 setFormData(prev => ({ ...prev, gender: value }))
               }>
                 <SelectTrigger>
@@ -230,7 +230,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Masculin">Masculin</SelectItem>
-                  <SelectItem value="Feminin">Féminin</SelectItem>
+                  <SelectItem value="Féminin">Féminin</SelectItem>
                 </SelectContent>
               </Select>
             </div>            

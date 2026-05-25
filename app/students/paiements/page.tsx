@@ -25,11 +25,13 @@ import {
 import { cn } from "@/lib/utils"
 import { useStudents } from "@/hooks/use-students"
 import { usePayments, useFeeTypes } from "@/hooks/use-payments"
+import { useClasses } from "@/hooks/use-classes"
 import { format } from "date-fns"
 
 export default function StudentPaymentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [classFilter, setClassFilter] = useState("all")
   const [showAddPayment, setShowAddPayment] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("espèces")
@@ -39,13 +41,29 @@ export default function StudentPaymentsPage() {
   const { payments, isLoading: paymentsLoading, create: createPayment, remove: removePayment, refetch: refetchPayments } = usePayments(
     selectedStudent ? { studentId: selectedStudent.id } : undefined
   )
+  const { classes } = useClasses()
   const { feeTypes } = useFeeTypes()
 
+  const classFee = useMemo(() => {
+    if (!selectedStudent) return 0
+    const cls = classes.find(c => c.id === selectedStudent.classId)
+    return cls?.totalFee ?? 0
+  }, [selectedStudent, classes])
+
+  const totalPaid = useMemo(() => {
+    if (!payments.length) return 0
+    return payments.reduce((sum, p) => sum + p.amount, 0)
+  }, [payments])
+
+  const remaining = classFee - totalPaid
+
   const filtered = useMemo(() => {
-    return students.filter(s =>
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [students, searchTerm])
+    return students.filter(s => {
+      const matchSearch = `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchClass = classFilter === "all" || s.classId === classFilter
+      return matchSearch && matchClass
+    })
+  }, [students, searchTerm, classFilter])
 
   const handleAddPayment = async () => {
     if (!selectedStudent || !paymentAmount) return
@@ -67,11 +85,6 @@ export default function StudentPaymentsPage() {
     }
   }
 
-  const totalPaid = useMemo(() => {
-    if (!payments.length) return 0
-    return payments.reduce((sum, p) => sum + p.amount, 0)
-  }, [payments])
-
   if (selectedStudent) {
     return (
       <AppLayout>
@@ -81,9 +94,9 @@ export default function StudentPaymentsPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-              <StatCard title="Total Frais" value="--- FCFA" icon={DollarSign} color="text-foreground" />
+              <StatCard title="Total Frais" value={`${classFee.toLocaleString()} FCFA`} icon={DollarSign} color="text-foreground" />
               <StatCard title="Déjà Payé" value={`${totalPaid.toLocaleString()} FCFA`} icon={CheckCircle} color="text-green-600" />
-              <StatCard title="Reste à Payer" value="--- FCFA" icon={Clock} color="text-red-600" />
+              <StatCard title="Reste à Payer" value={`${remaining.toLocaleString()} FCFA`} icon={Clock} color={`${remaining > 0 ? "text-red-600" : "text-green-600"}`} />
             </div>
 
             <Card>
@@ -181,9 +194,20 @@ export default function StudentPaymentsPage() {
 
           <Card>
             <CardContent className="pt-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Rechercher un élève..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <div className="flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Rechercher un élève..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Toutes les classes" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les classes</SelectItem>
+                    {classes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>
@@ -203,11 +227,11 @@ export default function StudentPaymentsPage() {
                         <div className="font-bold">{s.firstName} {s.lastName}</div>
                         <div className="text-xs text-muted-foreground">{s.className}</div>
                       </div>
-                      <Badge variant="secondary">---</Badge>
+                      <Badge variant="secondary">{s.className}</Badge>
                     </div>
                     <div className="mt-4 text-sm flex justify-between">
-                      <span className="text-muted-foreground">Payé:</span>
-                      <span className="font-bold">--- FCFA</span>
+                      <span className="text-muted-foreground">Frais:</span>
+                      <span className="font-bold">{(() => { const c = classes.find(cl => cl.id === s.classId); return c?.totalFee ? `${c.totalFee.toLocaleString()} FCFA` : "---"; })()}</span>
                     </div>
                   </CardContent>
                 </Card>

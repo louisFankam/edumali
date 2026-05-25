@@ -1,555 +1,838 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { DataTable } from "@/components/ui/data-table"
-import { StatsGrid } from "@/components/ui/stats-grid"
-import { AddFeeModal } from "@/components/finances/add-fee-modal"
-import { PaymentModal } from "@/components/finances/payment-modal"
-import { InvoiceModal } from "@/components/finances/invoice-modal"
-import { FinancialReportModal } from "@/components/finances/financial-report-modal"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Switch } from "@/components/ui/switch"
 import {
-  Search,
-  DollarSign,
-  TrendingUp,
-  AlertTriangle,
-  Users,
-  Plus,
-  Eye,
-  CreditCard,
-  FileText,
-  Download,
-  Calculator,
+  Search, DollarSign, TrendingUp,
+  Plus, Eye, CreditCard, Download, Trash2, Loader2, ArrowUpRight, ArrowDownRight, Pencil, Lock,
 } from "lucide-react"
-import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
+import { useStudents } from "@/hooks/use-students"
+import { usePayments, useFeeTypes } from "@/hooks/use-payments"
+import { useExpenses } from "@/hooks/use-expenses"
+import { usePayroll } from "@/hooks/use-teachers"
+import { useClasses } from "@/hooks/use-classes"
+import { useDashboardData } from "@/hooks/use-dashboard-data"
+import { usePeriods } from "@/hooks/use-periods"
+import { format } from "date-fns"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+
+const CATEGORIES = [
+  { value: "eau", label: "Eau" },
+  { value: "electricite", label: "Électricité" },
+  { value: "fournitures", label: "Fournitures" },
+  { value: "entretien", label: "Entretien" },
+  { value: "transport", label: "Transport" },
+  { value: "equipement", label: "Équipement" },
+  { value: "salaires", label: "Salaires" },
+  { value: "autres", label: "Autres" },
+]
+
+const PIE_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#a3e635"]
 
 export default function FinancesPage() {
+  const today = format(new Date(), "yyyy-MM-dd")
+
+  // Date range filter
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+
+  // Revenus
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedFeeType, setSelectedFeeType] = useState("all")
-  const [showAddFeeModal, setShowAddFeeModal] = useState(false)
+  const { students, isLoading: studentsLoading } = useStudents()
+  const { payments, isLoading: paymentsLoading, create: createPayment, update: updatePayment, remove: removePayment, refetch: refetchPayments } = usePayments({ from: dateFrom || undefined, to: dateTo || undefined })
+  const { classes } = useClasses()
+  const { feeTypes } = useFeeTypes()
+
+  const LIMIT = 20
+
+  // Dépenses
+  const [expSearch, setExpSearch] = useState("")
+  const [expCatFilter, setExpCatFilter] = useState("all")
+  const [expPage, setExpPage] = useState(1)
+  const [showSalaries, setShowSalaries] = useState(true)
+  const [showAddExpense, setShowAddExpense] = useState(false)
+  const [expDesc, setExpDesc] = useState("")
+  const [expAmount, setExpAmount] = useState("")
+  const [expCategory, setExpCategory] = useState("autres")
+  const [expCategoryCustom, setExpCategoryCustom] = useState("")
+  const [expDate, setExpDate] = useState(today)
+  const [expNotes, setExpNotes] = useState("")
+  const { expenses, isLoading: expLoading, create: createExpense, update: updateExpense, remove: removeExpense } = useExpenses({ from: dateFrom || undefined, to: dateTo || undefined })
+  const { records: payrollRecords } = usePayroll()
+
+  // Edit expense
+  const [showEditExpense, setShowEditExpense] = useState(false)
+  const [editExpenseId, setEditExpenseId] = useState(null)
+  const [editExpDesc, setEditExpDesc] = useState("")
+  const [editExpAmount, setEditExpAmount] = useState("")
+  const [editExpCategory, setEditExpCategory] = useState("autres")
+  const [editExpCategoryCustom, setEditExpCategoryCustom] = useState("")
+  const [editExpDate, setEditExpDate] = useState(today)
+  const [editExpNotes, setEditExpNotes] = useState("")
+
+  // Edit payment
+  const [showEditPayment, setShowEditPayment] = useState(false)
+  const [editPaymentId, setEditPaymentId] = useState(null)
+  const [editPayAmount, setEditPayAmount] = useState("")
+  const [editPayMethod, setEditPayMethod] = useState("espèces")
+  const [editPayFeeType, setEditPayFeeType] = useState("")
+
+  // Flux
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
-  const [showReportModal, setShowReportModal] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState(null)
+  const [payAmount, setPayAmount] = useState("")
+  const [payMethod, setPayMethod] = useState("espèces")
+  const [payFeeType, setPayFeeType] = useState("")
 
-  // Mock data for student fees
-  const studentFees = [
-    {
-      id: 1,
-      studentId: "EPB-2024-001",
-      studentName: "Aminata Traoré",
-      class: "CM2",
-      school: "École Primaire de Bamako",
-      tuitionFee: 150000,
-      canteenFee: 25000,
-      transportFee: 15000,
-      uniformFee: 12000,
-      totalFees: 202000,
-      paidAmount: 202000,
-      remainingAmount: 0,
-      paymentStatus: "paid",
-      lastPaymentDate: "2024-01-15",
-      parentName: "Mamadou Traoré",
-      parentPhone: "+223 76 12 34 56",
-    },
-    {
-      id: 2,
-      studentId: "CS-2024-002",
-      studentName: "Ibrahim Keita",
-      class: "6ème A",
-      school: "Collège Soundiata",
-      tuitionFee: 200000,
-      canteenFee: 30000,
-      transportFee: 20000,
-      uniformFee: 15000,
-      totalFees: 265000,
-      paidAmount: 150000,
-      remainingAmount: 115000,
-      paymentStatus: "partial",
-      lastPaymentDate: "2024-01-10",
-      parentName: "Fatoumata Keita",
-      parentPhone: "+223 65 43 21 87",
-    },
-    {
-      id: 3,
-      studentId: "LAM-2024-003",
-      studentName: "Mariam Coulibaly",
-      class: "3ème C",
-      school: "Lycée Askia Mohamed",
-      tuitionFee: 250000,
-      canteenFee: 35000,
-      transportFee: 25000,
-      uniformFee: 18000,
-      totalFees: 328000,
-      paidAmount: 0,
-      remainingAmount: 328000,
-      paymentStatus: "unpaid",
-      lastPaymentDate: null,
-      parentName: "Sekou Coulibaly",
-      parentPhone: "+223 78 90 12 34",
-    },
-  ]
+  // Dashboard data (server-side aggregated)
+  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData({ from: dateFrom || undefined, to: dateTo || undefined })
 
-  const stats = [
-    {
-      title: "Revenus totaux",
-      value: "45,250,000 FCFA",
-      change: "+12%",
-      icon: DollarSign,
-      iconColor: "text-green-600",
-    },
-    {
-      title: "Paiements en attente",
-      value: "8,750,000 FCFA",
-      change: "-5%",
-      icon: AlertTriangle,
-      iconColor: "text-yellow-600",
-    },
-    {
-      title: "Taux de recouvrement",
-      value: "84%",
-      change: "+3%",
-      icon: TrendingUp,
-      iconColor: "text-blue-600",
-    },
-    {
-      title: "Élèves à jour",
-      value: "756/890",
-      change: "+15",
-      icon: Users,
-      iconColor: "text-purple-600",
-    },
-  ]
+  // Period management
+  const { periods, close: closePeriod, open: openPeriod, isClosed } = usePeriods()
+  const [showPeriodDialog, setShowPeriodDialog] = useState(false)
+  const [closeMonth, setCloseMonth] = useState(new Date().getMonth() + 1)
+  const [closeYear, setCloseYear] = useState(new Date().getFullYear())
+  const [periodMsg, setPeriodMsg] = useState("")
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      paid: { label: "Payé", color: "bg-green-100 text-green-800" },
-      partial: { label: "Partiel", color: "bg-yellow-100 text-yellow-800" },
-      unpaid: { label: "Impayé", color: "bg-red-100 text-red-800" },
-      overdue: { label: "En retard", color: "bg-red-100 text-red-800" },
-    }
+  // Payroll → expense-like items
+  const payrollAsExpenses = useMemo(() => {
+    return (payrollRecords || []).map(r => ({
+      id: `payroll-${r.id}`,
+      description: r.teacher ? `Salaire: ${r.first_name || r.teacher?.first_name} ${r.last_name || r.teacher?.last_name}` : `Salaire #${r.id}`,
+      amount: (r.amount || 0) + (r.bonus || 0) - (r.deductions || 0),
+      category: "salaires",
+      categoryLabel: "Salaires",
+      categoryCustom: null,
+      date: r.paid_at || `${r.year}-${String(r.month).padStart(2, "0")}-01`,
+      notes: r.notes || null,
+      _payroll: true,
+    }))
+  }, [payrollRecords])
 
-    const config = statusConfig[status] || statusConfig.unpaid
-    return <Badge className={config.color}>{config.label}</Badge>
+  // Computed
+  const paymentsByStudent = useMemo(() => {
+    const map = {}
+    payments.forEach(p => { map[p.studentId] = (map[p.studentId] || 0) + p.amount })
+    return map
+  }, [payments])
+
+  const displayExpenses = useMemo(() => {
+    return showSalaries ? [...expenses, ...payrollAsExpenses] : expenses
+  }, [expenses, payrollAsExpenses, showSalaries])
+
+  const totalRevenue = dashboardData?.totals?.totalRevenue ?? 0
+  const totalExpenses = dashboardData?.totals?.totalExpenses ?? 0
+  const netBalance = dashboardData?.totals?.netBalance ?? 0
+  const monthlyChartData = dashboardData?.monthly ?? []
+  const pieData = dashboardData?.pieData ?? []
+
+  // Flux du mois (from the last month in chart data)
+  const lastMonth = monthlyChartData.length > 0 ? monthlyChartData[monthlyChartData.length - 1] : null
+  const monthPayTotal = lastMonth?.Revenus ?? 0
+  const monthExpTotal = lastMonth?.Dépenses ?? 0
+
+  // Payments tab
+  const filteredPayments = useMemo(() => {
+    if (!searchTerm) return payments
+    const term = searchTerm.toLowerCase()
+    return payments.filter(p => (p.studentName || "").toLowerCase().includes(term))
+  }, [payments, searchTerm])
+
+  const filteredExpenses = useMemo(() => {
+    return displayExpenses.filter(e => {
+      const ms = e.description.toLowerCase().includes(expSearch.toLowerCase())
+      const mc = expCatFilter === "all" || e.category === expCatFilter
+      return ms && mc
+    })
+  }, [displayExpenses, expSearch, expCatFilter])
+
+  // Reset page when filters change
+  useEffect(() => { setExpPage(1) }, [expSearch, expCatFilter])
+
+  const paginatedExpenses = useMemo(() => {
+    const start = (expPage - 1) * LIMIT
+    return filteredExpenses.slice(start, start + LIMIT)
+  }, [filteredExpenses, expPage])
+  const expTotalPages = Math.max(1, Math.ceil(filteredExpenses.length / LIMIT))
+
+  // Paiements récents pagination
+  const [payPage, setPayPage] = useState(1)
+  useEffect(() => { setPayPage(1) }, [searchTerm])
+  const paginatedPayments = useMemo(() => {
+    const start = (payPage - 1) * LIMIT
+    return filteredPayments.slice(start, start + LIMIT)
+  }, [filteredPayments, payPage])
+  const payTotalPages = Math.max(1, Math.ceil(filteredPayments.length / LIMIT))
+
+  // Flux
+  const [fluxShowAll, setFluxShowAll] = useState(false)
+  const cashFlow = useMemo(() => {
+    const rows = []
+    payments.forEach(p => {
+      rows.push({ date: p.date, desc: `Paiement: ${p.studentName || "Élève"}`, type: "revenu", amount: p.amount, id: `pay-${p.id}` })
+    })
+    expenses.forEach(e => {
+      const catLabel = CATEGORIES.find(c => c.value === e.category)?.label || e.categoryCustom || e.category
+      rows.push({ date: e.date, desc: `${catLabel}: ${e.description}`, type: "depense", amount: -e.amount, id: `exp-${e.id}` })
+    })
+    payrollAsExpenses.forEach(r => {
+      rows.push({ date: r.date, desc: r.description, type: "depense", amount: -r.amount, id: r.id })
+    })
+    rows.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+    let balance = 0
+    return rows.map(r => {
+      balance += r.amount
+      return { ...r, balance }
+    })
+  }, [payments, expenses, payrollAsExpenses])
+
+  const handleRecordPayment = async () => {
+    if (!selectedStudent || !payAmount) return
+    await createPayment({
+      studentId: Number(selectedStudent.id),
+      feeTypeId: payFeeType ? Number(payFeeType) : undefined,
+      amount: Number(payAmount),
+      method: payMethod,
+      date: today,
+    })
+    setPayAmount(""); setPayFeeType(""); setShowPaymentModal(false); refetchPayments()
   }
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("fr-FR").format(amount) + " FCFA"
+  const handleAddExpense = async () => {
+    if (!expDesc || !expAmount) return
+    await createExpense({
+      description: expDesc,
+      amount: Number(expAmount),
+      category: expCategory,
+      categoryCustom: expCategory === "autres" ? expCategoryCustom : undefined,
+      date: expDate,
+      notes: expNotes || undefined,
+    })
+    setExpDesc(""); setExpAmount(""); setExpCategory("autres"); setExpCategoryCustom("")
+    setExpDate(today); setExpNotes(""); setShowAddExpense(false)
   }
 
-  const columns = [
-    {
-      key: "studentName",
-      header: "Élève",
-      sortable: true,
-      render: (value, row) => (
-        <div>
-          <div className="font-medium text-gray-900">{value}</div>
-          <div className="text-sm text-gray-500">
-            {row.studentId} - {row.class}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "school",
-      header: "École",
-      sortable: true,
-    },
-    {
-      key: "totalFees",
-      header: "Frais totaux",
-      sortable: true,
-      render: (value) => <span className="font-semibold">{formatCurrency(value)}</span>,
-    },
-    {
-      key: "paidAmount",
-      header: "Montant payé",
-      sortable: true,
-      render: (value) => <span className="text-green-600 font-semibold">{formatCurrency(value)}</span>,
-    },
-    {
-      key: "remainingAmount",
-      header: "Reste à payer",
-      sortable: true,
-      render: (value) => (
-        <span className={`font-semibold ${value > 0 ? "text-red-600" : "text-green-600"}`}>
-          {formatCurrency(value)}
-        </span>
-      ),
-    },
-    {
-      key: "paymentStatus",
-      header: "Statut",
-      sortable: true,
-      render: (value) => getStatusBadge(value),
-    },
-    {
-      key: "lastPaymentDate",
-      header: "Dernier paiement",
-      sortable: true,
-      render: (value) => (value ? new Date(value).toLocaleDateString("fr-FR") : "Aucun"),
-    },
-  ]
+  const openEditExpense = (e) => {
+    setEditExpenseId(e.id)
+    setEditExpDesc(e.description)
+    setEditExpAmount(String(e.amount))
+    setEditExpCategory(e.category === "salaires" ? "autres" : e.category)
+    setEditExpCategoryCustom(e.categoryCustom || "")
+    setEditExpDate(e.date)
+    setEditExpNotes(e.notes || "")
+    setShowEditExpense(true)
+  }
 
-  const actions = [
-    {
-      label: "Voir détails",
-      icon: Eye,
-      onClick: (row) => {
-        setSelectedStudent(row)
-        setShowInvoiceModal(true)
-      },
-    },
-    {
-      label: "Enregistrer paiement",
-      icon: CreditCard,
-      onClick: (row) => {
-        setSelectedStudent(row)
-        setShowPaymentModal(true)
-      },
-    },
-  ]
+  const handleEditExpense = async () => {
+    if (!editExpenseId || !editExpDesc || !editExpAmount) return
+    await updateExpense(editExpenseId, {
+      description: editExpDesc,
+      amount: Number(editExpAmount),
+      category: editExpCategory,
+      categoryCustom: editExpCategory === "autres" ? editExpCategoryCustom : undefined,
+      date: editExpDate,
+      notes: editExpNotes || undefined,
+    })
+    setShowEditExpense(false)
+  }
 
-  const filteredFees = studentFees.filter((fee) => {
-    const matchesSearch =
-      fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fee.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fee.parentName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = selectedStatus === "all" || fee.paymentStatus === selectedStatus
-    return matchesSearch && matchesStatus
-  })
+  const openEditPayment = (p) => {
+    setEditPaymentId(p.id)
+    setEditPayAmount(String(p.amount))
+    setEditPayMethod(p.method)
+    setEditPayFeeType(p.feeTypeId || "")
+    setShowEditPayment(true)
+  }
+
+  const handleEditPayment = async () => {
+    if (!editPaymentId || !editPayAmount) return
+    await updatePayment(editPaymentId, {
+      amount: Number(editPayAmount),
+      method: editPayMethod,
+      feeTypeId: editPayFeeType ? Number(editPayFeeType) : undefined,
+    })
+    setShowEditPayment(false)
+  }
+
+  const exportPaymentsCSV = () => {
+    const h = ["Date", "Élève", "Montant", "Mode", "Type"]
+    const r = filteredPayments.map(p => [p.date, p.studentName || "N/A", p.amount, p.method, p.feeTypeName || "-"])
+    const csv = [h.join(","), ...r.map(r => r.join(","))].join("\n")
+    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b)
+    a.download = `paiements-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
+  }
+
+  const exportExpensesCSV = () => {
+    const h = ["Date", "Description", "Catégorie", "Montant", "Notes"]
+    const r = filteredExpenses.map(e => [e.date, e.description, e.categoryLabel, e.amount, e.notes || ""])
+    const csv = [h.join(","), ...r.map(r => r.join(","))].join("\n")
+    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b)
+    a.download = `depenses-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
+  }
+
+  const exportCashFlowCSV = () => {
+    const h = ["Date", "Description", "Type", "Montant", "Solde"]
+    const r = cashFlow.map(f => [f.date, f.desc, f.type, Math.abs(f.amount), f.balance])
+    const csv = [h.join(","), ...r.map(r => r.join(","))].join("\n")
+    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b)
+    a.download = `flux-tresorerie-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
+  }
+
+  const exportMonthlyReportCSV = () => {
+    const rows = [
+      ["Rapport Mensuel - " + today],
+      [""],
+      ["COMPTE DE RÉSULTAT"],
+      ["Revenus totaux", totalRevenue],
+      ["Dépenses totales", totalExpenses],
+      ["Résultat net", netBalance],
+      [""],
+      ["RÉPARTITION DÉPENSES PAR CATÉGORIE"],
+      ...pieData.map(d => [d.name, d.value]),
+      [""],
+      ["ÉVOLUTION (6 MOIS)"],
+      ["Mois", "Revenus", "Dépenses"],
+      ...monthlyChartData.map(m => [m.month, m.Revenus, m.Dépenses]),
+    ]
+    const csv = rows.map(r => r.join(",")).join("\n")
+    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b)
+    a.download = `rapport-mensuel-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
+  }
+
+  const fmt = (n) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA"
+
+  const isLoading = studentsLoading || paymentsLoading
 
   return (
     <AppLayout>
-          <PageHeader title="Gestion Financière" description="Suivi des frais de scolarité et paiements">
-            <div className="flex items-center space-x-2">
-              <NotificationBellMain />
-              <SchoolYearSelector />
-              <Button variant="outline" onClick={() => setShowReportModal(true)}>
-                <FileText className="h-4 w-4 mr-2" />
-                Rapports
+      <PageHeader title="Trésorerie" description="Revenus, dépenses et flux de trésorerie" />
+
+      {isLoading ? (
+        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <>
+          {/* Global date filter */}
+          <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-muted/30 rounded-lg">
+            <Label className="text-sm font-medium">Période</Label>
+            <Input type="date" className="w-auto" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <span className="text-muted-foreground">—</span>
+            <Input type="date" className="w-auto" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo("") }}>
+                Réinitialiser
               </Button>
-              <Button onClick={() => setShowAddFeeModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau frais
+            )}
+            <div className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => setShowPeriodDialog(true)}>
+                <Lock className="h-4 w-4 mr-1" />Clôtures
               </Button>
             </div>
-          </PageHeader>
+          </div>
 
-          <StatsGrid stats={stats} />
-
-          <Tabs defaultValue="fees" className="space-y-4">
+          <Tabs defaultValue="dashboard" className="space-y-4">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="fees">Frais de scolarité</TabsTrigger>
-              <TabsTrigger value="payments">Paiements</TabsTrigger>
-              <TabsTrigger value="reports">Rapports</TabsTrigger>
-              <TabsTrigger value="settings">Paramètres</TabsTrigger>
+              <TabsTrigger value="dashboard">Tableau de bord</TabsTrigger>
+              <TabsTrigger value="fees">Revenus</TabsTrigger>
+              <TabsTrigger value="expenses">Dépenses</TabsTrigger>
+              <TabsTrigger value="cashflow">Flux</TabsTrigger>
             </TabsList>
 
+            {/* === DASHBOARD === */}
+            <TabsContent value="dashboard" className="space-y-4">
+              {dashboardLoading ? (
+                <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Total Revenus</CardTitle>
+                        <ArrowUpRight className="h-4 w-4 text-green-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-green-600">{fmt(totalRevenue)}</div>
+                        <p className="text-xs text-muted-foreground">{dashboardData?.totals?.revenueCount || 0} paiements</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Total Dépenses</CardTitle>
+                        <ArrowDownRight className="h-4 w-4 text-red-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-red-600">{fmt(totalExpenses)}</div>
+                        <p className="text-xs text-muted-foreground">{dashboardData?.totals?.expenseCount || 0} dépenses</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Solde Net</CardTitle>
+                        <DollarSign className={`h-4 w-4 ${netBalance >= 0 ? "text-green-600" : "text-red-600"}`} />
+                      </CardHeader>
+                      <CardContent>
+                        <div className={`text-2xl font-bold ${netBalance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {fmt(netBalance)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">revenus - dépenses</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Flux (dernier mois)</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-blue-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{fmt(monthPayTotal - monthExpTotal)}</div>
+                        <p className="text-xs text-muted-foreground">
+                          +{fmt(monthPayTotal)} / -{fmt(monthExpTotal)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card>
+                      <CardHeader><CardTitle>Revenus vs Dépenses (6 mois)</CardTitle></CardHeader>
+                      <CardContent>
+                        {monthlyChartData.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">Aucune donnée</div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <BarChart data={monthlyChartData}>
+                              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                              <YAxis tick={{ fontSize: 11 }} />
+                              <Tooltip formatter={(v) => fmt(v)} />
+                              <Legend />
+                              <Bar dataKey="Revenus" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="Dépenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader><CardTitle>Répartition des dépenses</CardTitle></CardHeader>
+                      <CardContent>
+                        {pieData.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">Aucune dépense</div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={250}>
+                            <PieChart>
+                              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                              </Pie>
+                              <Tooltip formatter={(v) => fmt(v)} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
+            </TabsContent>
+
+            {/* === REVENUS (paiements) === */}
             <TabsContent value="fees" className="space-y-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Rechercher et filtrer</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Filtres</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                        <Input
-                          placeholder="Rechercher par nom, ID élève ou parent..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input placeholder="Rechercher par élève..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
                     </div>
-                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                      <SelectTrigger className="w-full md:w-48">
-                        <SelectValue placeholder="Statut de paiement" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous les statuts</SelectItem>
-                        <SelectItem value="paid">Payé</SelectItem>
-                        <SelectItem value="partial">Paiement partiel</SelectItem>
-                        <SelectItem value="unpaid">Impayé</SelectItem>
-                        <SelectItem value="overdue">En retard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={selectedFeeType} onValueChange={setSelectedFeeType}>
-                      <SelectTrigger className="w-full md:w-48">
-                        <SelectValue placeholder="Type de frais" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous les frais</SelectItem>
-                        <SelectItem value="tuition">Scolarité</SelectItem>
-                        <SelectItem value="canteen">Cantine</SelectItem>
-                        <SelectItem value="transport">Transport</SelectItem>
-                        <SelectItem value="uniform">Uniformes</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" className="bg-transparent">
-                      <Download className="h-4 w-4 mr-2" />
-                      Exporter
-                    </Button>
+                    <Button variant="outline" onClick={exportPaymentsCSV}><Download className="h-4 w-4 mr-2" />CSV</Button>
                   </div>
                 </CardContent>
               </Card>
-
               <Card>
-                <CardContent className="p-6">
-                  <DataTable
-                    data={filteredFees}
-                    columns={columns}
-                    actions={actions}
-                    onRowClick={(row) => {
-                      setSelectedStudent(row)
-                      setShowInvoiceModal(true)
-                    }}
-                  />
+                <CardHeader><CardTitle>Paiements</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow><TableHead>Date</TableHead><TableHead>Élève</TableHead><TableHead>Montant</TableHead><TableHead>Mode</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Action</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucun paiement</TableCell></TableRow>
+                      ) : (
+                        paginatedPayments.map(p => {
+                          const closed = isClosed(p.date)
+                          return (
+                            <TableRow key={p.id} className={closed ? "opacity-60" : ""}>
+                              <TableCell>{p.date}{closed && <Lock className="h-3 w-3 inline ml-1 text-muted-foreground" />}</TableCell>
+                              <TableCell className="font-medium">{p.studentName || "N/A"}</TableCell>
+                              <TableCell className="font-bold">{fmt(p.amount)}</TableCell>
+                              <TableCell>{p.method}</TableCell>
+                              <TableCell>{p.feeTypeName || "-"}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {!closed && (
+                                    <Button variant="ghost" size="sm" onClick={() => openEditPayment(p)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {!closed && (
+                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer ?")) await removePayment(p.id) }}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
+                {filteredPayments.length > LIMIT && (
+                  <CardContent className="border-t py-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{filteredPayments.length} résultat(s) · Page {payPage}/{payTotalPages}</span>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" disabled={payPage <= 1} onClick={() => setPayPage(p => p - 1)}>Précédent</Button>
+                        <Button variant="outline" size="sm" disabled={payPage >= payTotalPages} onClick={() => setPayPage(p => p + 1)}>Suivant</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             </TabsContent>
 
-            <TabsContent value="payments" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4" />
-                      <span>Paiements du jour</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">2,450,000 FCFA</div>
-                    <p className="text-sm text-gray-600">15 paiements reçus</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>Paiements du mois</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">18,750,000 FCFA</div>
-                    <p className="text-sm text-gray-600">+12% vs mois dernier</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>Paiements en retard</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600">134</div>
-                    <p className="text-sm text-gray-600">Élèves concernés</p>
-                  </CardContent>
-                </Card>
-              </div>
-
+            {/* === DÉPENSES === */}
+            <TabsContent value="expenses" className="space-y-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Paiements récents</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle>Filtres</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        student: "Aminata Traoré",
-                        amount: 150000,
-                        type: "Scolarité",
-                        date: "2024-01-15",
-                        method: "Espèces",
-                      },
-                      {
-                        student: "Ibrahim Keita",
-                        amount: 75000,
-                        type: "Scolarité (partiel)",
-                        date: "2024-01-14",
-                        method: "Mobile Money",
-                      },
-                      {
-                        student: "Kadiatou Sangaré",
-                        amount: 25000,
-                        type: "Cantine",
-                        date: "2024-01-14",
-                        method: "Virement",
-                      },
-                    ].map((payment, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <div className="font-medium text-gray-900">{payment.student}</div>
-                          <div className="text-sm text-gray-600">
-                            {payment.type} - {payment.method}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-green-600">{formatCurrency(payment.amount)}</div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(payment.date).toLocaleDateString("fr-FR")}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input placeholder="Rechercher une dépense..." className="pl-10" value={expSearch} onChange={e => setExpSearch(e.target.value)} />
+                    </div>
+                    <Select value={expCatFilter} onValueChange={setExpCatFilter}>
+                      <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Catégorie" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Toutes</SelectItem>
+                        {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Switch id="show-salaries" checked={showSalaries} onCheckedChange={setShowSalaries} />
+                      <Label htmlFor="show-salaries" className="text-sm whitespace-nowrap">Salaires</Label>
+                    </div>
+                    <Button onClick={() => setShowAddExpense(true)}><Plus className="h-4 w-4 mr-2" />Nouvelle dépense</Button>
+                    <Button variant="outline" onClick={exportExpensesCSV}><Download className="h-4 w-4 mr-2" />CSV</Button>
+                    <Button variant="outline" onClick={exportMonthlyReportCSV}><Download className="h-4 w-4 mr-2" />Rapport mensuel</Button>
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead><TableHead>Description</TableHead><TableHead>Catégorie</TableHead>
+                        <TableHead className="text-right">Montant</TableHead><TableHead>Notes</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredExpenses.length === 0 ? (
+                        <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Aucune dépense</TableCell></TableRow>
+                      ) : (
+                        paginatedExpenses.map(e => {
+                          const closed = !e._payroll && isClosed(e.date)
+                          return (
+                            <TableRow key={e.id} className={closed ? "opacity-60" : ""}>
+                              <TableCell>{e.date}{closed && <Lock className="h-3 w-3 inline ml-1 text-muted-foreground" />}</TableCell>
+                              <TableCell className="font-medium">{e.description}</TableCell>
+                              <TableCell><Badge variant="secondary">{e.categoryLabel}</Badge></TableCell>
+                              <TableCell className="text-right text-red-600 font-semibold">{fmt(e.amount)}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{e.notes || "-"}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {!e._payroll && !closed && (
+                                    <Button variant="ghost" size="sm" onClick={() => openEditExpense(e)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  {!closed && (
+                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer cette dépense ?")) await removeExpense(e.id) }}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+                {filteredExpenses.length > LIMIT && (
+                  <CardContent className="border-t py-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{filteredExpenses.length} résultat(s) · Page {expPage}/{expTotalPages}</span>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" disabled={expPage <= 1} onClick={() => setExpPage(p => p - 1)}>Précédent</Button>
+                        <Button variant="outline" size="sm" disabled={expPage >= expTotalPages} onClick={() => setExpPage(p => p + 1)}>Suivant</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Nouvelle dépense</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <div><Label>Description *</Label><Input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Facture d'électricité" /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><Label>Montant (FCFA) *</Label><Input type="number" value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="50000" /></div>
+                      <div><Label>Date</Label><Input type="date" value={expDate} onChange={e => setExpDate(e.target.value)} /></div>
+                    </div>
+                    <div><Label>Catégorie</Label>
+                      <Select value={expCategory} onValueChange={setExpCategory}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {expCategory === "autres" && (
+                      <div><Label>Catégorie personnalisée</Label><Input value={expCategoryCustom} onChange={e => setExpCategoryCustom(e.target.value)} placeholder="Ex: Communication" /></div>
+                    )}
+                    <div><Label>Notes</Label><Textarea value={expNotes} onChange={e => setExpNotes(e.target.value)} /></div>
+                    <Button onClick={handleAddExpense} className="w-full" disabled={!expDesc || !expAmount}>Ajouter</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={showEditExpense} onOpenChange={setShowEditExpense}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Modifier la dépense</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <div><Label>Description *</Label><Input value={editExpDesc} onChange={e => setEditExpDesc(e.target.value)} /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div><Label>Montant (FCFA) *</Label><Input type="number" value={editExpAmount} onChange={e => setEditExpAmount(e.target.value)} /></div>
+                      <div><Label>Date</Label><Input type="date" value={editExpDate} onChange={e => setEditExpDate(e.target.value)} /></div>
+                    </div>
+                    <div><Label>Catégorie</Label>
+                      <Select value={editExpCategory} onValueChange={setEditExpCategory}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {editExpCategory === "autres" && (
+                      <div><Label>Catégorie personnalisée</Label><Input value={editExpCategoryCustom} onChange={e => setEditExpCategoryCustom(e.target.value)} /></div>
+                    )}
+                    <div><Label>Notes</Label><Textarea value={editExpNotes} onChange={e => setEditExpNotes(e.target.value)} /></div>
+                    <Button onClick={handleEditExpense} className="w-full" disabled={!editExpDesc || !editExpAmount}>Enregistrer</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
-            <TabsContent value="reports" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Rapports financiers</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button variant="outline" className="w-full justify-start bg-transparent">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Rapport mensuel des recettes
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start bg-transparent">
-                      <Calculator className="h-4 w-4 mr-2" />
-                      État des impayés
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start bg-transparent">
-                      <TrendingUp className="h-4 w-4 mr-2" />
-                      Analyse des tendances
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start bg-transparent">
-                      <Users className="h-4 w-4 mr-2" />
-                      Rapport par classe
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Répartition des frais</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Frais de scolarité</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 h-2 bg-gray-200 rounded-full">
-                            <div className="w-4/5 h-2 bg-blue-500 rounded-full"></div>
-                          </div>
-                          <span className="text-sm font-medium">75%</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Cantine</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 h-2 bg-gray-200 rounded-full">
-                            <div className="w-1/6 h-2 bg-green-500 rounded-full"></div>
-                          </div>
-                          <span className="text-sm font-medium">15%</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Transport</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 h-2 bg-gray-200 rounded-full">
-                            <div className="w-1/12 h-2 bg-yellow-500 rounded-full"></div>
-                          </div>
-                          <span className="text-sm font-medium">7%</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Uniformes</span>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-20 h-2 bg-gray-200 rounded-full">
-                            <div className="w-1/20 h-2 bg-purple-500 rounded-full"></div>
-                          </div>
-                          <span className="text-sm font-medium">3%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+            {/* === FLUX DE TRÉSORERIE === */}
+            <TabsContent value="cashflow" className="space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  {cashFlow.length} transactions · Solde final : <span className={`font-bold ${netBalance >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(netBalance)}</span>
+                </p>
+                <div className="flex gap-2">
+                  {!fluxShowAll && cashFlow.length > 200 && (
+                    <Button variant="outline" size="sm" onClick={() => setFluxShowAll(true)}>Tout afficher ({cashFlow.length})</Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={exportCashFlowCSV}><Download className="h-4 w-4 mr-2" />CSV</Button>
+                </div>
               </div>
-            </TabsContent>
-
-            <TabsContent value="settings" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tarifs par niveau</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {[
-                      { level: "Primaire (CP-CM2)", tuition: "120,000 FCFA", canteen: "20,000 FCFA" },
-                      { level: "Collège (6ème-3ème)", tuition: "180,000 FCFA", canteen: "25,000 FCFA" },
-                      { level: "Lycée (2nde-Tle)", tuition: "220,000 FCFA", canteen: "30,000 FCFA" },
-                    ].map((tariff, index) => (
-                      <div key={index} className="p-4 border rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-2">{tariff.level}</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Scolarité:</span>
-                            <p className="font-semibold">{tariff.tuition}</p>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">Cantine:</span>
-                            <p className="font-semibold">{tariff.canteen}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Modes de paiement</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>Espèces</span>
-                      <Badge className="bg-green-100 text-green-800">Actif</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>Mobile Money</span>
-                      <Badge className="bg-green-100 text-green-800">Actif</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>Virement bancaire</span>
-                      <Badge className="bg-green-100 text-green-800">Actif</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>Chèque</span>
-                      <Badge className="bg-yellow-100 text-yellow-800">Limité</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto" style={{ maxHeight: fluxShowAll ? "none" : "70vh" }}>
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background">
+                        <TableRow>
+                          <TableHead>Date</TableHead><TableHead>Description</TableHead><TableHead>Type</TableHead>
+                          <TableHead className="text-right">Montant</TableHead><TableHead className="text-right">Solde</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cashFlow.length === 0 ? (
+                          <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucune transaction</TableCell></TableRow>
+                        ) : (
+                          (fluxShowAll ? cashFlow : cashFlow.slice(-200)).map((r, i) => (
+                            <TableRow key={i}>
+                              <TableCell>{r.date}</TableCell>
+                              <TableCell className="font-medium">{r.desc}</TableCell>
+                              <TableCell>
+                                {r.type === "revenu" ? (
+                                  <Badge variant="default" className="bg-green-600">Revenu</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">Dépense</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className={`text-right font-semibold ${r.type === "revenu" ? "text-green-600" : "text-red-600"}`}>
+                                {r.type === "revenu" ? "+" : ""}{fmt(Math.abs(r.amount))}
+                              </TableCell>
+                              <TableCell className={`text-right font-bold ${r.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                {fmt(r.balance)}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
+        </>
+      )}
 
-          {/* Modals */}
-          <AddFeeModal open={showAddFeeModal} onOpenChange={setShowAddFeeModal} />
+      {/* Payment modal */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Enregistrer un paiement</DialogTitle></DialogHeader>
+          {selectedStudent && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{selectedStudent.firstName} {selectedStudent.lastName} · {selectedStudent.className}</p>
+              <div><Label>Montant (FCFA)</Label><Input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="50000" /></div>
+              <div><Label>Type de frais</Label>
+                <Select value={payFeeType} onValueChange={setPayFeeType}>
+                  <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
+                  <SelectContent>{feeTypes.map(ft => <SelectItem key={ft.id} value={ft.id}>{ft.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Mode</Label>
+                <Select value={payMethod} onValueChange={setPayMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="espèces">Espèces</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="virement">Virement</SelectItem>
+                    <SelectItem value="chèque">Chèque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleRecordPayment} className="w-full" disabled={!payAmount}>Enregistrer</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-          <PaymentModal open={showPaymentModal} onOpenChange={setShowPaymentModal} student={selectedStudent} />
+      {/* Edit payment modal */}
+      <Dialog open={showEditPayment} onOpenChange={setShowEditPayment}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Modifier le paiement</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Montant (FCFA) *</Label><Input type="number" value={editPayAmount} onChange={e => setEditPayAmount(e.target.value)} /></div>
+            <div><Label>Type de frais</Label>
+              <Select value={editPayFeeType} onValueChange={setEditPayFeeType}>
+                <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
+                <SelectContent>{feeTypes.map(ft => <SelectItem key={ft.id} value={ft.id}>{ft.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Mode</Label>
+              <Select value={editPayMethod} onValueChange={setEditPayMethod}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="espèces">Espèces</SelectItem>
+                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                  <SelectItem value="virement">Virement</SelectItem>
+                  <SelectItem value="chèque">Chèque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleEditPayment} className="w-full" disabled={!editPayAmount}>Enregistrer</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-          <InvoiceModal open={showInvoiceModal} onOpenChange={setShowInvoiceModal} student={selectedStudent} />
+      {/* Invoice modal */}
+      <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Facture</DialogTitle></DialogHeader>
+          {selectedStudent && (() => {
+            const s = selectedStudent; const cls = classes.find(c => c.id === s.classId)
+            const totalFee = cls?.totalFee ?? 0; const paid = paymentsByStudent[s.id] || 0
+            const remaining = Math.max(0, totalFee - paid)
+            const sp = payments.filter(p => p.studentId === s.id)
+            return (
+              <div className="space-y-6">
+                <Card><CardHeader className="text-center"><CardTitle className="text-xl">FACTURE SCOLAIRE</CardTitle><p className="text-sm text-muted-foreground">{s.firstName} {s.lastName} · {s.className} · {today}</p></CardHeader></Card>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card><CardHeader><CardTitle>Élève</CardTitle></CardHeader><CardContent className="text-sm"><p><span className="text-muted-foreground">Nom:</span> {s.firstName} {s.lastName}</p><p><span className="text-muted-foreground">Classe:</span> {s.className}</p></CardContent></Card>
+                  <Card><CardHeader><CardTitle>Parent</CardTitle></CardHeader><CardContent className="text-sm"><p><span className="text-muted-foreground">Nom:</span> {s.parentName}</p><p><span className="text-muted-foreground">Tél:</span> {s.parentPhone}</p></CardContent></Card>
+                </div>
+                <Card><CardHeader><CardTitle>Résumé</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="flex justify-between"><span>Total des frais</span><span className="font-bold">{fmt(totalFee)}</span></div><div className="flex justify-between"><span>Payé</span><span className="font-bold text-green-600">{fmt(paid)}</span></div><hr /><div className="flex justify-between text-xl"><span className="font-bold">Solde</span><span className={`font-bold ${remaining > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(remaining)}</span></div></div></CardContent></Card>
+                {sp.length > 0 && (
+                  <Card><CardHeader><CardTitle>Historique</CardTitle></CardHeader><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Montant</TableHead><TableHead>Mode</TableHead></TableRow></TableHeader><TableBody>{sp.map(p => <TableRow key={p.id}><TableCell>{p.date}</TableCell><TableCell className="font-semibold text-green-600">{fmt(p.amount)}</TableCell><TableCell>{p.method}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+                )}
+              </div>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
 
-          <FinancialReportModal open={showReportModal} onOpenChange={setShowReportModal} />
-        </AppLayout>
+      {/* Period management dialog */}
+      <Dialog open={showPeriodDialog} onOpenChange={setShowPeriodDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Gestion des clôtures</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {periods.length > 0 && (
+              <div>
+                <Label className="text-sm text-muted-foreground">Périodes clôturées</Label>
+                <div className="space-y-1 mt-1">
+                  {periods.map(p => (
+                    <div key={p.id} className="flex items-center justify-between bg-muted/50 rounded px-3 py-1.5 text-sm">
+                      <span>{p.month}/{p.year}</span>
+                      <Button variant="ghost" size="sm" onClick={async () => { await openPeriod(p.month, p.year); setPeriodMsg("") }}>
+                        Rouvrir
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="border-t pt-3">
+              <Label>Clôturer un mois</Label>
+              <div className="flex gap-2 mt-1">
+                <Input type="number" placeholder="Mois" min={1} max={12} value={closeMonth} onChange={e => setCloseMonth(Number(e.target.value))} className="w-20" />
+                <Input type="number" placeholder="Année" min={2020} max={2100} value={closeYear} onChange={e => setCloseYear(Number(e.target.value))} className="w-24" />
+                <Button size="sm" onClick={async () => {
+                  const res = await closePeriod(closeMonth, closeYear)
+                  if (res.ok) setPeriodMsg("Période clôturée")
+                  else setPeriodMsg(res.message || "Erreur")
+                }}>Clôturer</Button>
+              </div>
+              {periodMsg && <p className="text-xs text-muted-foreground mt-1">{periodMsg}</p>}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AppLayout>
   )
 }

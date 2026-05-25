@@ -43,7 +43,7 @@ const navigation: NavigationItem[] = [
       { name: "Liste", href: "/teachers/liste", icon: Users },
       { name: "Salaires", href: "/teachers/salaire", icon: DollarSign },
       { name: "Présence", href: "/teachers/presence", icon: CalendarCheck },
-      { name: "Remplaçants", href: "/teachers/remplacant", icon: UserCheck },
+
     ],
   },
   {
@@ -69,7 +69,7 @@ const navigation: NavigationItem[] = [
   { name: "Historique académique", href: "/academic-history", icon: BookOpen },
   { name: "Paramètres", href: "/settings", icon: Settings },
   { name: "Personnalisation", href: "/personalization", icon: Palette },
-  { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Documents & Rapport", href: "/documents", icon: FileText },
 ]
 
 export function Sidebar() {

@@ -12,6 +12,7 @@ export interface ClassData {
   color?: string
   academicYear?: string
   status?: string
+  studentCount?: number
 }
 
 export function useClasses() {

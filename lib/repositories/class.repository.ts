@@ -3,7 +3,10 @@ import { db } from "@/lib/db";
 import { classes } from "@/lib/models/schema";
 
 export async function findAllClasses() {
-  return db.query.classes.findMany({ orderBy: (c, { asc }) => [asc(c.name)] });
+  return db.query.classes.findMany({
+    with: { students: true },
+    orderBy: (c, { asc }) => [asc(c.name)],
+  });
 }
 
 export async function findClassById(id: number) {

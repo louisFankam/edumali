@@ -115,6 +115,173 @@ export const attendance = sqliteTable("attendance", {
   uniqueStudentDate: uniqueIndex("att_student_date").on(table.studentId, table.date),
 }));
 
+export const teachers = sqliteTable("teachers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull().unique(),
+  phone: text("phone"),
+  address: text("address"),
+  gender: text("gender", { enum: ["Masculin", "Féminin"] }).notNull(),
+  hireDate: text("hire_date").notNull(),
+  salary: real("salary").default(0),
+  contrat: text("contrat", { enum: ["horaire", "mensuel"] }).notNull().default("mensuel"),
+  status: text("status", { enum: ["active", "inactive", "on_leave"] }).notNull().default("active"),
+  photo: text("photo"),
+  userId: integer("user_id").references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const teacherSubjects = sqliteTable("teacher_subjects", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  teacherId: integer("teacher_id").notNull().references(() => teachers.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+}, (table) => ({
+  uniqueTeacherSubject: uniqueIndex("ts_teacher_subject").on(table.teacherId, table.subjectId),
+}));
+
+export const teacherAttendance = sqliteTable("teacher_attendance", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  teacherId: integer("teacher_id").notNull().references(() => teachers.id),
+  date: text("date").notNull(),
+  status: text("status", { enum: ["present", "absent", "retard", "excused"] }).notNull().default("present"),
+  justification: text("justification"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueTeacherDate: uniqueIndex("ta_teacher_date").on(table.teacherId, table.date),
+}));
+
+export const payroll = sqliteTable("payroll", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  teacherId: integer("teacher_id").notNull().references(() => teachers.id),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  amount: real("amount").notNull(),
+  bonus: real("bonus").default(0),
+  deductions: real("deductions").default(0),
+  paidAt: text("paid_at"),
+  notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueTeacherMonthYear: uniqueIndex("pay_teacher_month_year").on(table.teacherId, table.month, table.year),
+}));
+
+export const expenses = sqliteTable("expenses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  category: text("category", { enum: ["eau", "electricite", "fournitures", "entretien", "transport", "equipement", "autres"] }).notNull(),
+  categoryCustom: text("category_custom"),
+  date: text("date").notNull(),
+  notes: text("notes"),
+  academicYearId: integer("academic_year_id").references(() => academicYears.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const evaluations = sqliteTable("evaluations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["devoir", "trimestrielle"] }).notNull(),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  trimester: integer("trimester").notNull(),
+  academicYearId: integer("academic_year_id").notNull().references(() => academicYears.id),
+  date: text("date").notNull(),
+  status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const grades = sqliteTable("grades", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  evaluationId: integer("evaluation_id").notNull().references(() => evaluations.id),
+  studentId: integer("student_id").notNull().references(() => students.id),
+  score: real("score").notNull(),
+  remarks: text("remarks"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueEvalStudent: uniqueIndex("grade_eval_student").on(table.evaluationId, table.studentId),
+}));
+
+export const classSubjects = sqliteTable("class_subjects", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  coefficient: integer("coefficient").default(1).notNull(),
+}, (table) => ({
+  uniqueClassSubject: uniqueIndex("cs_class_subject").on(table.classId, table.subjectId),
+}));
+
+export const closedPeriods = sqliteTable("closed_periods", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  closedAt: integer("closed_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueMonthYear: uniqueIndex("cp_month_year").on(table.month, table.year),
+}));
+
+export const auditLog = sqliteTable("audit_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tableName: text("table_name").notNull(),
+  recordId: integer("record_id").notNull(),
+  action: text("action", { enum: ["create", "update", "delete"] }).notNull(),
+  userId: integer("user_id"),
+  oldValues: text("old_values"),
+  newValues: text("new_values"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const medicalInfos = sqliteTable("medical_infos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: integer("student_id").notNull().references(() => students.id).unique(),
+  bloodType: text("blood_type"),
+  allergies: text("allergies"),
+  medicalConditions: text("medical_conditions"),
+  medications: text("medications"),
+  doctorName: text("doctor_name"),
+  doctorPhone: text("doctor_phone"),
+  emergencyContact: text("emergency_contact"),
+  emergencyPhone: text("emergency_phone"),
+  vaccinationStatus: text("vaccination_status"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const familyInfos = sqliteTable("family_infos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: integer("student_id").notNull().references(() => students.id).unique(),
+  fatherName: text("father_name"),
+  fatherPhone: text("father_phone"),
+  fatherProfession: text("father_profession"),
+  motherName: text("mother_name"),
+  motherPhone: text("mother_phone"),
+  motherProfession: text("mother_profession"),
+  guardianName: text("guardian_name"),
+  guardianRelation: text("guardian_relation"),
+  guardianPhone: text("guardian_phone"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const academicHistories = sqliteTable("academic_histories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: integer("student_id").notNull().references(() => students.id),
+  schoolName: text("school_name").notNull(),
+  className: text("class_name"),
+  academicYear: text("academic_year"),
+  reason: text("reason"),
+  remarks: text("remarks"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
 export const enrollments = sqliteTable("enrollments", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   studentId: integer("student_id").notNull().references(() => students.id),
@@ -129,10 +296,12 @@ export const enrollments = sqliteTable("enrollments", {
 
 // Relations
 
-export const classesRelations = relations(classes, ({ many }) => ({
+export const classesRelations = relations(classes, ({ one, many }) => ({
   students: many(students),
   attendance: many(attendance),
   enrollments: many(enrollments),
+  teacher: one(teachers, { fields: [classes.teacherId], references: [teachers.id] }),
+  classSubjects: many(classSubjects),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
@@ -140,6 +309,10 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   attendance: many(attendance),
   payments: many(payments),
   enrollments: many(enrollments),
+  medicalInfo: one(medicalInfos, { fields: [students.id], references: [medicalInfos.studentId] }),
+  familyInfo: one(familyInfos, { fields: [students.id], references: [familyInfos.studentId] }),
+  academicHistories: many(academicHistories),
+  grades: many(grades),
 }));
 
 export const feeTypesRelations = relations(feeTypes, ({ many }) => ({
@@ -165,3 +338,60 @@ export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
   class: one(classes, { fields: [enrollments.classId], references: [classes.id] }),
   academicYear: one(academicYears, { fields: [enrollments.academicYearId], references: [academicYears.id] }),
 }));
+
+export const teachersRelations = relations(teachers, ({ many }) => ({
+  subjects: many(teacherSubjects),
+  attendance: many(teacherAttendance),
+  payrolls: many(payroll),
+}));
+
+export const teacherSubjectsRelations = relations(teacherSubjects, ({ one }) => ({
+  teacher: one(teachers, { fields: [teacherSubjects.teacherId], references: [teachers.id] }),
+  subject: one(subjects, { fields: [teacherSubjects.subjectId], references: [subjects.id] }),
+}));
+
+export const teacherAttendanceRelations = relations(teacherAttendance, ({ one }) => ({
+  teacher: one(teachers, { fields: [teacherAttendance.teacherId], references: [teachers.id] }),
+}));
+
+export const payrollRelations = relations(payroll, ({ one }) => ({
+  teacher: one(teachers, { fields: [payroll.teacherId], references: [teachers.id] }),
+}));
+
+export const subjectsRelations = relations(subjects, ({ many }) => ({
+  teachers: many(teacherSubjects),
+  classSubjects: many(classSubjects),
+}));
+
+export const medicalInfosRelations = relations(medicalInfos, ({ one }) => ({
+  student: one(students, { fields: [medicalInfos.studentId], references: [students.id] }),
+}));
+
+export const familyInfosRelations = relations(familyInfos, ({ one }) => ({
+  student: one(students, { fields: [familyInfos.studentId], references: [students.id] }),
+}));
+
+export const academicHistoriesRelations = relations(academicHistories, ({ one }) => ({
+  student: one(students, { fields: [academicHistories.studentId], references: [students.id] }),
+}));
+
+export const evaluationsRelations = relations(evaluations, ({ one, many }) => ({
+  class: one(classes, { fields: [evaluations.classId], references: [classes.id] }),
+  subject: one(subjects, { fields: [evaluations.subjectId], references: [subjects.id] }),
+  academicYear: one(academicYears, { fields: [evaluations.academicYearId], references: [academicYears.id] }),
+  grades: many(grades),
+}));
+
+export const gradesRelations = relations(grades, ({ one }) => ({
+  evaluation: one(evaluations, { fields: [grades.evaluationId], references: [evaluations.id] }),
+  student: one(students, { fields: [grades.studentId], references: [students.id] }),
+}));
+
+export const classSubjectsRelations = relations(classSubjects, ({ one }) => ({
+  class: one(classes, { fields: [classSubjects.classId], references: [classes.id] }),
+  subject: one(subjects, { fields: [classSubjects.subjectId], references: [subjects.id] }),
+}));
+
+export const closedPeriodsRelations = relations(closedPeriods, ({}) => ({}));
+
+export const auditLogRelations = relations(auditLog, ({}) => ({}));

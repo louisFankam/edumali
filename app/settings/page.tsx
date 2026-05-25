@@ -33,11 +33,17 @@ import {
   CheckCircle,
   Clock,
   Building2,
-  DollarSign
+  DollarSign,
+  Users,
+  Check,
+  X
 } from "lucide-react"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
+import { AffectationsPanel } from "@/components/affectations-panel"
 import { useSchoolInfo, useAcademicYears, useSubjects } from "@/hooks/use-settings"
 import { useClasses } from "@/hooks/use-classes"
+import { useTeachers } from "@/hooks/use-teachers"
+import { useClassSubjects } from "@/hooks/use-class-subjects"
 
 // Types pour les données
 interface Class {
@@ -89,23 +95,6 @@ interface UserAccount {
   last_login: string
   avatar: string
   status: string
-}
-
-interface Teacher {
-  id: string
-  first_name: string
-  last_name: string
-  full_name: string
-  email: string
-  phone: string
-  address: string
-  hire_date: string
-  salary: number
-  status: "active" | "inactive" | "on_leave"
-  photo: string
-  user_id: string
-  created: string
-  updated: string
 }
 
 interface AcademicYear {
@@ -814,9 +803,10 @@ export default function SettingsPage() {
   const { classes: apiClasses, isLoading: classesLoading, create: createClassApi, update: updateClassApi, remove: removeClassApi } = useClasses()
   const { years: apiYears, currentYear, isLoading: yearsLoading, create: createYear, update: updateYear, remove: removeYear } = useAcademicYears()
 
+  const { teachers: apiTeachers } = useTeachers()
+
   const [classes, setClasses] = useState<Class[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
-  const [teachers] = useState<Teacher[]>([])
   const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>({
     id: "local-school",
     name: "",
@@ -869,7 +859,7 @@ export default function SettingsPage() {
         name: c.name,
         level: String(c.level ?? ""),
         capacity: c.capacity ?? 0,
-        current_students: 0,
+        current_students: c.studentCount ?? 0,
         total_fee: c.totalFee ?? 0,
         teacher_id: c.teacherId ?? "",
         teacher_name: "",
@@ -1129,7 +1119,7 @@ export default function SettingsPage() {
           </PageHeader>
 
           <Tabs defaultValue="classes" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="classes" className="flex items-center space-x-2">
                 <GraduationCap className="h-4 w-4" />
                 <span>Classes</span>
@@ -1137,6 +1127,10 @@ export default function SettingsPage() {
               <TabsTrigger value="subjects" className="flex items-center space-x-2">
                 <BookOpen className="h-4 w-4" />
                 <span>Matières</span>
+              </TabsTrigger>
+              <TabsTrigger value="affectations" className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>Affectations</span>
               </TabsTrigger>
               <TabsTrigger value="school" className="flex items-center space-x-2">
                 <School className="h-4 w-4" />
@@ -1335,6 +1329,15 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Onglet Affectations */}
+            <TabsContent value="affectations" className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold">Affectations Matières → Classes</h2>
+                <p className="text-muted-foreground">Assignez les matières à chaque classe avec leur coefficient</p>
+              </div>
+              <AffectationsPanel classes={classes} allSubjects={subjects} />
             </TabsContent>
 
             {/* Onglet École */}
@@ -1609,7 +1612,7 @@ export default function SettingsPage() {
             }}
             onSave={handleSaveClass}
             classData={selectedClass}
-            teachers={teachers}
+            teachers={apiTeachers}
             academicYears={academicYears}
             selectedAcademicYear={selectedAcademicYear}
           />

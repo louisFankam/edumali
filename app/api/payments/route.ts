@@ -11,14 +11,20 @@ export async function GET(req: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const stats = searchParams.get("stats");
+    const page = searchParams.get("page") ? Number(searchParams.get("page")) : undefined;
+    const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : undefined;
 
     if (stats === "true") {
       const data = await getPaymentStatsService(from ?? undefined, to ?? undefined);
       return NextResponse.json({ ok: true, data });
     }
 
-    const data = await getPayments({ studentId: studentId ?? undefined, from: from ?? undefined, to: to ?? undefined });
-    return NextResponse.json({ ok: true, data });
+    const result = await getPayments({ studentId: studentId ?? undefined, from: from ?? undefined, to: to ?? undefined, page, limit });
+    return NextResponse.json({
+      ok: true,
+      data: result.data,
+      pagination: { total: result.total, page: page ?? 1, limit: limit ?? result.data.length },
+    });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
   }

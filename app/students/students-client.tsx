@@ -12,34 +12,63 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Download, Users, Loader2 } from "lucide-react"
+import { Plus, Search, Download, ChevronLeft, ChevronRight, Users, Loader2 } from "lucide-react"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
 import { useStudents, useStudentStats } from "@/hooks/use-students"
 import { useClasses } from "@/hooks/use-classes"
 import type { StudentData } from "@/hooks/use-students"
 
+const PAGE_SIZE = 20
+
 export function StudentsClient() {
-  const { students, isLoading, error, refetch, addStudent, editStudent, deleteStudent } = useStudents()
-  const { classes } = useClasses()
-  const { stats, isLoading: statsLoading } = useStudentStats()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedClassId, setSelectedClassId] = useState("all")
+  const [page, setPage] = useState(1)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<StudentData | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
-  const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const matchesSearch =
-        student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.parentName.toLowerCase().includes(searchTerm.toLowerCase())
+  const effectiveClassId = selectedClassId === "all" ? undefined : selectedClassId
 
-      const matchesClass = selectedClassId === "all" || student.classId === selectedClassId
-      return matchesSearch && matchesClass
-    })
-  }, [students, searchTerm, selectedClassId])
+  const { students, total, isLoading, error, refetch, addStudent, editStudent, deleteStudent } = useStudents({
+    search: searchTerm || undefined,
+    classId: effectiveClassId,
+    page,
+    limit: PAGE_SIZE,
+  })
+  const { classes } = useClasses()
+  const { stats, isLoading: statsLoading } = useStudentStats()
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  const filteredStudents = useMemo(() => students, [students])
+
+  const handleExportCSV = () => {
+    const headers = ["Prénom,Nom,Genre,Date Naissance,Nationalité,Parent,Téléphone,Classe,Date Inscription,Statut"]
+    const rows = students.map(s =>
+      [s.firstName, s.lastName, s.gender, s.birthDate, s.nationality ?? "", s.parentName, s.parentPhone, s.className, s.registrationDate, s.status]
+        .map(v => `"${v}"`).join(",")
+    )
+    const csv = [...headers, ...rows].join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `eleves_${new Date().toISOString().split("T")[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    setPage(1)
+  }
+
+  const handleClassFilterChange = (value: string) => {
+    setSelectedClassId(value)
+    setPage(1)
+  }
 
   const handleAddStudent = async (newStudent: any) => {
     await addStudent(newStudent)
@@ -109,15 +138,15 @@ export function StudentsClient() {
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Rechercher par nom d'élève ou parent..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+                  <Input
+                    placeholder="Rechercher par nom d'élève ou parent..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-10"
+                  />
               </div>
             </div>
-            <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+            <Select value={selectedClassId} onValueChange={handleClassFilterChange}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Filtrer par classe" />
               </SelectTrigger>
@@ -131,9 +160,9 @@ export function StudentsClient() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" className="bg-transparent">
+            <Button variant="outline" className="bg-transparent" onClick={handleExportCSV}>
               <Download className="h-4 w-4 mr-2" />
-              Exporter
+              Exporter CSV
             </Button>
           </div>
         </CardContent>
@@ -146,12 +175,27 @@ export function StudentsClient() {
           </CardContent>
         </Card>
       ) : (
-        <StudentsTable
-          students={filteredStudents}
-          onViewDetails={handleViewDetails}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteStudent}
-        />
+        <>
+          <StudentsTable
+            students={filteredStudents}
+            onViewDetails={handleViewDetails}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteStudent}
+          />
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">{total} élève(s) — Page {page}/{totalPages}</p>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Précédent
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+                  Suivant <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <AddStudentModal

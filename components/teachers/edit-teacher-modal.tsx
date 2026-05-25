@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useState, useEffect } from "react"
@@ -41,7 +40,7 @@ interface Teacher {
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string
-  gender: "Masculin" | "Feminin"
+  gender: "Masculin" | "Féminin"
   contrat: "horaire" | "mensuel"
   speciality: string[]
   speciality_names: string[]
@@ -69,7 +68,7 @@ export function EditTeacherModal({ isOpen, onClose, teacher, onEdit, subjects }:
     status: "active" as "active" | "inactive" | "on_leave",
     photo: "",
     user_id: "",
-    gender: "Masculin" as const,
+    gender: "Masculin" as "Masculin" | "Féminin",
     contrat: "mensuel" as const,
     speciality: [] as string[]
   })
@@ -221,7 +220,7 @@ export function EditTeacherModal({ isOpen, onClose, teacher, onEdit, subjects }:
             </div>
             <div className="space-y-2">
               <Label htmlFor="gender">Genre *</Label>
-              <Select value={formData.gender} onValueChange={(value: "Masculin" | "Feminin") => 
+              <Select value={formData.gender} onValueChange={(value: "Masculin" | "Féminin") => 
                 setFormData(prev => ({ ...prev, gender: value }))
               }>
                 <SelectTrigger>
@@ -229,7 +228,7 @@ export function EditTeacherModal({ isOpen, onClose, teacher, onEdit, subjects }:
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Masculin">Masculin</SelectItem>
-                  <SelectItem value="Feminin">Féminin</SelectItem>
+                  <SelectItem value="Féminin">Féminin</SelectItem>
                 </SelectContent>
               </Select>
             </div>

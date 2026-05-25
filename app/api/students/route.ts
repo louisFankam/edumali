@@ -10,14 +10,20 @@ export async function GET(request: Request) {
     const search = searchParams.get("search") ?? undefined;
     const classId = searchParams.get("classId") ?? undefined;
     const stats = searchParams.get("stats") === "true";
+    const page = searchParams.get("page") ? Number(searchParams.get("page")) : undefined;
+    const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : undefined;
 
     if (stats) {
       const data = await getStudentStats();
       return NextResponse.json({ ok: true, data });
     }
 
-    const data = await getStudents({ search, classId });
-    return NextResponse.json({ ok: true, data });
+    const result = await getStudents({ search, classId, page, limit });
+    return NextResponse.json({
+      ok: true,
+      data: result.data,
+      pagination: result.total ? { total: result.total, page: page ?? 1, limit: limit ?? result.data.length } : undefined,
+    });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
   }

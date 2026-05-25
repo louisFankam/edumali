@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -91,9 +92,9 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete, isLoa
                           <AvatarFallback>{getInitials(student.firstName, student.lastName)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">
+                          <Link href={`/students/eleves_pages/${student.id}`} className="font-medium hover:text-primary hover:underline transition-colors">
                             {student.firstName} {student.lastName}
-                          </div>
+                          </Link>
                           <div className="text-sm text-muted-foreground">{student.gender}</div>
                         </div>
                       </div>

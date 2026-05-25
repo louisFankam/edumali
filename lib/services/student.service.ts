@@ -8,6 +8,10 @@ import {
   type NewStudent,
 } from "@/lib/repositories/student.repository";
 import { findAllClasses, findClassById, createClass, updateClass, deleteClass } from "@/lib/repositories/class.repository";
+import { createEnrollment } from "@/lib/repositories/enrollment.repository";
+import { findCurrentAcademicYear } from "@/lib/repositories/academic-year.repository";
+import { findAllPayments } from "@/lib/repositories/payment.repository";
+import { findAttendanceByStudent } from "@/lib/repositories/attendance.repository";
 
 function mapStudent(s: any) {
   if (!s) return null;
@@ -35,15 +39,22 @@ function mapClass(c: any) {
     capacity: c.capacity, totalFee: c.totalFee,
     teacherId: c.teacherId ? String(c.teacherId) : null,
     color: c.color, academicYear: c.academicYear, status: c.status,
+    studentCount: c.students?.length ?? 0,
   };
 }
 
-export async function getStudents(filters?: { search?: string; classId?: string }) {
+export async function getStudents(filters?: { search?: string; classId?: string; page?: number; limit?: number }) {
   const rows = await findAllStudents({
     search: filters?.search,
     classId: filters?.classId ? Number(filters.classId) : undefined,
+    page: filters?.page,
+    limit: filters?.limit,
   });
-  return rows.map(mapStudent);
+  const total = await countStudents({
+    search: filters?.search,
+    classId: filters?.classId ? Number(filters.classId) : undefined,
+  });
+  return { data: rows.map(mapStudent), total };
 }
 
 export async function getStudentById(id: string) {
@@ -79,6 +90,19 @@ export async function addStudent(input: {
     status: (input.status as "Actif" | "Inactif") ?? "Actif",
   };
   const created = await createStudent(data);
+
+  // Create enrollment for current academic year
+  const currentYear = await findCurrentAcademicYear();
+  if (currentYear) {
+    await createEnrollment({
+      studentId: created.id,
+      classId: Number(input.classId),
+      academicYearId: currentYear.id,
+      enrollmentDate: created.registrationDate,
+      status: "inscrit",
+    });
+  }
+
   return mapStudent(created);
 }
 
@@ -112,7 +136,19 @@ export async function editStudent(id: string, input: Partial<{
 }
 
 export async function removeStudent(id: string) {
-  await deleteStudent(Number(id));
+  const studentId = Number(id);
+
+  const payments = await findAllPayments({ studentId });
+  if (payments.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a des paiements enregistrés");
+  }
+
+  const attendance = await findAttendanceByStudent(studentId);
+  if (attendance.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a des présences enregistrées");
+  }
+
+  await deleteStudent(studentId);
 }
 
 export async function getStudentStats() {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client"
 
 import { useState, useMemo } from "react"
@@ -9,72 +8,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Search, Users, User } from "lucide-react"
+import { Plus, Search, Users } from "lucide-react"
 import { TeachersTable } from "@/components/teachers/teachers-table"
 import { AddTeacherModal } from "@/components/teachers/add-teacher-modal"
 import { TeacherDetailsModal } from "@/components/teachers/teacher-details-modal"
 import { EditTeacherModal } from "@/components/teachers/edit-teacher-modal"
 import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
-import { Teacher, Subject } from "@/types/teacher"
-
-const INITIAL_SUBJECTS: Subject[] = [
-  { id: "1", name: "Mathématiques" },
-  { id: "2", name: "Français" },
-  { id: "3", name: "Sciences" },
-  { id: "4", name: "Histoire-Géo" },
-]
-
-const INITIAL_TEACHERS: Teacher[] = [
-  {
-    id: "t_1",
-    first_name: "Fatoumata",
-    last_name: "Diarra",
-    full_name: "Fatoumata Diarra",
-    email: "f.diarra@edumali.ml",
-    phone: "70000001",
-    address: "Bamako Coura",
-    hire_date: "2020-09-01",
-    salary: 150000,
-    status: "active",
-    photo: "",
-    user_id: "u_1",
-    gender: "Féminin",
-    contrat: "mensuel",
-    speciality: ["1"],
-    speciality_names: ["Mathématiques"],
-    created: "2020-09-01",
-    updated: "2020-09-01",
-  },
-  {
-    id: "t_2",
-    first_name: "Moussa",
-    last_name: "Koné",
-    full_name: "Moussa Koné",
-    email: "m.kone@edumali.ml",
-    phone: "70000002",
-    address: "Kalaban Coro",
-    hire_date: "2021-10-15",
-    salary: 140000,
-    status: "active",
-    photo: "",
-    user_id: "u_2",
-    gender: "Masculin",
-    contrat: "mensuel",
-    speciality: ["2"],
-    speciality_names: ["Français"],
-    created: "2021-10-15",
-    updated: "2021-10-15",
-  }
-]
+import { useTeachers, useSubjectsList, TeacherData } from "@/hooks/use-teachers"
 
 export default function TeachersListPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS)
-  const [subjects] = useState<Subject[]>(INITIAL_SUBJECTS)
+  const { teachers, isLoading, error, refetch, addTeacher, editTeacher, deleteTeacher: deleteTeacherApi } = useTeachers()
+  const { subjects } = useSubjectsList()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedSubject, setSelectedSubject] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherData | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
@@ -91,38 +40,30 @@ export default function TeachersListPage() {
     })
   }, [teachers, searchTerm, selectedSubject, selectedStatus])
 
-  const handleAddTeacher = (newTeacher: any) => {
-    const teacherWithId = { 
-      ...newTeacher, 
-      id: `t_${Date.now()}`,
-      full_name: `${newTeacher.first_name} ${newTeacher.last_name}`,
-      created: new Date().toISOString(),
-      updated: new Date().toISOString(),
-      speciality_names: subjects.filter(s => newTeacher.speciality?.includes(s.id)).map(s => s.name)
-    }
-    setTeachers([...teachers, teacherWithId])
+  const handleAddTeacher = async (formData: any) => {
+    await addTeacher(formData)
     setIsAddModalOpen(false)
   }
 
-  const handleEditTeacher = (updatedTeacher: Partial<Teacher>) => {
+  const handleEditTeacher = async (updatedTeacher: Partial<TeacherData>) => {
     if (!selectedTeacher) return
-    setTeachers(teachers.map(t => t.id === selectedTeacher.id ? { ...t, ...updatedTeacher } as Teacher : t))
+    await editTeacher(selectedTeacher.id, updatedTeacher)
     setIsEditModalOpen(false)
     setSelectedTeacher(null)
   }
 
-  const handleDeleteTeacher = (teacherId: string) => {
+  const handleDeleteTeacher = async (teacherId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce professeur ?')) {
-      setTeachers(teachers.filter(t => t.id !== teacherId))
+      await deleteTeacherApi(teacherId)
     }
   }
 
-  const handleViewDetails = (teacher: Teacher) => {
+  const handleViewDetails = (teacher: TeacherData) => {
     setSelectedTeacher(teacher)
     setIsDetailsModalOpen(true)
   }
 
-  const handleEditClick = (teacher: Teacher) => {
+  const handleEditClick = (teacher: TeacherData) => {
     setSelectedTeacher(teacher)
     setIsEditModalOpen(true)
   }
@@ -133,7 +74,7 @@ export default function TeachersListPage() {
     const female = teachers.filter((t) => t.gender === "Féminin").length
     const active = teachers.filter((t) => t.status === "active").length
     const onLeave = teachers.filter((t) => t.status === "on_leave").length
-    
+
     return {
       total,
       male,
@@ -223,6 +164,8 @@ export default function TeachersListPage() {
 
           <TeachersTable
             teachers={filteredTeachers}
+            isLoading={isLoading}
+            error={error}
             onViewDetails={handleViewDetails}
             onEdit={handleEditClick}
             onDelete={handleDeleteTeacher}

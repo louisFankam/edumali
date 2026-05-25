@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql, count } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { payments, feeTypes, students } from "@/lib/models/schema";
 
@@ -26,17 +26,37 @@ export async function deleteFeeType(id: number) {
 }
 
 // Payments
-export async function findAllPayments(filters?: { studentId?: number; from?: string; to?: string }) {
+function paymentConditions(filters?: { studentId?: number; from?: string; to?: string }) {
   const conditions: any[] = [];
   if (filters?.studentId) conditions.push(eq(payments.studentId, filters.studentId));
   if (filters?.from) conditions.push(gte(payments.date, filters.from));
   if (filters?.to) conditions.push(lte(payments.date, filters.to));
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
 
-  return db.query.payments.findMany({
-    where: and(...conditions),
+export async function countPayments(filters?: { studentId?: number; from?: string; to?: string }) {
+  const rows = await db.select({ total: count() }).from(payments).where(paymentConditions(filters));
+  return rows[0]?.total ?? 0;
+}
+
+export async function findAllPayments(filters?: { studentId?: number; from?: string; to?: string; page?: number; limit?: number }) {
+  const where = paymentConditions(filters);
+  let query = db.query.payments.findMany({
+    where,
     with: { student: true, feeType: true },
     orderBy: (p, { desc }) => [desc(p.date)],
   });
+  if (filters?.page && filters?.limit) {
+    const offset = (filters.page - 1) * filters.limit;
+    query = db.query.payments.findMany({
+      where,
+      with: { student: true, feeType: true },
+      orderBy: (p, { desc }) => [desc(p.date)],
+      limit: filters.limit,
+      offset,
+    });
+  }
+  return query;
 }
 
 export async function findPaymentById(id: number) {

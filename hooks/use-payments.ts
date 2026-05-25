@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { cachedFetch, clearCache } from "./use-cached-fetch"
 
 export interface FeeTypeData {
   id: string
@@ -31,8 +32,7 @@ export function useFeeTypes() {
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
-      const res = await window.fetch("/api/fees", { cache: "no-store" })
-      const json = await res.json()
+      const json = await cachedFetch<any>("/api/fees")
       if (json.ok) setFeeTypes(json.data)
     } finally {
       setIsLoading(false)
@@ -46,7 +46,7 @@ export function useFeeTypes() {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
     })
     const json = await res.json()
-    if (json.ok) load()
+    if (json.ok) { clearCache(); load() }
     return json
   }
 
@@ -55,22 +55,23 @@ export function useFeeTypes() {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
     })
     const json = await res.json()
-    if (json.ok) load()
+    if (json.ok) { clearCache(); load() }
     return json
   }
 
   const remove = async (id: string) => {
     const res = await window.fetch(`/api/fees/${id}`, { method: "DELETE" })
     const json = await res.json()
-    if (json.ok) load()
+    if (json.ok) { clearCache(); load() }
     return json
   }
 
   return { feeTypes, isLoading, create, update, remove }
 }
 
-export function usePayments(filters?: { studentId?: string; from?: string; to?: string }) {
+export function usePayments(filters?: { studentId?: string; from?: string; to?: string; page?: number; limit?: number }) {
   const [payments, setPayments] = useState<PaymentData[]>([])
+  const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -80,13 +81,14 @@ export function usePayments(filters?: { studentId?: string; from?: string; to?: 
       if (filters?.studentId) params.set("studentId", filters.studentId)
       if (filters?.from) params.set("from", filters.from)
       if (filters?.to) params.set("to", filters.to)
-      const res = await window.fetch(`/api/payments?${params.toString()}`, { cache: "no-store" })
-      const json = await res.json()
-      if (json.ok) setPayments(json.data)
+      if (filters?.page) params.set("page", String(filters.page))
+      if (filters?.limit) params.set("limit", String(filters.limit))
+      const json = await cachedFetch<any>(`/api/payments?${params.toString()}`)
+      if (json.ok) { setPayments(json.data); setTotal(json.pagination?.total ?? 0) }
     } finally {
       setIsLoading(false)
     }
-  }, [filters?.studentId, filters?.from, filters?.to])
+  }, [filters?.studentId, filters?.from, filters?.to, filters?.page, filters?.limit])
 
   useEffect(() => { load() }, [load])
 
@@ -95,18 +97,27 @@ export function usePayments(filters?: { studentId?: string; from?: string; to?: 
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
     })
     const json = await res.json()
-    if (json.ok) load()
+    if (json.ok) { clearCache(); load() }
+    return json
+  }
+
+  const update = async (id: string, input: { amount?: number; method?: string; feeTypeId?: number; notes?: string }) => {
+    const res = await window.fetch(`/api/payments/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+    })
+    const json = await res.json()
+    if (json.ok) { clearCache(); load() }
     return json
   }
 
   const remove = async (id: string) => {
     const res = await window.fetch(`/api/payments/${id}`, { method: "DELETE" })
     const json = await res.json()
-    if (json.ok) load()
+    if (json.ok) { clearCache(); load() }
     return json
   }
 
-  return { payments, isLoading, create, remove, refetch: load }
+  return { payments, total, isLoading, create, update, remove, refetch: load }
 }
 
 export function usePaymentStats() {
@@ -119,8 +130,7 @@ export function usePaymentStats() {
       const params = new URLSearchParams({ stats: "true" })
       if (from) params.set("from", from)
       if (to) params.set("to", to)
-      const res = await window.fetch(`/api/payments?${params.toString()}`, { cache: "no-store" })
-      const json = await res.json()
+      const json = await cachedFetch<any>(`/api/payments?${params.toString()}`)
       if (json.ok) setStats(json.data)
     } finally {
       setIsLoading(false)

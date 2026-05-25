@@ -22,7 +22,7 @@ interface Teacher {
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string
-  gender: "Masculin" | "Feminin"
+  gender: "Masculin" | "Féminin"
   contrat: "horaire" | "mensuel"
   speciality: string[]
   speciality_names: string[]
@@ -65,6 +65,13 @@ export function TeacherDetailsModal({ isOpen, onClose, teacher }: TeacherDetails
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
+  }
+
+  const safeFormat = (dateStr: string) => {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+    return format(d, "PPP", { locale: fr });
   }
 
   const yearsOfService = getYearsOfService(teacher.hire_date)
@@ -192,11 +199,11 @@ export function TeacherDetailsModal({ isOpen, onClose, teacher }: TeacherDetails
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Créé le: </span>
-                  <span>{format(new Date(teacher.created), "PPP", { locale: fr })}</span>
+                    <span>{safeFormat(teacher.created)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Modifié le: </span>
-                  <span>{format(new Date(teacher.updated), "PPP", { locale: fr })}</span>
+                    <span>{safeFormat(teacher.updated)}</span>
                 </div>
               </div>
             </CardContent>

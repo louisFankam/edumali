@@ -1,8 +1,10 @@
 import {
   findAllFeeTypes, findFeeTypeById, createFeeType, updateFeeType, deleteFeeType,
-  findAllPayments, findPaymentById, createPayment, updatePayment, deletePayment,
+  findAllPayments, countPayments, findPaymentById, createPayment, updatePayment, deletePayment,
   getPaymentStats, getStudentPaymentSummary,
 } from "@/lib/repositories/payment.repository";
+import { checkPeriodClosed } from "@/lib/services/period.service";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapFeeType(f: any) {
   if (!f) return null;
@@ -38,12 +40,18 @@ export async function removeFeeType(id: string) {
   await deleteFeeType(Number(id));
 }
 
-export async function getPayments(filters?: { studentId?: string; from?: string; to?: string }) {
+export async function getPayments(filters?: { studentId?: string; from?: string; to?: string; page?: number; limit?: number }) {
   const rows = await findAllPayments({
     studentId: filters?.studentId ? Number(filters.studentId) : undefined,
     from: filters?.from, to: filters?.to,
+    page: filters?.page, limit: filters?.limit,
   });
-  return rows.map(mapPayment);
+  const items = rows.map(mapPayment);
+  const total = await countPayments({
+    studentId: filters?.studentId ? Number(filters.studentId) : undefined,
+    from: filters?.from, to: filters?.to,
+  });
+  return { data: items, total };
 }
 
 export async function getPaymentById(id: string) {
@@ -55,16 +63,38 @@ export async function addPayment(input: {
   studentId: number; feeTypeId?: number; amount: number; method: string; reference?: string; date: string; notes?: string;
 }) {
   const created = await createPayment(input);
+  logAudit({
+    tableName: "payments", recordId: created.id,
+    action: "create", newValues: input,
+  });
   return mapPayment(created);
 }
 
 export async function editPayment(id: string, input: Partial<{ amount: number; method: string; reference: string; status: string; notes: string }>) {
+  const existing = await findPaymentById(Number(id));
+  if (!existing) throw new Error("Paiement introuvable");
+  if (await checkPeriodClosed(existing.date)) {
+    throw new Error("Cette période est clôturée, modification impossible");
+  }
   const updated = await updatePayment(Number(id), input);
+  logAudit({
+    tableName: "payments", recordId: Number(id),
+    action: "update", oldValues: existing, newValues: { ...existing, ...input },
+  });
   return mapPayment(updated);
 }
 
 export async function removePayment(id: string) {
+  const existing = await findPaymentById(Number(id));
+  if (!existing) throw new Error("Paiement introuvable");
+  if (await checkPeriodClosed(existing.date)) {
+    throw new Error("Cette période est clôturée, suppression impossible");
+  }
   await deletePayment(Number(id));
+  logAudit({
+    tableName: "payments", recordId: Number(id),
+    action: "delete", oldValues: existing,
+  });
 }
 
 export async function getPaymentStatsService(from?: string, to?: string) {
