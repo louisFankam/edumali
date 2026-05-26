@@ -13,7 +13,7 @@ import { TeachersTable } from "@/components/teachers/teachers-table"
 import { AddTeacherModal } from "@/components/teachers/add-teacher-modal"
 import { TeacherDetailsModal } from "@/components/teachers/teacher-details-modal"
 import { EditTeacherModal } from "@/components/teachers/edit-teacher-modal"
-import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
+
 import { useTeachers, useSubjectsList, TeacherData } from "@/hooks/use-teachers"
 
 export default function TeachersListPage() {
@@ -91,7 +91,6 @@ export default function TeachersListPage() {
     <AppLayout>
           <PageHeader title="Gestion des Professeurs" description="Gérer le personnel enseignant et administratif">
             <div className="flex items-center space-x-2">
-              <NotificationBellMain />
               <Button onClick={() => setIsAddModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau professeur

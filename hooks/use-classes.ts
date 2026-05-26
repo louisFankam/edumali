@@ -18,12 +18,15 @@ export interface ClassData {
 export function useClasses() {
   const [classes, setClasses] = useState<ClassData[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setIsLoading(true)
+    setError(null)
     window.fetch("/api/classes", { cache: "no-store" })
       .then(r => r.json())
       .then(json => { if (json.ok) setClasses(json.data) })
+      .catch((e) => { console.error("useClasses.load", e); setError(String(e)) })
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -66,5 +69,5 @@ export function useClasses() {
     return json
   }
 
-  return { classes, isLoading, create, update, remove }
+  return { classes, isLoading, error, create, update, remove }
 }

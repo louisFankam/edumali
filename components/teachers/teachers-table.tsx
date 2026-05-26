@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import Link from "next/link"
 import { Eye, Edit, Trash2, ChevronLeft, ChevronRight, User } from "lucide-react"
 
 interface Teacher {
@@ -191,9 +192,11 @@ export function TeachersTable({ teachers, isLoading = false, error = null, onVie
                   <TableCell>{getStatusBadge(teacher.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-2">
-                      <Button variant="ghost" size="sm" onClick={() => onViewDetails(teacher)} className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <Link href={`/teachers/prof_pages/${teacher.id}`}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button variant="ghost" size="sm" onClick={() => onEdit(teacher)} className="h-8 w-8 p-0">
                         <Edit className="h-4 w-4" />
                       </Button>

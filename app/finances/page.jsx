@@ -18,6 +18,7 @@ import {
   Search, DollarSign, TrendingUp,
   Plus, Eye, CreditCard, Download, Trash2, Loader2, ArrowUpRight, ArrowDownRight, Pencil, Lock,
 } from "lucide-react"
+import { useAcademicYears } from "@/hooks/use-settings"
 import { useStudents } from "@/hooks/use-students"
 import { usePayments, useFeeTypes } from "@/hooks/use-payments"
 import { useExpenses } from "@/hooks/use-expenses"
@@ -47,6 +48,15 @@ export default function FinancesPage() {
   // Date range filter
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
+  const { currentYear } = useAcademicYears()
+
+  // Auto-set date range from current academic year (when dates are empty)
+  useEffect(() => {
+    if (currentYear && !dateFrom && !dateTo) {
+      setDateFrom(currentYear.startDate)
+      setDateTo(currentYear.endDate)
+    }
+  }, [currentYear, dateFrom, dateTo])
 
   // Revenus
   const [searchTerm, setSearchTerm] = useState("")
@@ -70,7 +80,7 @@ export default function FinancesPage() {
   const [expDate, setExpDate] = useState(today)
   const [expNotes, setExpNotes] = useState("")
   const { expenses, isLoading: expLoading, create: createExpense, update: updateExpense, remove: removeExpense } = useExpenses({ from: dateFrom || undefined, to: dateTo || undefined })
-  const { records: payrollRecords } = usePayroll()
+  const { records: payrollRecords } = usePayroll(currentYear ? { from: currentYear.startDate, to: currentYear.endDate } : undefined)
 
   // Edit expense
   const [showEditExpense, setShowEditExpense] = useState(false)

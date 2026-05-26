@@ -26,6 +26,7 @@ export interface ClassData {
 interface StudentFilters {
   search?: string
   classId?: string
+  academicYearId?: string
   page?: number
   limit?: number
 }
@@ -43,6 +44,7 @@ export function useStudents(filters?: StudentFilters) {
       const params = new URLSearchParams()
       if (filters?.search) params.set("search", filters.search)
       if (filters?.classId) params.set("classId", filters.classId)
+      if (filters?.academicYearId) params.set("academicYearId", filters.academicYearId)
       if (filters?.page) params.set("page", String(filters.page))
       if (filters?.limit) params.set("limit", String(filters.limit))
       const res = await window.fetch(`/api/students?${params.toString()}`, { cache: "no-store" })
@@ -55,7 +57,7 @@ export function useStudents(filters?: StudentFilters) {
     } finally {
       setIsLoading(false)
     }
-  }, [filters?.search, filters?.classId, filters?.page, filters?.limit])
+  }, [filters?.search, filters?.classId, filters?.academicYearId, filters?.page, filters?.limit])
 
   useEffect(() => { load() }, [load])
 
@@ -115,16 +117,22 @@ export function useStudent(id: string | undefined) {
   return { student, isLoading, error }
 }
 
-export function useStudentStats() {
+export function useStudentStats(academicYearId?: string) {
   const [stats, setStats] = useState<{ total: number; girls: number; boys: number; girlsPercentage: number; boysPercentage: number } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    window.fetch("/api/students?stats=true", { cache: "no-store" })
+    const params = new URLSearchParams({ stats: "true" })
+    if (academicYearId) params.set("academicYearId", academicYearId)
+    setIsLoading(true)
+    setError(null)
+    window.fetch(`/api/students?${params.toString()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(json => { if (json.ok) setStats(json.data) })
+      .catch((e) => { console.error("useStudentStats", e); setError(String(e)) })
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [academicYearId])
 
-  return { stats, isLoading }
+  return { stats, isLoading, error }
 }

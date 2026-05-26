@@ -22,14 +22,17 @@ import {
   DollarSign,
   GraduationCap,
 } from "lucide-react"
-import { useTeacher, useTeacherAttendance } from "@/hooks/use-teachers"
+import { useTeacher, useTeacherAttendance, usePayroll } from "@/hooks/use-teachers"
+import { useAcademicYears } from "@/hooks/use-settings"
 
 export default function TeacherProfilePage() {
   const params = useParams()
   const teacherId = params?.id
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const { currentYear } = useAcademicYears()
   const { teacher, isLoading, error } = useTeacher(teacherId)
-  const { records: attendanceRecords } = useTeacherAttendance(teacherId ? { teacherId } : undefined)
+  const { records: attendanceRecords } = useTeacherAttendance(teacherId ? { teacherId, from: currentYear?.startDate, to: currentYear?.endDate } : undefined)
+  const { records: payrollRecords } = usePayroll(teacherId ? { teacherId, from: currentYear?.startDate, to: currentYear?.endDate } : undefined)
 
   const handleEditProfile = async (data) => {
     const res = await window.fetch(`/api/teachers/${teacherId}`, {
@@ -41,8 +44,6 @@ export default function TeacherProfilePage() {
     if (!json.ok) throw new Error(json.message)
     window.location.reload()
   }
-  const { editTeacher } = useTeachers()
-
   if (isLoading) {
     return (
       <AppLayout>
@@ -263,7 +264,7 @@ export default function TeacherProfilePage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <span className="text-sm font-medium text-gray-600">Salaire</span>
+                      <span className="text-sm font-medium text-gray-600">Salaire de base</span>
                       <p className="text-lg font-semibold text-gray-900">{teacher.salary?.toLocaleString("fr-FR")} FCFA</p>
                     </div>
                     <div>
@@ -271,6 +272,56 @@ export default function TeacherProfilePage() {
                       <Badge className="bg-blue-100 text-blue-800 ml-2 capitalize">{teacher.contrat}</Badge>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Historique des paiements</CardTitle>
+                    <span className="text-sm text-muted-foreground">
+                      Total versé :{" "}
+                      <strong>{payrollRecords.reduce((sum, r) => sum + (r.amount || 0), 0).toLocaleString("fr-FR")} FCFA</strong>
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {payrollRecords.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">Aucun paiement enregistré</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left p-3 text-sm font-medium text-gray-600">Mois</th>
+                            <th className="text-right p-3 text-sm font-medium text-gray-600">Montant</th>
+                            <th className="text-right p-3 text-sm font-medium text-gray-600">Bonus</th>
+                            <th className="text-right p-3 text-sm font-medium text-gray-600">Déductions</th>
+                            <th className="text-right p-3 text-sm font-medium text-gray-600">Net</th>
+                            <th className="text-center p-3 text-sm font-medium text-gray-600">Payé le</th>
+                            <th className="text-left p-3 text-sm font-medium text-gray-600">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {payrollRecords.slice().sort((a, b) => b.year - a.year || b.month - a.month).map((r) => (
+                            <tr key={r.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3 text-sm font-medium">
+                                {new Date(r.year, r.month - 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                              </td>
+                              <td className="p-3 text-sm text-right">{r.amount.toLocaleString("fr-FR")} FCFA</td>
+                              <td className="p-3 text-sm text-right text-green-600">+{r.bonus?.toLocaleString("fr-FR") || 0} FCFA</td>
+                              <td className="p-3 text-sm text-right text-red-600">-{r.deductions?.toLocaleString("fr-FR") || 0} FCFA</td>
+                              <td className="p-3 text-sm text-right font-bold">
+                                {((r.amount || 0) + (r.bonus || 0) - (r.deductions || 0)).toLocaleString("fr-FR")} FCFA
+                              </td>
+                              <td className="p-3 text-sm text-center">{r.paid_at ? new Date(r.paid_at).toLocaleDateString("fr-FR") : "—"}</td>
+                              <td className="p-3 text-sm text-muted-foreground max-w-[150px] truncate">{r.notes || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

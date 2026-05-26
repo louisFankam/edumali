@@ -69,7 +69,6 @@ const navigation: NavigationItem[] = [
   { name: "Historique académique", href: "/academic-history", icon: BookOpen },
   { name: "Paramètres", href: "/settings", icon: Settings },
   { name: "Personnalisation", href: "/personalization", icon: Palette },
-  { name: "Documents & Rapport", href: "/documents", icon: FileText },
 ]
 
 export function Sidebar() {

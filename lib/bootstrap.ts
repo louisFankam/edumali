@@ -44,8 +44,10 @@ async function ensureAuthSchema(db: any) {
     SELECT id, email, full_name, password_hash, created_at FROM users
   `);
 
-  await db.run(sql`DROP TABLE users`);
+  await db.run(sql`PRAGMA foreign_keys = OFF`);
+  await db.run(sql`DROP TABLE IF EXISTS users`);
   await db.run(sql`ALTER TABLE users_auth_migration RENAME TO users`);
+  await db.run(sql`PRAGMA foreign_keys = ON`);
   await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)`);
 
   await db.run(sql`
@@ -344,6 +346,8 @@ async function ensureAuthSchema(db: any) {
     )
   `);
 
+  await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS eval_unique_period ON evaluations (class_id, subject_id, trimester, type)`);
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS grades (
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -356,6 +360,7 @@ async function ensureAuthSchema(db: any) {
     )
   `);
   await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS grade_eval_student ON grades (evaluation_id, student_id)`);
+  try { db.run(sql`ALTER TABLE grades ADD COLUMN is_absent integer DEFAULT 0`); } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS enrollments (
@@ -407,6 +412,63 @@ async function ensureAuthSchema(db: any) {
       old_values text,
       new_values text,
       created_at integer
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS schedules (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      class_id integer NOT NULL REFERENCES classes(id),
+      academic_year_id integer NOT NULL REFERENCES academic_years(id),
+      day integer NOT NULL,
+      start_time text NOT NULL,
+      end_time text NOT NULL,
+      subject_id integer REFERENCES subjects(id),
+      teacher_id integer REFERENCES teachers(id),
+      created_at integer,
+      updated_at integer
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_schedules_class ON schedules (class_id, academic_year_id)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS exams (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      class_id integer NOT NULL REFERENCES classes(id),
+      academic_year_id integer NOT NULL REFERENCES academic_years(id),
+      subject_id integer NOT NULL REFERENCES subjects(id),
+      teacher_id integer REFERENCES teachers(id),
+      trimester integer NOT NULL,
+      date text NOT NULL,
+      start_time text NOT NULL,
+      end_time text NOT NULL,
+      room text DEFAULT '',
+      status text DEFAULT 'draft',
+      created_at integer,
+      updated_at integer
+    )
+  `);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_exams_class ON exams (class_id, academic_year_id, trimester)`);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      user_id integer NOT NULL UNIQUE REFERENCES users(id),
+      theme text NOT NULL DEFAULT 'light' CHECK(theme IN ('light', 'dark', 'auto')),
+      primary_color text NOT NULL DEFAULT '#dc2626',
+      secondary_color text NOT NULL DEFAULT '#3b82f6',
+      accent_color text NOT NULL DEFAULT '#10b981',
+      sidebar_color text NOT NULL DEFAULT '#374151',
+      sidebar_text_color text NOT NULL DEFAULT '#ffffff',
+      border_radius text NOT NULL DEFAULT 'medium' CHECK(border_radius IN ('none', 'small', 'medium', 'large')),
+      font_size text NOT NULL DEFAULT 'medium' CHECK(font_size IN ('small', 'medium', 'large')),
+      font_family text NOT NULL DEFAULT 'Inter, sans-serif',
+      dense_mode integer NOT NULL DEFAULT 0,
+      compact_sidebar integer NOT NULL DEFAULT 0,
+      animations integer NOT NULL DEFAULT 1,
+      high_contrast integer NOT NULL DEFAULT 0,
+      created_at integer,
+      updated_at integer
     )
   `);
 
@@ -491,8 +553,8 @@ export async function initializeApp() {
   console.log("[EduMali] Connexion base de donnees SQLite: SUCCESS");
   await ensureAuthSchema(db);
 
-  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@edumali.ml";
-  const adminPassword = process.env.ADMIN_PASSWORD ?? "admin12345";
+  const adminEmail = process.env.ADMIN_USERNAME ?? "admin";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "admin";
   const passwordHash = await hashPassword(adminPassword);
   const usersCount = await countUsers();
 

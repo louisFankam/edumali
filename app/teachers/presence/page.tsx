@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -24,14 +23,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useTeachers, useTeacherAttendance } from "@/hooks/use-teachers"
+import { useAcademicYears } from "@/hooks/use-settings"
 
 export default function TeacherAttendancePage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const { teachers, isLoading: teachersLoading } = useTeachers()
+  const { currentYear } = useAcademicYears()
 
   const dateStr = format(selectedDate, "yyyy-MM-dd")
-  const { records: attendanceRecords, isLoading: attendanceLoading, refetch: reloadAttendance, saveAttendance } = useTeacherAttendance({ date: dateStr })
+  const { records: attendanceRecords, isLoading: attendanceLoading, refetch: reloadAttendance, saveAttendance } = useTeacherAttendance({
+    date: dateStr,
+    from: currentYear?.startDate,
+    to: currentYear?.endDate,
+  })
 
   const [teachersAttendance, setTeachersAttendance] = useState<{ teacherId: string; status: string }[]>([])
 
@@ -101,9 +106,7 @@ export default function TeacherAttendancePage() {
 
   return (
     <AppLayout>
-          <PageHeader title="Présences des Professeurs" description="Suivre les présences quotidiennes du personnel">
-            <SchoolYearSelector />
-          </PageHeader>
+          <PageHeader title="Présences des Professeurs" description="Suivre les présences quotidiennes du personnel" />
 
           <Tabs defaultValue="daily" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">

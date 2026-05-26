@@ -4,31 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, Play, Archive, Calendar, Edit } from "lucide-react"
+import { Eye, Play, Edit, Trash2, Calendar } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 
-export function SchoolYearsTable({ schoolYears, yearTotals, onActivate, onArchive, onViewDetails, onEdit, isLoading = false }) {
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-primary text-primary-foreground">Active</Badge>
-      case "upcoming":
-        return <Badge variant="secondary">À venir</Badge>
-      case "archived":
-        return <Badge variant="outline">Archivée</Badge>
-      default:
-        return null
-    }
+export function SchoolYearsTable({ schoolYears, onActivate, onDelete, onViewDetails, onEdit, isLoading = false }) {
+  const getStatusBadge = (isCurrent) => {
+    return isCurrent
+      ? <Badge className="bg-primary text-primary-foreground">Active</Badge>
+      : <Badge variant="outline">Inactive</Badge>
   }
 
   const sortedSchoolYears = [...schoolYears].sort((a, b) => {
-    // Sort by status priority (active > upcoming > archived) then by start date
-    const statusPriority = { active: 3, upcoming: 2, archived: 1 }
-    if (statusPriority[a.status] !== statusPriority[b.status]) {
-      return statusPriority[b.status] - statusPriority[a.status]
+    if (a.isCurrent !== b.isCurrent) {
+      return a.isCurrent ? -1 : 1
     }
-    return new Date(b.startDate) - new Date(a.startDate)
+    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
   })
 
   if (isLoading) {
@@ -60,41 +51,28 @@ export function SchoolYearsTable({ schoolYears, yearTotals, onActivate, onArchiv
               <TableRow>
                 <TableHead>Année scolaire</TableHead>
                 <TableHead>Période</TableHead>
-                <TableHead>Élèves</TableHead>
-                <TableHead>Professeurs</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead>Créée le</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedSchoolYears.map((schoolYear) => {
-                const totals = yearTotals?.[schoolYear.id] || { students: 0, teachers: 0 }
-                return (
-                  <TableRow key={schoolYear.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{schoolYear.year}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{format(new Date(schoolYear.start_date), "dd MMM yyyy", { locale: fr })}</div>
-                        <div className="text-muted-foreground">
-                          au {format(new Date(schoolYear.end_date), "dd MMM yyyy", { locale: fr })}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{totals.students.toLocaleString()}</TableCell>
-                    <TableCell className="font-medium">{totals.teachers}</TableCell>
-                  <TableCell>{getStatusBadge(schoolYear.status)}</TableCell>
+              {sortedSchoolYears.map((schoolYear) => (
+                <TableRow key={schoolYear.id}>
                   <TableCell>
-                    {schoolYear.created 
-                      ? format(new Date(schoolYear.created), "dd MMM yyyy", { locale: fr }) 
-                      : "N/A"
-                    }
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{schoolYear.name}</span>
+                    </div>
                   </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      <div>{format(new Date(schoolYear.startDate), "dd MMM yyyy", { locale: fr })}</div>
+                      <div className="text-muted-foreground">
+                        au {format(new Date(schoolYear.endDate), "dd MMM yyyy", { locale: fr })}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(schoolYear.isCurrent)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end space-x-2">
                       <Button
@@ -115,7 +93,7 @@ export function SchoolYearsTable({ schoolYears, yearTotals, onActivate, onArchiv
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      {schoolYear.status === "upcoming" && (
+                      {!schoolYear.isCurrent && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -126,22 +104,19 @@ export function SchoolYearsTable({ schoolYears, yearTotals, onActivate, onArchiv
                           <Play className="h-4 w-4" />
                         </Button>
                       )}
-                      {schoolYear.status === "active" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onArchive(schoolYear)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-muted-foreground"
-                          title="Archiver cette année"
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(schoolYear)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        title="Supprimer cette année"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
-                )
-              })}
+              ))}
             </TableBody>
           </Table>
         </div>

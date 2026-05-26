@@ -21,10 +21,14 @@ import {
   Trash2,
 } from "lucide-react"
 import { useTeachers, usePayroll, PayrollRecord } from "@/hooks/use-teachers"
+import { useAcademicYears } from "@/hooks/use-settings"
 
 export default function SalairesPage() {
   const { teachers, isLoading: teachersLoading } = useTeachers()
-  const { records: payrolls, isLoading: payrollLoading, addPayroll, deletePayroll, refetch } = usePayroll()
+  const { currentYear } = useAcademicYears()
+  const { records: payrolls, isLoading: payrollLoading, addPayroll, deletePayroll, refetch } = usePayroll(
+    currentYear ? { from: currentYear.startDate, to: currentYear.endDate } : undefined
+  )
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
@@ -153,7 +157,8 @@ export default function SalairesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Rechercher..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
               </div>
-              <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
+              <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+                min={currentYear?.startDate?.substring(0, 7)} max={currentYear?.endDate?.substring(0, 7)} />
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger><SelectValue placeholder="Statut" /></SelectTrigger>
                 <SelectContent>

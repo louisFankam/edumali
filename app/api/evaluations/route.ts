@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
       trimester: searchParams.get("trimester") ? Number(searchParams.get("trimester")) : undefined,
       academicYearId: searchParams.get("academicYearId") ? Number(searchParams.get("academicYearId")) : undefined,
       status: searchParams.get("status") || undefined,
+      type: searchParams.get("type") || undefined,
     };
     const data = await getEvaluations(filters);
     return NextResponse.json({ ok: true, data });

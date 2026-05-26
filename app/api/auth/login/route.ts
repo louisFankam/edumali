@@ -18,9 +18,9 @@ export async function POST(request: Request) {
       import("@/lib/auth/session"),
     ]);
 
-    const user = await authenticateUser(parsed.data.email, parsed.data.password);
+    const user = await authenticateUser(parsed.data.username, parsed.data.password);
     if (!user) {
-      return NextResponse.json({ ok: false, message: "Email ou mot de passe incorrect." }, { status: 401 });
+      return NextResponse.json({ ok: false, message: "Nom d'utilisateur ou mot de passe incorrect." }, { status: 401 });
     }
 
     await createSession(user.id, parsed.data.rememberMe);

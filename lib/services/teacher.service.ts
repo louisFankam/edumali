@@ -152,9 +152,9 @@ export async function getTeacherStats() {
   };
 }
 
-export async function getTeacherAttendance(teacherId?: string) {
+export async function getTeacherAttendance(teacherId?: string, from?: string, to?: string) {
   const rows = await findTeacherAttendance(teacherId ? Number(teacherId) : undefined);
-  return rows.map(a => ({
+  let filtered = rows.map(a => ({
     id: String(a.id),
     teacher_id: String(a.teacherId),
     date: a.date,
@@ -162,6 +162,9 @@ export async function getTeacherAttendance(teacherId?: string) {
     justification: a.justification ?? "",
     teacher: a.teacher ? mapTeacher(a.teacher) : null,
   }));
+  if (from) filtered = filtered.filter(a => a.date >= from);
+  if (to) filtered = filtered.filter(a => a.date <= to);
+  return filtered;
 }
 
 export async function getTeacherAttendanceByDate(date: string) {
@@ -187,13 +190,22 @@ export async function saveTeacherAttendance(records: { teacher_id: string; date:
   );
 }
 
-export async function getPayroll(filters?: { teacherId?: string; month?: number; year?: number }) {
+export async function getPayroll(filters?: { teacherId?: string; month?: number; year?: number; from?: string; to?: string }) {
   const rows = await findAllPayroll({
     teacherId: filters?.teacherId ? Number(filters.teacherId) : undefined,
     month: filters?.month,
     year: filters?.year,
   });
-  return rows.map(mapPayroll);
+  let result = rows.map(mapPayroll);
+  if (filters?.from) {
+    const from = filters.from.substring(0, 7);
+    result = result.filter(r => `${r.year}-${String(r.month).padStart(2, "0")}` >= from);
+  }
+  if (filters?.to) {
+    const to = filters.to.substring(0, 7);
+    result = result.filter(r => `${r.year}-${String(r.month).padStart(2, "0")}` <= to);
+  }
+  return result;
 }
 
 export async function addPayroll(input: {

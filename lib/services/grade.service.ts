@@ -1,4 +1,4 @@
-import { findGradesByEvaluation, bulkSaveGrades } from "@/lib/repositories/grade.repository";
+import { findGradesByEvaluation, bulkSaveGrades, countStudentsByEvaluation, countAbsentByEvaluation } from "@/lib/repositories/grade.repository";
 
 export async function getGrades(evaluationId: string) {
   const rows = await findGradesByEvaluation(Number(evaluationId));
@@ -8,13 +8,14 @@ export async function getGrades(evaluationId: string) {
     studentId: String(r.studentId),
     score: r.score,
     remarks: r.remarks || "",
+    isAbsent: Boolean(r.isAbsent),
     studentFirstName: r.studentFirstName,
     studentLastName: r.studentLastName,
   }));
 }
 
 export async function saveGrades(evaluationId: string, gradeInputs: {
-  studentId: number; score: number; remarks?: string;
+  studentId: number; score: number; remarks?: string; isAbsent?: boolean;
 }[]) {
   const rows = await bulkSaveGrades(Number(evaluationId), gradeInputs);
   return rows.map(r => ({ id: String(r.id) }));
@@ -22,10 +23,13 @@ export async function saveGrades(evaluationId: string, gradeInputs: {
 
 export async function getGradeStats(evaluationId: string) {
   const rows = await findGradesByEvaluation(Number(evaluationId));
-  if (rows.length === 0) {
-    return { count: 0, average: 0, min: 0, max: 0, successRate: 0 };
+  const absentCount = await countAbsentByEvaluation(Number(evaluationId));
+  const totalStudents = await countStudentsByEvaluation(Number(evaluationId));
+  const presentRows = rows.filter(r => !r.isAbsent);
+  if (presentRows.length === 0) {
+    return { count: 0, average: 0, min: 0, max: 0, successRate: 0, absentCount, totalStudents, missingCount: 0 };
   }
-  const scores = rows.map(r => r.score);
+  const scores = presentRows.map(r => r.score);
   const average = scores.reduce((a, b) => a + b, 0) / scores.length;
   const min = Math.min(...scores);
   const max = Math.max(...scores);
@@ -36,5 +40,8 @@ export async function getGradeStats(evaluationId: string) {
     min,
     max,
     successRate: Math.round((passed / scores.length) * 100),
+    absentCount,
+    totalStudents,
+    missingCount: Math.max(0, totalStudents - scores.length - absentCount),
   };
 }

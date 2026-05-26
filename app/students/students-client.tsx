@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { SchoolYearSelector } from "@/components/school-year-selector"
 import { StudentsTable } from "@/components/students/students-table"
 import { AddStudentModal } from "@/components/students/add-student-modal"
 import { StudentDetailsModal } from "@/components/students/student-details-modal"
@@ -13,9 +12,10 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, Search, Download, ChevronLeft, ChevronRight, Users, Loader2 } from "lucide-react"
-import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
+
 import { useStudents, useStudentStats } from "@/hooks/use-students"
 import { useClasses } from "@/hooks/use-classes"
+import { useAcademicYears } from "@/hooks/use-settings"
 import type { StudentData } from "@/hooks/use-students"
 
 const PAGE_SIZE = 20
@@ -29,16 +29,19 @@ export function StudentsClient() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
+  const { currentYear } = useAcademicYears()
+
   const effectiveClassId = selectedClassId === "all" ? undefined : selectedClassId
 
   const { students, total, isLoading, error, refetch, addStudent, editStudent, deleteStudent } = useStudents({
     search: searchTerm || undefined,
     classId: effectiveClassId,
+    academicYearId: currentYear?.id,
     page,
     limit: PAGE_SIZE,
   })
   const { classes } = useClasses()
-  const { stats, isLoading: statsLoading } = useStudentStats()
+  const { stats, isLoading: statsLoading } = useStudentStats(currentYear?.id)
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
@@ -113,8 +116,6 @@ export function StudentsClient() {
     <AppLayout>
       <PageHeader title="Gestion des Élèves" description="Gérer les inscriptions et profils des élèves">
         <div className="flex items-center space-x-2">
-          <NotificationBellMain />
-          <SchoolYearSelector />
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvel élève

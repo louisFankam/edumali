@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { AuthProvider } from "@/components/auth-provider"
+import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default function RootLayout({
           <ThemeProvider>
             <ErrorBoundary>
               {children}
+              <Toaster />
             </ErrorBoundary>
           </ThemeProvider>
         </AuthProvider>

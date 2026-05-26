@@ -54,3 +54,13 @@ export async function findAttendanceByStudent(studentId: number, limit = 50) {
     limit,
   });
 }
+
+export async function findAttendanceByRange(from: string, to: string, classId?: number) {
+  const conditions = [gte(attendance.date, from), lte(attendance.date, to)];
+  if (classId) conditions.push(eq(attendance.classId, classId));
+  return db.query.attendance.findMany({
+    where: and(...conditions),
+    with: { student: true, class: true },
+    orderBy: (a, { asc }) => [asc(a.date), asc(a.studentId)],
+  });
+}

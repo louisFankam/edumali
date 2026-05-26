@@ -1,1077 +1,436 @@
-// @ts-nocheck
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { 
-  Clock,
-  Download,
-  Copy,
-  Save,
-  Edit,
-  Trash2,
-  Plus,
-  Users,
-  BookOpen,
-  AlertCircle,
-  CheckCircle,
-  XCircle
-} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { useClasses } from "@/hooks/use-classes"
+import { useAcademicYears, useSchoolInfo, useSubjects } from "@/hooks/use-settings"
+import { useSchedules } from "@/hooks/use-schedules"
+import { Clock, Plus, Trash2, Download, Pencil, Save } from "lucide-react"
 
-const downloadJson = (filename, payload) => {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
+const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
 
-// Types pour les données
-interface Subject {
-  id: number;
-  name: string;
-  color: string;
-  teacher?: string;
-}
-
-interface TimeSlot {
-  id: string;
-  day: string;
-  time: string;
-  startTime: string;
-  endTime: string;
-  type: "course" | "break" | "lunch";
-  subject?: Subject;
-  teacher?: string;
-  duration: number; // en minutes
-}
-
-interface Schedule {
-  id: number;
-  class: string;
-  timeSlots: TimeSlot[];
-}
-
-// Mock data
-const mockSubjects: Subject[] = [
-  { id: 1, name: "Mathématiques", color: "bg-blue-100 text-blue-700", teacher: "Fatoumata Diarra" },
-  { id: 2, name: "Français", color: "bg-green-100 text-green-700", teacher: "Moussa Koné" },
-  { id: 3, name: "Sciences", color: "bg-yellow-100 text-yellow-700", teacher: "Aïcha Traoré" },
-  { id: 4, name: "Histoire-Géographie", color: "bg-purple-100 text-purple-700", teacher: "Sékou Keita" },
-  { id: 5, name: "Anglais", color: "bg-red-100 text-red-700", teacher: "Aminata Touré" },
-  { id: 6, name: "Éducation Physique", color: "bg-orange-100 text-orange-700", teacher: "Oumar Diallo" },
-  { id: 7, name: "Arts Plastiques", color: "bg-pink-100 text-pink-700", teacher: "Kadiatou Sidibé" },
-  { id: 8, name: "Informatique", color: "bg-indigo-100 text-indigo-700", teacher: "Moussa Diarra" },
-]
-
-const mockTeachers = [
-  "Fatoumata Diarra",
-  "Moussa Koné", 
-  "Aïcha Traoré",
-  "Sékou Keita",
-  "Aminata Touré",
-  "Oumar Diallo",
-  "Kadiatou Sidibé",
-  "Moussa Diarra"
-]
-
-const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
-const timeSlots = [
-  { time: "07:00-08:00", startTime: "07:00", endTime: "08:00", duration: 60 },
-  { time: "08:00-09:00", startTime: "08:00", endTime: "09:00", duration: 60 },
-  { time: "09:00-10:00", startTime: "09:00", endTime: "10:00", duration: 60 },
-  { time: "10:00-10:15", startTime: "10:00", endTime: "10:15", duration: 15, type: "break" },
-  { time: "10:15-11:15", startTime: "10:15", endTime: "11:15", duration: 60 },
-  { time: "11:15-12:15", startTime: "11:15", endTime: "12:15", duration: 60 },
-  { time: "12:15-13:00", startTime: "12:15", endTime: "13:00", duration: 45, type: "lunch" },
-  { time: "13:00-14:00", startTime: "13:00", endTime: "14:00", duration: 60 },
-  { time: "14:00-15:00", startTime: "14:00", endTime: "15:00", duration: 60 },
-]
-
-// Composant pour l'emploi du temps
-function ScheduleGrid({ schedule, onUpdateSchedule, onSubjectDrop, onEditSlot, onDeleteSlot, onAddCustomSlot, onUpdateTimeSlot }) {
-  const [draggedSubject, setDraggedSubject] = useState(null)
-  const [dragOverSlot, setDragOverSlot] = useState(null)
-
-  const handleDragStart = (e, subject, slotId) => {
-    setDraggedSubject({ subject, sourceSlotId: slotId })
-    e.dataTransfer.effectAllowed = "move"
-    e.dataTransfer.setData("text/plain", JSON.stringify({ subject, sourceSlotId: slotId }))
-  }
-
-  const handleDragOver = (e, slotId) => {
-    e.preventDefault()
-    setDragOverSlot(slotId)
-  }
-
-  const handleDrop = (e, slotId) => {
-    e.preventDefault()
-    try {
-      const subjectData = e.dataTransfer.getData("text/plain")
-      if (subjectData) {
-        const data = JSON.parse(subjectData)
-        
-        // Vérifier si c'est un déplacement de cours existant
-        if (data.sourceSlotId) {
-          // Déplacer le cours d'un créneau à un autre
-          if (data.sourceSlotId !== slotId) {
-            const existingSlot = schedule.timeSlots.find(slot => slot.id === slotId)
-            if (existingSlot && existingSlot.subject) {
-              if (confirm(`Voulez-vous échanger "${existingSlot.subject.name}" avec "${data.subject.name}" ?`)) {
-                onSubjectDrop(slotId, data.subject, data.sourceSlotId)
-              }
-            } else {
-              onSubjectDrop(slotId, data.subject, data.sourceSlotId)
-            }
-          }
-        } else {
-          // Nouveau cours depuis la liste des matières
-          const subject = data
-          const existingSlot = schedule.timeSlots.find(slot => slot.id === slotId)
-          if (existingSlot && existingSlot.subject) {
-            if (confirm(`Voulez-vous remplacer "${existingSlot.subject.name}" par "${subject.name}" ?`)) {
-              onSubjectDrop(slotId, subject)
-            }
-          } else {
-            onSubjectDrop(slotId, subject)
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Erreur lors du drop:", error)
-    }
-    setDraggedSubject(null)
-    setDragOverSlot(null)
-  }
-
-  const handleDragEnd = () => {
-    setDraggedSubject(null)
-    setDragOverSlot(null)
-  }
-
-  const handleSlotClick = (slot) => {
-    if (slot && slot.subject) {
-      onEditSlot(slot)
-    }
-  }
-
-  const handleDeleteSlot = (e, slotId) => {
-    e.stopPropagation()
-    if (confirm("Voulez-vous supprimer ce cours ?")) {
-      onDeleteSlot(slotId)
-    }
-  }
-
-  const handleAddCustomSlot = (day, timeSlot) => {
-    const startTime = prompt("Heure de début (format HH:MM):", timeSlot.startTime)
-    if (startTime) {
-      const endTime = prompt("Heure de fin (format HH:MM):", timeSlot.endTime)
-      if (endTime) {
-        onAddCustomSlot(day, startTime, endTime)
-      }
-    }
-  }
-
-  const getSlotContent = (day, timeSlot) => {
-    const slotId = `${day}-${timeSlot.startTime}`
-    const existingSlot = schedule.timeSlots.find(slot => slot.id === slotId)
-    
-    // Vérifier aussi les créneaux personnalisés
-    const customSlotId = `${day}-${timeSlot.startTime}-custom`
-    const customSlot = schedule.timeSlots.find(slot => slot.id === customSlotId)
-    
-    if (timeSlot.type === "break") {
-      return (
-        <div className="bg-yellow-50 text-yellow-700 text-xs font-medium p-2 text-center">
-          Récréation
-        </div>
-      )
-    }
-    
-    if (timeSlot.type === "lunch") {
-      return (
-        <div className="bg-orange-50 text-orange-700 text-xs font-medium p-2 text-center">
-          Pause déjeuner
-        </div>
-      )
-    }
-
-    // Afficher le créneau personnalisé s'il existe
-    if (customSlot) {
-      if (customSlot.subject) {
-        return (
-          <div 
-            className={`${customSlot.subject.color} p-2 rounded cursor-pointer hover:opacity-80 transition-opacity relative group`}
-            draggable
-            onDragStart={(e) => handleDragStart(e, customSlot.subject, customSlot.id)}
-            onDragEnd={handleDragEnd}
-            onClick={() => handleSlotClick(customSlot)}
-          >
-            <div className="font-medium text-xs">{customSlot.subject.name}</div>
-            <div className="text-xs opacity-75">{customSlot.teacher}</div>
-            <div className="text-xs opacity-75">{customSlot.startTime}-{customSlot.endTime}</div>
-            
-            {/* Bouton de suppression */}
-            <button
-              className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-              onClick={(e) => handleDeleteSlot(e, customSlot.id)}
-              title="Supprimer ce cours"
-            >
-              ×
-            </button>
-          </div>
-        )
-      } else {
-        return (
-          <div 
-            className="bg-gray-100 text-gray-600 p-2 rounded cursor-pointer hover:bg-gray-200 transition-colors relative group"
-            onClick={() => handleSlotClick(customSlot)}
-          >
-            <div className="text-xs font-medium">Créneau libre</div>
-            <div className="text-xs opacity-75">{customSlot.startTime}-{customSlot.endTime}</div>
-            
-            {/* Bouton de suppression */}
-            <button
-              className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-              onClick={(e) => handleDeleteSlot(e, customSlot.id)}
-              title="Supprimer ce créneau"
-            >
-              ×
-            </button>
-          </div>
-        )
-      }
-    }
-
-    if (existingSlot && existingSlot.subject) {
-      return (
-        <div 
-          className={`${existingSlot.subject.color} p-2 rounded cursor-pointer hover:opacity-80 transition-opacity relative group`}
-          draggable
-          onDragStart={(e) => handleDragStart(e, existingSlot.subject, existingSlot.id)}
-          onDragEnd={handleDragEnd}
-          onClick={() => handleSlotClick(existingSlot)}
-        >
-          <div className="font-medium text-xs">{existingSlot.subject.name}</div>
-          <div className="text-xs opacity-75">{existingSlot.teacher}</div>
-          <div className="text-xs opacity-75">{existingSlot.startTime}-{existingSlot.endTime}</div>
-          
-          {/* Bouton de suppression */}
-          <button
-            className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-            onClick={(e) => handleDeleteSlot(e, existingSlot.id)}
-            title="Supprimer ce cours"
-          >
-            ×
-          </button>
-          </div>
-    )
-    }
-
-    return (
-      <div 
-        className={`h-full min-h-[60px] border-2 border-dashed border-gray-300 rounded p-2 flex flex-col items-center justify-center text-gray-400 text-xs hover:border-blue-400 hover:bg-blue-50 transition-colors relative group ${
-          dragOverSlot === slotId ? 'border-blue-500 bg-blue-50' : ''
-        }`}
-        onDragOver={(e) => handleDragOver(e, slotId)}
-        onDrop={(e) => handleDrop(e, slotId)}
-        onDragEnd={handleDragEnd}
-      >
-                  <div 
-            className="text-xs font-medium mb-1 cursor-pointer hover:text-blue-600 transition-colors"
-            onClick={() => {
-              const newStartTime = prompt("Nouvelle heure de début (HH:MM):", timeSlot.startTime)
-              if (newStartTime) {
-                const newEndTime = prompt("Nouvelle heure de fin (HH:MM):", timeSlot.endTime)
-                if (newEndTime) {
-                  handleAddCustomSlot(day, newStartTime, newEndTime)
-                }
-              }
-            }}
-            title="Cliquer pour modifier les heures"
-          >
-            {timeSlot.startTime}-{timeSlot.endTime}
-          </div>
-          <div>Glisser une matière</div>
-        
-        {/* Bouton pour ajouter un créneau personnalisé */}
-        <button
-          className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          onClick={() => handleAddCustomSlot(day, timeSlot)}
-          title="Créer un créneau personnalisé"
-        >
-          +
-        </button>
-        </div>
-    )
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse border border-gray-200">
-        <thead>
-          <tr className="bg-gray-50">
-            <th className="border border-gray-200 p-2 text-sm font-medium text-gray-700 w-24">Heure</th>
-            {days.map(day => (
-              <th key={day} className="border border-gray-200 p-2 text-sm font-medium text-gray-700 w-48">
-                {day}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {timeSlots.map(timeSlot => (
-            <tr key={timeSlot.time}>
-                            <td className="border border-gray-200 p-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors group">
-                <div className="flex items-center justify-between">
-                  <span 
-                    className="cursor-pointer hover:text-blue-600 transition-colors" 
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      alert(`Clic détecté sur ${timeSlot.time}!`)
-                      
-                      const newStartTime = prompt("Nouvelle heure de début (HH:MM):", timeSlot.startTime)
-                      
-                      if (newStartTime) {
-                        const newEndTime = prompt("Nouvelle heure de fin (HH:MM):", timeSlot.endTime)
-                        
-                        if (newEndTime) {
-                          // Mettre à jour le timeSlot
-                          const updatedTimeSlot = {
-                            ...timeSlot,
-                            startTime: newStartTime,
-                            endTime: newEndTime,
-                            time: `${newStartTime}-${newEndTime}`
-                          }
-                          console.log("TimeSlot mis à jour:", updatedTimeSlot)
-                          onUpdateTimeSlot(updatedTimeSlot)
-                        }
-                      }
-                    }}
-                    title="Cliquer pour modifier les heures"
-                  >
-                    {timeSlot.time}
-                  </span>
-                  <button
-                    className="ml-2 w-5 h-5 bg-blue-500 text-white rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-blue-600"
-                    onClick={() => {
-                      const newStartTime = prompt("Nouvelle heure de début (HH:MM):", timeSlot.startTime)
-                      if (newStartTime) {
-                        const newEndTime = prompt("Nouvelle heure de fin (HH:MM):", timeSlot.endTime)
-                        if (newEndTime) {
-                          // Mettre à jour le timeSlot
-                          const updatedTimeSlot = {
-                            ...timeSlot,
-                            startTime: newStartTime,
-                            endTime: newEndTime,
-                            time: `${newStartTime}-${newEndTime}`
-                          }
-                          onUpdateTimeSlot(updatedTimeSlot)
-                        }
-                      }
-                    }}
-                    title="Modifier les heures"
-                  >
-                    ✏️
-                  </button>
-                </div>
-              </td>
-              {days.map(day => (
-                <td key={`${day}-${timeSlot.time}`} className="border border-gray-200 p-2 h-20">
-                  {getSlotContent(day, timeSlot)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      </div>
-  )
-}
-
-// Composant pour la liste des matières
-function SubjectList({ subjects, onSubjectDrag }) {
-  return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-gray-700 mb-3">Matières disponibles</h3>
-      {subjects.map(subject => (
-        <div
-          key={subject.id}
-          className={`${subject.color} p-3 rounded-lg cursor-move hover:opacity-80 transition-opacity`}
-          draggable
-          onDragStart={(e) => onSubjectDrag(e, subject)}
-        >
-          <div className="font-medium">{subject.name}</div>
-          <div className="text-sm opacity-75">{subject.teacher}</div>
-        </div>
-      ))}
-      </div>
-  )
-}
-
-// Composant pour créer un créneau personnalisé
-function CustomSlotModal({ isOpen, onClose, onSave, days }) {
-  const [formData, setFormData] = useState({
-    day: "Lundi",
-    startTime: "08:00",
-    endTime: "09:00"
-  })
-
-  const handleSave = () => {
-    onSave(formData)
-  }
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="text-sm font-medium">Jour</label>
-        <Select value={formData.day} onValueChange={(value) => setFormData({...formData, day: value})}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {days.map(day => (
-              <SelectItem key={day} value={day}>
-                {day}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium">Heure de début</label>
-          <Input
-            type="time"
-            value={formData.startTime}
-            onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-            className="w-full"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-medium">Heure de fin</label>
-          <Input
-            type="time"
-            value={formData.endTime}
-            onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-            className="w-full"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="text-sm font-medium">Durées rapides</label>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {[
-            { label: "30 min", duration: 30 },
-            { label: "45 min", duration: 45 },
-            { label: "1h", duration: 60 },
-            { label: "1h30", duration: 90 },
-            { label: "2h", duration: 120 }
-          ].map(({ label, duration }) => (
-            <Button
-              key={duration}
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const start = new Date(`2000-01-01T${formData.startTime}:00`)
-                const end = new Date(start.getTime() + duration * 60000)
-                const endTime = end.toTimeString().slice(0, 5)
-                setFormData({...formData, endTime})
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-            💡 <strong>Astuce :</strong> Vous pouvez créer des créneaux de n'importe quelle durée entre 15 minutes et 3 heures.
-            <br />
-            💡 <strong>Raccourci :</strong> Cliquez sur les heures dans l'emploi du temps pour les modifier rapidement.
-          </div>
-
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={onClose}>
-          Annuler
-        </Button>
-        <Button onClick={handleSave}>
-          Créer le créneau
-        </Button>
-      </div>
-      </div>
-  )
-}
-
-// Composant pour modifier un créneau
-function EditSlotModal({ slot, isOpen, onClose, onSave, subjects, teachers, timeSlots }) {
-  const [formData, setFormData] = useState({
-    subjectId: slot?.subject?.id || "",
-    teacher: slot?.teacher || "",
-    startTime: slot?.startTime || "",
-    endTime: slot?.endTime || "",
-    duration: slot?.duration || 60
-  })
-
-  // Mettre à jour le formulaire quand le slot change
-  useEffect(() => {
-    if (slot) {
-      setFormData({
-        subjectId: slot.subject?.id || "",
-        teacher: slot.teacher || "",
-        startTime: slot.startTime || "",
-        endTime: slot.endTime || "",
-        duration: slot.duration || 60
-      })
-    }
-  }, [slot])
-
-  const handleSave = () => {
-    const selectedSubject = subjects.find(s => s.id === parseInt(formData.subjectId))
-    
-    // Calculer automatiquement la durée si les heures sont définies
-    let duration = formData.duration
-    if (formData.startTime && formData.endTime) {
-      const start = new Date(`2000-01-01T${formData.startTime}:00`)
-      const end = new Date(`2000-01-01T${formData.endTime}:00`)
-      const diffMs = end.getTime() - start.getTime()
-      duration = Math.round(diffMs / (1000 * 60)) // Convertir en minutes
-    }
-    
-    onSave({
-      ...slot,
-      subject: selectedSubject,
-      teacher: formData.teacher,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      duration: duration
-    })
-    onClose()
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modifier le créneau</DialogTitle>
-          <DialogDescription>
-            Modifiez les détails du créneau horaire
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Matière</label>
-            <Select value={formData.subjectId.toString()} onValueChange={(value) => setFormData({...formData, subjectId: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une matière" />
-              </SelectTrigger>
-              <SelectContent>
-                {subjects.map(subject => (
-                  <SelectItem key={subject.id} value={subject.id.toString()}>
-                    {subject.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Professeur</label>
-            <Select value={formData.teacher} onValueChange={(value) => setFormData({...formData, teacher: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un professeur" />
-              </SelectTrigger>
-              <SelectContent>
-                {teachers.map(teacher => (
-                  <SelectItem key={teacher} value={teacher}>
-                    {teacher}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Heure de début</label>
-              <div className="flex gap-2">
-                <Select value={formData.startTime} onValueChange={(value) => setFormData({...formData, startTime: value})}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Sélectionner l'heure" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.filter(ts => ts.type !== "break" && ts.type !== "lunch").map(timeSlot => (
-                      <SelectItem key={timeSlot.startTime} value={timeSlot.startTime}>
-                        {timeSlot.startTime}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="time"
-                  value={formData.startTime}
-                  onChange={(e) => setFormData({...formData, startTime: e.target.value})}
-                  className="w-24"
-                  placeholder="HH:MM"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Heure de fin</label>
-              <div className="flex gap-2">
-                <Select value={formData.endTime} onValueChange={(value) => setFormData({...formData, endTime: value})}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Sélectionner l'heure" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeSlots.filter(ts => ts.type !== "break" && ts.type !== "lunch").map(timeSlot => (
-                      <SelectItem key={timeSlot.endTime} value={timeSlot.endTime}>
-                        {timeSlot.endTime}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="time"
-                  value={formData.endTime}
-                  onChange={(e) => setFormData({...formData, endTime: e.target.value})}
-                  className="w-24"
-                  placeholder="HH:MM"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-            💡 <strong>Astuce :</strong> Vous pouvez modifier les heures pour créer des créneaux personnalisés. 
-            Le système ajustera automatiquement la durée.
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Durée (minutes)</label>
-            <Input
-              type="number"
-              min="15"
-              max="120"
-              step="15"
-              value={formData.duration}
-              onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value)})}
-            />
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
-              Annuler
-            </Button>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Sauvegarder
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
+function fmtTime(t: string) {
+  return t.slice(0, 5)
 }
 
 export default function EmploiDuTempsPage() {
-  const [selectedClass, setSelectedClass] = useState("CM2")
-  const [schedules, setSchedules] = useState({
-    "CM2": {
-      id: 1,
-      class: "CM2",
-      timeSlots: []
-    }
-  })
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedSlot, setSelectedSlot] = useState(null)
-  const [showCustomSlotModal, setShowCustomSlotModal] = useState(false)
+  const { classes } = useClasses()
+  const { schoolInfo } = useSchoolInfo()
+  const { years, currentYear } = useAcademicYears()
+  const { subjects: allSubjects } = useSubjects()
 
-  const currentSchedule = schedules[selectedClass] || {
-    id: Date.now(),
-    class: selectedClass,
-    timeSlots: []
-  }
+  const [classId, setClassId] = useState("")
+  const [selectedYear, setSelectedYear] = useState("")
+  const { slots, create, update, remove, refetch } = useSchedules(classId, selectedYear)
 
-  const handleSubjectDrop = (slotId, subject, sourceSlotId = null) => {
-    const [day, startTime] = slotId.split('-')
-    const timeSlot = timeSlots.find(ts => ts.startTime === startTime)
-    
-    const newTimeSlot = {
-      id: slotId,
-      day,
-      time: timeSlot.time,
-      startTime: timeSlot.startTime,
-      endTime: timeSlot.endTime,
-      type: "course",
-      subject,
-      teacher: subject.teacher,
-      duration: timeSlot.duration
-    }
+  const [classSubjects, setClassSubjects] = useState<any[]>([])
+  const [teachers, setTeachers] = useState<any[]>([])
+  const [showAddRow, setShowAddRow] = useState(false)
+  const [newRowStart, setNewRowStart] = useState("08:00")
+  const [newRowEnd, setNewRowEnd] = useState("09:00")
+  const [editSlot, setEditSlot] = useState<any>(null)
+  const [editSubjectId, setEditSubjectId] = useState("")
+  const [editTeacherId, setEditTeacherId] = useState("")
+  const [draggedSubj, setDraggedSubj] = useState<any>(null)
 
-    setSchedules(prev => {
-      const currentSchedule = prev[selectedClass] || { timeSlots: [] }
-      let updatedTimeSlots = [...currentSchedule.timeSlots]
+  useEffect(() => {
+    if (!currentYear) return
+    setSelectedYear(String(currentYear.id))
+  }, [currentYear])
 
-      // Si c'est un déplacement, supprimer le cours de l'ancien créneau
-      if (sourceSlotId) {
-        updatedTimeSlots = updatedTimeSlots.filter(slot => slot.id !== sourceSlotId)
-      }
+  useEffect(() => {
+    if (!classId) return
+    window.fetch(`/api/class-subjects?classId=${classId}`)
+      .then(r => r.json()).then(j => { if (j.ok) setClassSubjects(j.data) }).catch(() => {})
+    window.fetch(`/api/teachers?limit=200`)
+      .then(r => r.json()).then(j => { if (j.ok) setTeachers(j.data || j) }).catch(() => {})
+  }, [classId])
 
-      // Supprimer l'ancien cours du nouveau créneau s'il existe
-      updatedTimeSlots = updatedTimeSlots.filter(slot => slot.id !== slotId)
+  const subjectMap = useMemo(() => {
+    const m = new Map<number, any>()
+    allSubjects.forEach(s => m.set(Number(s.id), s))
+    return m
+  }, [allSubjects])
 
-      // Ajouter le nouveau cours
-      updatedTimeSlots.push(newTimeSlot)
+  const classSubjectList = useMemo(() => {
+    return classSubjects.map((cs: any) => ({
+      ...cs,
+      subject: subjectMap.get(Number(cs.subjectId)),
+    })).filter(cs => cs.subject)
+  }, [classSubjects, subjectMap])
 
-      return {
-        ...prev,
-        [selectedClass]: {
-          ...currentSchedule,
-          timeSlots: updatedTimeSlots
-        }
+  const teacherSubjectMap = useMemo(() => {
+    const m = new Map<number, any[]>()
+    if (!teachers.length) return m
+    teachers.forEach((t: any) => {
+      const tid = Number(t.id)
+      if (t.subjectIds) {
+        t.subjectIds.forEach((sid: number) => {
+          if (!m.has(sid)) m.set(sid, [])
+          m.get(sid)!.push(t)
+        })
       }
     })
-  }
+    return m
+  }, [teachers])
 
-  const handleDeleteSlot = (slotId) => {
-    setSchedules(prev => ({
-      ...prev,
-      [selectedClass]: {
-        ...prev[selectedClass],
-        timeSlots: prev[selectedClass].timeSlots.filter(slot => slot.id !== slotId)
+  const timeRows = useMemo(() => {
+    const seen = new Set<string>()
+    const rows: { startTime: string; endTime: string }[] = []
+    slots.forEach(s => {
+      const key = s.startTime + "|" + s.endTime
+      if (!seen.has(key)) {
+        seen.add(key)
+        rows.push({ startTime: s.startTime, endTime: s.endTime })
       }
-    }))
+    })
+    rows.sort((a, b) => a.startTime.localeCompare(b.startTime))
+    return rows
+  }, [slots])
+
+  const getSlot = (startTime: string, endTime: string, day: number) => {
+    return slots.find(s => s.startTime === startTime && s.endTime === endTime && s.day === day)
   }
 
-  const handleAddCustomSlot = (day, startTime, endTime) => {
-    // Calculer la durée en minutes
-    const start = new Date(`2000-01-01T${startTime}:00`)
-    const end = new Date(`2000-01-01T${endTime}:00`)
-    const diffMs = end.getTime() - start.getTime()
-    const duration = Math.round(diffMs / (1000 * 60))
-
-    const customSlotId = `${day}-${startTime}-custom`
-    
-    const newTimeSlot = {
-      id: customSlotId,
-      day,
-      time: `${startTime}-${endTime}`,
-      startTime,
-      endTime,
-      type: "course",
-      subject: null,
-      teacher: "",
-      duration,
-      isCustom: true
-    }
-
-    setSchedules(prev => ({
-      ...prev,
-      [selectedClass]: {
-        ...prev[selectedClass],
-        timeSlots: [
-          ...prev[selectedClass]?.timeSlots || [],
-          newTimeSlot
-        ]
-      }
-    }))
-  }
-
-  const handleUpdateTimeSlot = (updatedTimeSlot) => {
-    console.log("handleUpdateTimeSlot appelée avec:", updatedTimeSlot)
-    
-    // Mettre à jour le timeSlot global
-    const updatedTimeSlots = timeSlots.map(ts => 
-      ts.startTime === updatedTimeSlot.startTime && ts.endTime === updatedTimeSlot.endTime 
-        ? updatedTimeSlot 
-        : ts
-    )
-    console.log("TimeSlots mis à jour:", updatedTimeSlots)
-    
-    // Mettre à jour les créneaux existants avec les nouvelles heures
-    setSchedules(prev => {
-      console.log("Mise à jour des schedules, prev:", prev)
-      const currentSchedule = prev[selectedClass] || { timeSlots: [] }
-      const updatedScheduleTimeSlots = currentSchedule.timeSlots.map(slot => {
-        // Si le slot correspond à l'ancien créneau horaire, mettre à jour son ID
-        if (slot.startTime === updatedTimeSlot.startTime && slot.endTime === updatedTimeSlot.endTime) {
-          return {
-            ...slot,
-            startTime: updatedTimeSlot.startTime,
-            endTime: updatedTimeSlot.endTime,
-            time: updatedTimeSlot.time,
-            id: `${slot.day}-${updatedTimeSlot.startTime}`
-          }
-        }
-        return slot
+  const handleDrop = async (startTime: string, endTime: string, day: number, subjData: any) => {
+    if (!classId || !selectedYear) return
+    const existing = getSlot(startTime, endTime, day)
+    const subjId = Number(subjData.subjectId || subjData.id)
+    const csItem = classSubjectList.find((cs: any) => Number(cs.subjectId) === subjId)
+    const teacherId = csItem?.teacherId ? Number(csItem.teacherId) : null
+    if (existing) {
+      await update(existing.id, { subjectId: subjId, teacherId })
+    } else {
+      await create({
+        classId: Number(classId),
+        academicYearId: Number(selectedYear),
+        day,
+        startTime,
+        endTime,
+        subjectId: subjId,
+        teacherId,
       })
-
-      const newSchedules = {
-        ...prev,
-        [selectedClass]: {
-          ...currentSchedule,
-          timeSlots: updatedScheduleTimeSlots
-        }
-      }
-      console.log("Nouveaux schedules:", newSchedules)
-      return newSchedules
-    })
-  }
-
-  const handleEditSlot = (slot) => {
-    setSelectedSlot(slot)
-    setShowEditModal(true)
-  }
-
-  const handleSaveSlot = (updatedSlot) => {
-    setSchedules(prev => {
-      const currentSchedule = prev[selectedClass] || { timeSlots: [] }
-      let updatedTimeSlots = [...currentSchedule.timeSlots]
-
-      // Supprimer l'ancien slot
-      updatedTimeSlots = updatedTimeSlots.filter(slot => slot.id !== updatedSlot.id)
-
-      // Ajouter le slot mis à jour avec le nouvel ID si les heures ont changé
-      const newSlotId = `${updatedSlot.day}-${updatedSlot.startTime}`
-      const finalSlot = {
-        ...updatedSlot,
-        id: newSlotId
-      }
-
-      updatedTimeSlots.push(finalSlot)
-
-      return {
-        ...prev,
-        [selectedClass]: {
-          ...currentSchedule,
-          timeSlots: updatedTimeSlots
-        }
-      }
-    })
-  }
-
-  const handleExportExcel = () => {
-    try {
-      const scheduleData = {
-        class: selectedClass,
-        timeSlots: timeSlots,
-        days: days,
-        schedule: currentSchedule.timeSlots
-      }
-
-      const designConfig = {
-        template: 'modern',
-        primaryColor: '#3b82f6',
-        secondaryColor: '#64748b',
-        accentColor: '#f59e0b'
-      }
-
-      downloadJson(`emploi-du-temps-${selectedClass}.json`, { scheduleData, designConfig })
-      alert("Emploi du temps exporté en Excel avec succès!")
-    } catch (error) {
-      console.error("Erreur lors de l'export:", error)
-      alert("Erreur lors de l'export de l'emploi du temps")
     }
   }
 
-  const handleCopySchedule = () => {
-    const targetClass = prompt("Entrez la classe de destination (ex: CM1):")
-    if (targetClass && targetClass !== selectedClass) {
-      setSchedules(prev => ({
-        ...prev,
-        [targetClass]: {
-          id: Date.now(),
-          class: targetClass,
-          timeSlots: currentSchedule.timeSlots.map(slot => ({
-            ...slot,
-            id: `${slot.day}-${slot.startTime}-${targetClass}`
-          }))
-        }
-      }))
-      alert(`Emploi du temps copié vers ${targetClass} avec succès!`)
+  const handleAddRow = async () => {
+    if (!classId || !selectedYear) return
+    for (let d = 0; d < 5; d++) {
+      const existing = getSlot(newRowStart, newRowEnd, d)
+      if (!existing) {
+        await create({
+          classId: Number(classId),
+          academicYearId: Number(selectedYear),
+          day: d,
+          startTime: newRowStart,
+          endTime: newRowEnd,
+          subjectId: null,
+          teacherId: null,
+        })
+      }
     }
+    setShowAddRow(false)
+  }
+
+  const handleDeleteRow = async (startTime: string, endTime: string) => {
+    const toRemove = slots.filter(s => s.startTime === startTime && s.endTime === endTime)
+    for (const s of toRemove) {
+      await remove(s.id)
+    }
+  }
+
+  const handleClearSlot = async (slot: any) => {
+    await update(slot.id, { subjectId: null, teacherId: null })
+  }
+
+  const handleEditSave = async () => {
+    if (!editSlot) return
+    await update(editSlot.id, {
+      subjectId: editSubjectId && editSubjectId !== "__none__" ? Number(editSubjectId) : null,
+      teacherId: editTeacherId && editTeacherId !== "__none__" ? Number(editTeacherId) : null,
+    })
+    setEditSlot(null)
+  }
+
+  const openEdit = (slot: any) => {
+    setEditSlot(slot)
+    setEditSubjectId(slot.subjectId ? String(slot.subjectId) : "")
+    setEditTeacherId(slot.teacherId ? String(slot.teacherId) : "")
+  }
+
+  const teachersForSubject = useMemo(() => {
+    if (!editSubjectId) return teachers
+    const filtered = teacherSubjectMap.get(Number(editSubjectId)) || []
+    return filtered.length > 0 ? filtered : teachers
+  }, [editSubjectId, teachers, teacherSubjectMap])
+
+  function buildPrintHTML() {
+    const logo = schoolInfo?.logoUrl || ""
+    const schoolName = schoolInfo?.name || "Établissement"
+    const schoolAddr = schoolInfo?.address || ""
+    const schoolPhone = schoolInfo?.phone || ""
+    const className = classes.find(c => c.id === classId)?.name || ""
+    const yearName = years.find(y => y.id === selectedYear)?.name || ""
+
+    let tableRows = timeRows.map(row => {
+      const cells = DAYS.map((_, di) => {
+        const slot = getSlot(row.startTime, row.endTime, di)
+        if (!slot || !slot.subjectId) return "<td></td>"
+        const subj = subjectMap.get(Number(slot.subjectId))
+        const tch = teachers.find((t: any) => Number(t.id) === slot.teacherId)
+        return `<td style="border:1px solid #000;padding:2mm;text-align:center;font-size:8pt">
+          <strong>${subj?.name || ""}</strong><br/>
+          <span style="font-size:7pt">${tch ? tch.firstName + " " + tch.lastName : ""}</span>
+        </td>`
+      })
+      return `<tr>
+        <td style="border:1px solid #000;padding:2mm;font-weight:bold;font-size:8pt;background:#f0f0f0">${fmtTime(row.startTime)} – ${fmtTime(row.endTime)}</td>
+        ${cells.join("")}
+      </tr>`
+    }).join("")
+
+    return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Emploi du temps - ${className}</title>
+    <style>
+      @page { size: A4 portrait; margin: 8mm; }
+      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 8mm; }
+      .header { text-align: center; margin-bottom: 5mm; }
+      .header .logo { text-align: center; margin-bottom: 2mm; }
+      .header .logo img { max-height: 18mm; object-fit: contain; }
+      .header .school { font-size: 12pt; font-weight: bold; text-transform: uppercase; }
+      .header .detail { font-size: 9pt; color: #333; }
+      .header .title { font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 3mm 0; }
+      .header .subtitle { font-size: 10pt; margin-bottom: 3mm; }
+      table { width: 100%; border-collapse: collapse; }
+      th { border: 1px solid #000; padding: 2mm; font-size: 9pt; background: #f0f0f0; }
+      td { border: 1px solid #000; padding: 2mm; text-align: center; font-size: 8pt; }
+      .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; }
+    </style></head><body>
+      <div class="header">
+        ${logo ? `<div class="logo"><img src="${logo}" alt="Logo" /></div>` : ""}
+        <div class="school">${schoolName}</div>
+        <div class="detail">${schoolAddr}</div>
+        <div class="detail">${schoolPhone}</div>
+        <div class="title">EMPLOI DU TEMPS</div>
+        <div class="subtitle">${className} — ${yearName}</div>
+      </div>
+      <table>
+        <tr><th>Heure</th>${DAYS.map(d => `<th>${d}</th>`).join("")}</tr>
+        ${tableRows}
+      </table>
+      <div class="footer">
+        <div>Fait à Bamako, le ...............</div>
+        <div>Le Directeur<br/>${schoolInfo?.director || ""}</div>
+      </div>
+    </body></html>`
+  }
+
+  const handlePrint = () => {
+    const w = window.open("", "_blank")
+    if (!w) return
+    w.document.write(buildPrintHTML())
+    w.document.close()
+    w.print()
   }
 
   return (
     <AppLayout>
-          <PageHeader
-            title="Emploi du temps"
-            description="Gérer les emplois du temps des classes avec glisser-déposer"
-          >
-            <div className="flex space-x-2">
-              <Button variant="outline" onClick={handleCopySchedule}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copier vers une autre classe
-              </Button>
-              <Button onClick={handleExportExcel}>
-                <Download className="h-4 w-4 mr-2" />
-                Exporter Excel
-              </Button>
-              <Button onClick={() => setShowCustomSlotModal(true)} variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Créneau personnalisé
-              </Button>
-            </div>
-          </PageHeader>
+      <PageHeader title="Emploi du temps" description="Gérer les emplois du temps par classe">
+        <Button variant="outline" onClick={handlePrint}><Download className="h-4 w-4 mr-2" /> Télécharger</Button>
+      </PageHeader>
 
-          {/* Sélection de classe */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Paramètres</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-4">
-                <div>
-                  <label className="text-sm font-medium">Classe</label>
-                  <Select value={selectedClass} onValueChange={setSelectedClass}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CP">CP</SelectItem>
-                      <SelectItem value="CE1">CE1</SelectItem>
-                      <SelectItem value="CE2">CE2</SelectItem>
-                      <SelectItem value="CM1">CM1</SelectItem>
-                      <SelectItem value="CM2">CM2</SelectItem>
-                      <SelectItem value="6ème">6ème</SelectItem>
-                      <SelectItem value="5ème">5ème</SelectItem>
-                      <SelectItem value="4ème">4ème</SelectItem>
-                      <SelectItem value="3ème">3ème</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {currentSchedule.timeSlots.filter(slot => slot.type === "course").length} cours programmés
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Liste des matières */}
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Matières</CardTitle>
-                  <CardDescription>
-                    Glissez-déposez les matières dans l'emploi du temps
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <SubjectList 
-                    subjects={mockSubjects}
-                    onSubjectDrag={(e, subject) => {
-                      e.dataTransfer.setData("text/plain", JSON.stringify(subject))
-                    }}
-                  />
-                </CardContent>
-              </Card>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Classe</label>
+              <Select value={classId} onValueChange={setClassId}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                <SelectContent>
+                  {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-
-            {/* Emploi du temps */}
-            <div className="lg:col-span-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Emploi du temps - {selectedClass}</CardTitle>
-                  <CardDescription>
-                    Horaires : 7h00 - 15h00 • Lundi - Vendredi
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                                      <ScheduleGrid
-                      schedule={currentSchedule}
-                      onUpdateSchedule={setSchedules}
-                      onSubjectDrop={handleSubjectDrop}
-                      onEditSlot={handleEditSlot}
-                      onDeleteSlot={handleDeleteSlot}
-                      onAddCustomSlot={handleAddCustomSlot}
-                      onUpdateTimeSlot={handleUpdateTimeSlot}
-                    />
-                </CardContent>
-              </Card>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium">Année</label>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder={currentYear?.name || "—"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
+            <Button onClick={() => { setNewRowStart("08:00"); setNewRowEnd("09:00"); setShowAddRow(true) }} disabled={!classId}>
+              <Plus className="h-4 w-4 mr-2" /> Ajouter ligne
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {classId && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+          {/* Subject palette */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Matières</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {classSubjectList.length === 0 && <p className="text-xs text-muted-foreground">Aucune matière assignée</p>}
+                {classSubjectList.map((cs: any) => (
+                  <div
+                    key={cs.subjectId}
+                    className="p-2 rounded border cursor-grab hover:bg-accent text-xs"
+                    draggable
+                    onDragStart={() => setDraggedSubj({ subjectId: cs.subjectId, name: cs.subject?.name })}
+                  >
+                    <strong>{cs.subject?.name}</strong>
+                    {teachersForSubject.length > 0 && (
+                      <div className="text-muted-foreground mt-0.5">{teachersForSubject[0]?.firstName} {teachersForSubject[0]?.lastName}</div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Instructions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Instructions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="flex items-start space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <strong>Glisser-déposer :</strong> Glissez une matière depuis la liste vers un créneau horaire
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <strong>Modifier les heures :</strong> Cliquez sur les heures dans la première colonne pour les modifier
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <strong>Modification :</strong> Cliquez sur un créneau pour modifier les détails
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <div>
-                    <strong>Export :</strong> Exportez l'emploi du temps en format Excel
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-      {/* Modal d'édition */}
-      <EditSlotModal
-        slot={selectedSlot}
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        onSave={handleSaveSlot}
-        subjects={mockSubjects}
-        teachers={mockTeachers}
-        timeSlots={timeSlots}
-      />
+          {/* Grid */}
+          <div className="lg:col-span-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Grille horaire</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                {timeRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">Cliquez sur "Ajouter ligne" pour créer des créneaux</p>
+                ) : (
+                  <table className="w-full border-collapse border border-gray-300" style={{ minWidth: 600 }}>
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-300 p-2 text-xs font-medium" style={{ width: 100 }}>Heure</th>
+                        {DAYS.map(d => <th key={d} className="border border-gray-300 p-2 text-xs font-medium">{d}</th>)}
+                        <th className="border border-gray-300 p-2 text-xs font-medium" style={{ width: 40 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {timeRows.map(row => (
+                        <tr key={row.startTime + row.endTime}>
+                          <td className="border border-gray-300 p-1.5 text-xs font-medium text-center bg-gray-50">
+                            {fmtTime(row.startTime)}<br/>{fmtTime(row.endTime)}
+                          </td>
+                          {DAYS.map((_, di) => {
+                            const slot = getSlot(row.startTime, row.endTime, di)
+                            const subj = slot?.subjectId ? subjectMap.get(Number(slot.subjectId)) : null
+                            const tch = slot?.teacherId ? teachers.find((t: any) => Number(t.id) === slot.teacherId) : null
+                            return (
+                              <td
+                                key={di}
+                                className="border border-gray-300 p-1 text-center text-xs min-h-[48px] cursor-pointer hover:bg-blue-50"
+                                onDragOver={e => { e.preventDefault() }}
+                                onDrop={e => {
+                                  e.preventDefault()
+                                  if (draggedSubj) handleDrop(row.startTime, row.endTime, di, draggedSubj)
+                                }}
+                                onClick={() => slot ? openEdit(slot) : handleDrop(row.startTime, row.endTime, di, classSubjectList[0] || {})}
+                                style={{ minWidth: 80, height: 48 }}
+                              >
+                                {subj ? (
+                                  <div className="flex flex-col items-center">
+                                    <span className="font-medium">{subj.name}</span>
+                                    {tch && <span className="text-[9px] text-muted-foreground">{tch.firstName} {tch.lastName}</span>}
+                                    <div className="flex gap-1 mt-1">
+                                      <button className="text-[9px] text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); openEdit(slot!) }}><Pencil className="h-3 w-3" /></button>
+                                      <button className="text-[9px] text-red-600 hover:underline" onClick={e => { e.stopPropagation(); handleClearSlot(slot!) }}>×</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-300 text-[9px]">+</span>
+                                )}
+                              </td>
+                            )
+                          })}
+                          <td className="border border-gray-300 p-1 text-center">
+                            <button className="text-red-500 hover:text-red-700" onClick={() => handleDeleteRow(row.startTime, row.endTime)} title="Supprimer la ligne">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
-      {/* Modal pour créer un créneau personnalisé */}
-      <Dialog open={showCustomSlotModal} onOpenChange={setShowCustomSlotModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Créer un créneau personnalisé</DialogTitle>
-            <DialogDescription>
-              Définissez un nouveau créneau horaire pour {selectedClass}
-            </DialogDescription>
-          </DialogHeader>
-          <CustomSlotModal
-            isOpen={showCustomSlotModal}
-            onClose={() => setShowCustomSlotModal(false)}
-            onSave={(customSlot) => {
-              handleAddCustomSlot(customSlot.day, customSlot.startTime, customSlot.endTime)
-              setShowCustomSlotModal(false)
-            }}
-            days={days}
-          />
+      {/* Add row dialog */}
+      <Dialog open={showAddRow} onOpenChange={setShowAddRow}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Nouveau créneau</DialogTitle><DialogDescription>Définir l'heure de début et de fin</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs font-medium">Début</label>
+                <Input type="time" value={newRowStart} onChange={e => setNewRowStart(e.target.value)} />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium">Fin</label>
+                <Input type="time" value={newRowEnd} onChange={e => setNewRowEnd(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAddRow(false)}>Annuler</Button>
+              <Button onClick={handleAddRow}><Save className="h-4 w-4 mr-2" /> Ajouter</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
-        </AppLayout>
+
+      {/* Edit slot dialog */}
+      <Dialog open={!!editSlot} onOpenChange={() => setEditSlot(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Modifier le créneau</DialogTitle></DialogHeader>
+          {editSlot && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium">Matière</label>
+                <Select value={editSubjectId} onValueChange={setEditSubjectId}>
+                  <SelectTrigger><SelectValue placeholder="Aucune" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Aucune —</SelectItem>
+                    {classSubjectList.map((cs: any) => (
+                      <SelectItem key={cs.subjectId} value={String(cs.subjectId)}>{cs.subject?.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Professeur</label>
+                <Select value={editTeacherId} onValueChange={setEditTeacherId}>
+                  <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Aucun —</SelectItem>
+                    {teachersForSubject.map((t: any) => (
+                      <SelectItem key={t.id} value={String(t.id)}>{t.firstName} {t.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditSlot(null)}>Annuler</Button>
+                <Button onClick={handleEditSave}><Save className="h-4 w-4 mr-2" /> Enregistrer</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </AppLayout>
   )
 }
-

@@ -1,7 +1,7 @@
 import {
   findAllFeeTypes, findFeeTypeById, createFeeType, updateFeeType, deleteFeeType,
   findAllPayments, countPayments, findPaymentById, createPayment, updatePayment, deletePayment,
-  getPaymentStats, getStudentPaymentSummary,
+  getPaymentStats, getStudentPaymentSummary, findUnpaidStudents,
 } from "@/lib/repositories/payment.repository";
 import { checkPeriodClosed } from "@/lib/services/period.service";
 import { logAudit } from "@/lib/services/audit.service";
@@ -103,4 +103,24 @@ export async function getPaymentStatsService(from?: string, to?: string) {
 
 export async function getStudentPaymentSummaryService(studentId: string) {
   return getStudentPaymentSummary(Number(studentId));
+}
+
+export async function getUnpaidStudents(filters?: { classId?: string; academicYearId?: string; page?: number; limit?: number }) {
+  const result = await findUnpaidStudents({
+    classId: filters?.classId ? Number(filters.classId) : undefined,
+    academicYearId: filters?.academicYearId ? Number(filters.academicYearId) : undefined,
+    page: filters?.page,
+    limit: filters?.limit,
+  });
+  const data = result.data.map(r => ({
+    id: String(r.id),
+    firstName: r.first_name,
+    lastName: r.last_name,
+    classId: String(r.class_id),
+    className: r.class_name,
+    totalFee: r.total_fee,
+    totalPaid: r.total_paid,
+    remaining: r.total_fee - r.total_paid,
+  }));
+  return { data, total: result.total };
 }

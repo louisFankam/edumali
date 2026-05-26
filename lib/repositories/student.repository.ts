@@ -1,11 +1,11 @@
-import { eq, like, or, and } from "drizzle-orm";
+import { eq, like, or, and, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { students, classes } from "@/lib/models/schema";
+import { students, classes, enrollments } from "@/lib/models/schema";
 
 export type StudentRow = typeof students.$inferSelect;
 export type NewStudent = typeof students.$inferInsert;
 
-export async function findAllStudents(filters?: { search?: string; classId?: number; page?: number; limit?: number }) {
+export async function findAllStudents(filters?: { search?: string; classId?: number; academicYearId?: number; page?: number; limit?: number }) {
   const conditions = [];
   if (filters?.search) {
     const term = `%${filters.search}%`;
@@ -15,6 +15,10 @@ export async function findAllStudents(filters?: { search?: string; classId?: num
   }
   if (filters?.classId) {
     conditions.push(eq(students.classId, filters.classId));
+  }
+  if (filters?.academicYearId) {
+    const enrolledIds = db.select({ id: enrollments.studentId }).from(enrollments).where(eq(enrollments.academicYearId, filters.academicYearId));
+    conditions.push(inArray(students.id, enrolledIds));
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -66,7 +70,7 @@ export async function deleteStudent(id: number) {
   await db.delete(students).where(eq(students.id, id));
 }
 
-export async function countStudents(filters?: { classId?: number; status?: string; search?: string }) {
+export async function countStudents(filters?: { classId?: number; status?: string; search?: string; academicYearId?: number }) {
   const conditions = [];
   if (filters?.classId) conditions.push(eq(students.classId, filters.classId));
   if (filters?.status) conditions.push(eq(students.status, filters.status));
@@ -75,6 +79,10 @@ export async function countStudents(filters?: { classId?: number; status?: strin
     conditions.push(
       or(like(students.firstName, term), like(students.lastName, term), like(students.parentName, term))!
     );
+  }
+  if (filters?.academicYearId) {
+    const enrolledIds = db.select({ id: enrollments.studentId }).from(enrollments).where(eq(enrollments.academicYearId, filters.academicYearId));
+    conditions.push(inArray(students.id, enrolledIds));
   }
   const rows = await db
     .select({ id: students.id })

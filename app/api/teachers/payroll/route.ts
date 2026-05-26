@@ -10,8 +10,10 @@ export async function GET(request: Request) {
     const teacherId = searchParams.get("teacherId") ?? undefined;
     const month = searchParams.get("month") ? Number(searchParams.get("month")) : undefined;
     const year = searchParams.get("year") ? Number(searchParams.get("year")) : undefined;
+    const from = searchParams.get("from") ?? undefined;
+    const to = searchParams.get("to") ?? undefined;
 
-    const data = await getPayroll({ teacherId, month, year });
+    const data = await getPayroll({ teacherId, month, year, from, to });
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

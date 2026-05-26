@@ -8,6 +8,7 @@ export interface Grade {
   studentId: string
   score: number
   remarks: string
+  isAbsent: boolean
   studentFirstName: string
   studentLastName: string
 }
@@ -18,6 +19,9 @@ export interface GradeStats {
   min: number
   max: number
   successRate: number
+  absentCount: number
+  totalStudents: number
+  missingCount: number
 }
 
 export function useGrades(evaluationId: string | undefined) {
@@ -42,7 +46,7 @@ export function useGrades(evaluationId: string | undefined) {
 
   useEffect(() => { load() }, [load])
 
-  const save = async (gradeInputs: { studentId: number; score: number; remarks?: string }[]) => {
+  const save = async (gradeInputs: { studentId: number; score: number; remarks?: string; isAbsent?: boolean }[]) => {
     const res = await window.fetch("/api/grades", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

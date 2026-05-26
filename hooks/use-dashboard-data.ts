@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 export interface DashboardData {
   totals: {
@@ -17,8 +17,11 @@ export interface DashboardData {
 export function useDashboardData(filters?: { from?: string; to?: string }) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const requestId = useRef(0)
 
   const load = useCallback(async () => {
+    if (!filters) { setIsLoading(false); return }
+    const id = ++requestId.current
     setIsLoading(true)
     try {
       const params = new URLSearchParams()
@@ -26,9 +29,10 @@ export function useDashboardData(filters?: { from?: string; to?: string }) {
       if (filters?.to) params.set("to", filters.to)
       const res = await window.fetch(`/api/finances/dashboard-data?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
+      if (id !== requestId.current) return
       if (json.ok) setData(json.data)
     } finally {
-      setIsLoading(false)
+      if (id === requestId.current) setIsLoading(false)
     }
   }, [filters?.from, filters?.to])
 

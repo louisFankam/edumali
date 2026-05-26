@@ -9,13 +9,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const teacherId = searchParams.get("teacherId") ?? undefined;
     const date = searchParams.get("date") ?? undefined;
+    const from = searchParams.get("from") ?? undefined;
+    const to = searchParams.get("to") ?? undefined;
 
     if (date) {
       const data = await getTeacherAttendanceByDate(date);
       return NextResponse.json({ ok: true, data });
     }
 
-    const data = await getTeacherAttendance(teacherId);
+    const data = await getTeacherAttendance(teacherId, from, to);
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

@@ -43,16 +43,18 @@ function mapClass(c: any) {
   };
 }
 
-export async function getStudents(filters?: { search?: string; classId?: string; page?: number; limit?: number }) {
+export async function getStudents(filters?: { search?: string; classId?: string; academicYearId?: string; page?: number; limit?: number }) {
   const rows = await findAllStudents({
     search: filters?.search,
     classId: filters?.classId ? Number(filters.classId) : undefined,
+    academicYearId: filters?.academicYearId ? Number(filters.academicYearId) : undefined,
     page: filters?.page,
     limit: filters?.limit,
   });
   const total = await countStudents({
     search: filters?.search,
     classId: filters?.classId ? Number(filters.classId) : undefined,
+    academicYearId: filters?.academicYearId ? Number(filters.academicYearId) : undefined,
   });
   return { data: rows.map(mapStudent), total };
 }
@@ -151,8 +153,10 @@ export async function removeStudent(id: string) {
   await deleteStudent(studentId);
 }
 
-export async function getStudentStats() {
-  const allStudents = await findAllStudents();
+export async function getStudentStats(academicYearId?: string) {
+  const allStudents = await findAllStudents({
+    academicYearId: academicYearId ? Number(academicYearId) : undefined,
+  });
   const total = allStudents.length;
   const girlsCount = allStudents.filter(s => s.gender === "Féminin").length;
   const boysCount = total - girlsCount;

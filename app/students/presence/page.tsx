@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
-import { SchoolYearSelector } from "@/components/school-year-selector"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -11,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle, Loader2 } from "lucide-react"
+import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle, Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -20,16 +19,32 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useStudents } from "@/hooks/use-students"
 import { useClasses } from "@/hooks/use-classes"
+import { useAcademicYears } from "@/hooks/use-settings"
 import { useAttendanceByDateClass, useAttendanceStats } from "@/hooks/use-attendance"
+import { useAttendanceHistory } from "@/hooks/use-attendance-history"
 
 export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [selectedClassId, setSelectedClassId] = useState("")
   const [attendance, setAttendance] = useState<Record<string, string>>({})
-  const { students, isLoading: studentsLoading } = useStudents(selectedClassId ? { classId: selectedClassId } : undefined)
+  const { currentYear } = useAcademicYears()
+  const { students, isLoading: studentsLoading } = useStudents({
+    classId: selectedClassId || undefined,
+    academicYearId: currentYear?.id,
+  })
   const { classes, isLoading: classesLoading } = useClasses()
   const { records, load: loadAttendance, save: saveAttendance } = useAttendanceByDateClass()
   const { stats: attStats, load: loadStats } = useAttendanceStats()
+  const { summary: historySummary, isLoading: historyLoading, load: loadHistory } = useAttendanceHistory()
+  const [historyFrom, setHistoryFrom] = useState<Date>(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d
+  })
+  const [historyTo, setHistoryTo] = useState<Date>(new Date())
+  const [selectedHistoryStudent, setSelectedHistoryStudent] = useState<string | null>(null)
+  const [historyPage, setHistoryPage] = useState(1)
+  const HISTORY_PAGE_SIZE = 10
 
   const dateStr = format(selectedDate, "yyyy-MM-dd")
 
@@ -108,9 +123,7 @@ export default function AttendancePage() {
 
   return (
     <AppLayout>
-          <PageHeader title="Présences Élèves" description="Suivi quotidien des absences et retards">
-            <SchoolYearSelector />
-          </PageHeader>
+          <PageHeader title="Présences Élèves" description="Suivi quotidien des absences et retards" />
 
           <Tabs defaultValue="daily" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
@@ -218,13 +231,191 @@ export default function AttendancePage() {
               )}
             </TabsContent>
 
-            <TabsContent value="history">
-              <Card><CardContent className="p-8 text-center text-muted-foreground">
-                {selectedClassId ? "Historique - fonctionnalité à venir" : "Sélectionnez une classe"}
-              </CardContent></Card>
+            <TabsContent value="history" className="space-y-6">
+              <Card>
+                <CardHeader><CardTitle>Filtres</CardTitle></CardHeader>
+                <CardContent className="flex flex-col md:flex-row gap-4 items-end">
+                  <div className="space-y-2">
+                    <Label>Classe</Label>
+                    <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                      <SelectTrigger className="w-48"><SelectValue placeholder="Choisir une classe" /></SelectTrigger>
+                      <SelectContent>
+                        {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Du</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-40 justify-start bg-transparent">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(historyFrom, "dd/MM/yyyy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={historyFrom} onSelect={(d) => d && setHistoryFrom(d)} locale={fr} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Au</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-40 justify-start bg-transparent">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(historyTo, "dd/MM/yyyy")}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={historyTo} onSelect={(d) => d && setHistoryTo(d)} locale={fr} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button
+                    onClick={() => { setHistoryPage(1); loadHistory(selectedClassId, format(historyFrom, "yyyy-MM-dd"), format(historyTo, "yyyy-MM-dd")) }}
+                    disabled={!selectedClassId || historyLoading}
+                  >
+                    {historyLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Charger
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {!selectedClassId ? (
+                <Card><CardContent className="p-12 text-center text-muted-foreground">Sélectionnez une classe</CardContent></Card>
+              ) : historyLoading ? (
+                <Card><CardContent className="p-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>
+              ) : historySummary.length === 0 ? (
+                <Card><CardContent className="p-12 text-center text-muted-foreground">Aucune donnée pour cette période</CardContent></Card>
+              ) : selectedHistoryStudent ? (
+                <StudentDetailView
+                  student={historySummary.find(s => s.studentId === selectedHistoryStudent)!}
+                  onBack={() => setSelectedHistoryStudent(null)}
+                />
+              ) : (
+                <Card>
+                  <CardHeader><CardTitle>Récapitulatif par élève</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Élève</TableHead>
+                          <TableHead className="text-center">Présents</TableHead>
+                          <TableHead className="text-center">Absents</TableHead>
+                          <TableHead className="text-center">Retards</TableHead>
+                          <TableHead className="text-center">Congés</TableHead>
+                          <TableHead className="text-center">Total</TableHead>
+                          <TableHead className="text-center">Taux</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(() => {
+                          const start = (historyPage - 1) * HISTORY_PAGE_SIZE
+                          const pageItems = historySummary.slice(start, start + HISTORY_PAGE_SIZE)
+                          return pageItems.map(s => (
+                            <TableRow key={s.studentId} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedHistoryStudent(s.studentId)}>
+                              <TableCell className="font-medium">{s.studentName}</TableCell>
+                              <TableCell className="text-center text-green-600">{s.present}</TableCell>
+                              <TableCell className="text-center text-red-600">{s.absent}</TableCell>
+                              <TableCell className="text-center text-yellow-600">{s.late}</TableCell>
+                              <TableCell className="text-center text-blue-600">{s.excused}</TableCell>
+                              <TableCell className="text-center">{s.total}</TableCell>
+                              <TableCell className="text-center">
+                                <RateBadge rate={s.rate} />
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        })()}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                  {historySummary.length > HISTORY_PAGE_SIZE && (
+                    <div className="flex items-center justify-between px-6 pb-4">
+                      <p className="text-sm text-muted-foreground">
+                        {Math.min((historyPage - 1) * HISTORY_PAGE_SIZE + 1, historySummary.length)}–{Math.min(historyPage * HISTORY_PAGE_SIZE, historySummary.length)} sur {historySummary.length}
+                      </p>
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" disabled={historyPage === 1} onClick={() => setHistoryPage(p => p - 1)}>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" disabled={historyPage * HISTORY_PAGE_SIZE >= historySummary.length} onClick={() => setHistoryPage(p => p + 1)}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </AppLayout>
+  )
+}
+
+function RateBadge({ rate }: { rate: number }) {
+  let color = "text-green-600 bg-green-100"
+  if (rate < 50) color = "text-red-600 bg-red-100"
+  else if (rate < 75) color = "text-yellow-600 bg-yellow-100"
+  return <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${color}`}>{rate}%</span>
+}
+
+function StudentDetailView({ student, onBack }: { student: any; onBack: () => void }) {
+  const uniqueDays = [...new Set(student.details.map((d: any) => d.date))].length
+  return (
+    <div className="space-y-4">
+      <Button variant="ghost" onClick={onBack} className="mb-2">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Retour au récapitulatif
+      </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{student.studentName}</span>
+            <RateBadge rate={student.rate} />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">{student.present}</p>
+              <p className="text-xs text-muted-foreground">Présents</p>
+            </div>
+            <div className="text-center p-3 bg-red-50 rounded-lg">
+              <p className="text-2xl font-bold text-red-600">{student.absent}</p>
+              <p className="text-xs text-muted-foreground">Absents</p>
+            </div>
+            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+              <p className="text-2xl font-bold text-yellow-600">{student.late}</p>
+              <p className="text-xs text-muted-foreground">Retards</p>
+            </div>
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600">{student.excused}</p>
+              <p className="text-xs text-muted-foreground">Congés</p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">{uniqueDays} jour(s) avec relevé de présence</p>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {student.details.map((d: any, i: number) => (
+                  <TableRow key={i}>
+                    <TableCell>{format(new Date(d.date), "dd MMMM yyyy", { locale: fr })}</TableCell>
+                    <TableCell><StatusBadge status={d.status === "présent" ? "present" : d.status === "absent" ? "absent" : d.status === "retard" ? "late" : "present"} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

@@ -1,8 +1,8 @@
 import { findUserByEmail, findUserById } from "@/lib/repositories/user.repository";
 import { verifyPassword } from "@/lib/auth/password";
 
-export async function authenticateUser(email: string, password: string) {
-  const user = await findUserByEmail(email);
+export async function authenticateUser(username: string, password: string) {
+  const user = await findUserByEmail(username);
   if (!user) return null;
 
   const isValid = await verifyPassword(password, user.passwordHash);

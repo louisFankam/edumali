@@ -14,14 +14,19 @@ export interface ClassSubject {
 export function useClassSubjects(classId: string | undefined) {
   const [subjects, setSubjects] = useState<ClassSubject[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!classId) { setSubjects([]); setIsLoading(false); return }
     setIsLoading(true)
+    setError(null)
     try {
       const res = await window.fetch(`/api/class-subjects?classId=${classId}`)
       const json = await res.json()
       if (json.ok) setSubjects(json.data)
+    } catch (e) {
+      console.error("useClassSubjects.load", e)
+      setError(String(e))
     } finally {
       setIsLoading(false)
     }
@@ -40,5 +45,5 @@ export function useClassSubjects(classId: string | undefined) {
     return json
   }
 
-  return { subjects, isLoading, save, refetch: load }
+  return { subjects, isLoading, error, save, refetch: load }
 }

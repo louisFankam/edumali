@@ -5,6 +5,7 @@ import {
   updateAttendance,
   deleteAttendance,
   findAttendanceByStudent,
+  findAttendanceByRange,
 } from "@/lib/repositories/attendance.repository";
 import type { attendance } from "@/lib/models/schema";
 
@@ -42,6 +43,11 @@ export async function editAttendance(id: string, input: { status?: string; justi
 
 export async function removeAttendance(id: string) {
   await deleteAttendance(Number(id));
+}
+
+export async function getAttendanceByRange(from: string, to: string, classId?: string) {
+  const rows = await findAttendanceByRange(from, to, classId ? Number(classId) : undefined);
+  return rows.map(mapRecord);
 }
 
 export async function getStudentAttendance(studentId: string) {

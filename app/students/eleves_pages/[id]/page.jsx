@@ -26,13 +26,15 @@ import { useClasses } from "@/hooks/use-classes"
 import { useMedicalInfo } from "@/hooks/use-medical-info"
 import { useFamilyInfo } from "@/hooks/use-family-info"
 import { useAcademicHistory } from "@/hooks/use-academic-history"
+import { useAcademicYears } from "@/hooks/use-settings"
 import { format } from "date-fns"
 
 export default function StudentProfilePage() {
   const params = useParams()
   const id = params?.id
+  const { currentYear } = useAcademicYears()
   const { student, isLoading } = useStudent(id)
-  const { payments, create: createPayment, refetch: refetchPayments } = usePayments(id ? { studentId: id } : undefined)
+  const { payments, create: createPayment, refetch: refetchPayments } = usePayments(id ? { studentId: id, from: currentYear?.startDate, to: currentYear?.endDate } : undefined)
   const { feeTypes } = useFeeTypes()
   const { classes } = useClasses()
   const { data: medicalData, isLoading: medicalLoading, save: saveMedical } = useMedicalInfo(id)

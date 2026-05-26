@@ -9,16 +9,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") ?? undefined;
     const classId = searchParams.get("classId") ?? undefined;
+    const academicYearId = searchParams.get("academicYearId") ?? undefined;
     const stats = searchParams.get("stats") === "true";
     const page = searchParams.get("page") ? Number(searchParams.get("page")) : undefined;
     const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : undefined;
 
     if (stats) {
-      const data = await getStudentStats();
+      const data = await getStudentStats(academicYearId);
       return NextResponse.json({ ok: true, data });
     }
 
-    const result = await getStudents({ search, classId, page, limit });
+    const result = await getStudents({ search, classId, academicYearId, page, limit });
     return NextResponse.json({
       ok: true,
       data: result.data,

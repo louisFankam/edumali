@@ -8,6 +8,7 @@ export interface EvaluationFilters {
   trimester?: number;
   academicYearId?: number;
   status?: string;
+  type?: string;
 }
 
 function buildConditions(filters?: EvaluationFilters) {
@@ -17,6 +18,7 @@ function buildConditions(filters?: EvaluationFilters) {
   if (filters?.trimester) conditions.push(eq(evaluations.trimester, filters.trimester));
   if (filters?.academicYearId) conditions.push(eq(evaluations.academicYearId, filters.academicYearId));
   if (filters?.status) conditions.push(eq(evaluations.status, filters.status));
+  if (filters?.type) conditions.push(eq(evaluations.type, filters.type));
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 

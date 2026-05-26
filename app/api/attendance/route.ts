@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAttendanceByDateAndClass, saveAttendance, getAttendanceStats } from "@/lib/services/attendance.service";
+import { getAttendanceByDateAndClass, saveAttendance, getAttendanceStats, getAttendanceByRange } from "@/lib/services/attendance.service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
 
     if (stats === "true") {
       const data = await getAttendanceStats(studentId ?? undefined, classId ?? undefined, from ?? undefined, to ?? undefined);
+      return NextResponse.json({ ok: true, data });
+    }
+
+    if (from && to) {
+      const data = await getAttendanceByRange(from, to, classId ?? undefined);
       return NextResponse.json({ ok: true, data });
     }
 

@@ -36,9 +36,11 @@ import {
   DollarSign,
   Users,
   Check,
-  X
+  X,
+  Image,
+  Globe
 } from "lucide-react"
-import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
+
 import { AffectationsPanel } from "@/components/affectations-panel"
 import { useSchoolInfo, useAcademicYears, useSubjects } from "@/hooks/use-settings"
 import { useClasses } from "@/hooks/use-classes"
@@ -1048,6 +1050,7 @@ export default function SettingsPage() {
         website: schoolFormData.website ?? schoolInfo.website,
         director: schoolFormData.director ?? schoolInfo.director,
         foundedYear: schoolFormData.founded_year ?? schoolInfo.founded_year,
+        logoUrl: schoolFormData.logo ?? undefined,
       })
       if (updated) {
         setSchoolInfo({
@@ -1115,7 +1118,6 @@ export default function SettingsPage() {
             description="Configurez les paramètres de l'école et gérez les données de base"
             className=""
           >
-            <NotificationBellMain />
           </PageHeader>
 
           <Tabs defaultValue="classes" className="space-y-6">
@@ -1344,102 +1346,240 @@ export default function SettingsPage() {
             <TabsContent value="school" className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold">Informations de l'École</h2>
-                <p className="text-muted-foreground">Configurez les informations générales de l'école</p>
+                <p className="text-muted-foreground">Configurez les informations générales de l'école et son identité visuelle</p>
               </div>
 
               {schoolInfo ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Détails de l'établissement</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="school-name">Nom de l'école</Label>
-                        <Input
-                          id="school-name"
-                          value={schoolFormData.name || ''}
-                          onChange={(e) => setSchoolFormData({...schoolFormData, name: e.target.value})}
-                          placeholder="Nom de l'école"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="school-director">Directeur</Label>
-                        <Input
-                          id="school-director"
-                          value={schoolFormData.director || ''}
-                          onChange={(e) => setSchoolFormData({...schoolFormData, director: e.target.value})}
-                          placeholder="Nom du directeur"
-                        />
-                      </div>
-                    </div>
+                <>
+                  {/* Carte d'identité visuelle */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Identité de l'établissement</CardTitle>
+                      <CardDescription>Prévisualisation de la carte d'identité de l'école</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="border rounded-xl p-6 flex flex-col md:flex-row items-center gap-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background">
+                        {/* Logo */}
+                        <div className="flex-shrink-0">
+                          {schoolFormData.logo ? (
+                            <img
+                              src={schoolFormData.logo}
+                              alt="Logo école"
+                              className="w-28 h-28 object-contain rounded-xl border bg-white shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-28 h-28 rounded-xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/30">
+                              <School className="h-10 w-10 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </div>
 
-                    <div>
-                      <Label htmlFor="school-address">Adresse</Label>
-                      <Input
-                        id="school-address"
-                        value={schoolFormData.address || ''}
-                        onChange={(e) => setSchoolFormData({...schoolFormData, address: e.target.value})}
-                        placeholder="Adresse complète"
-                      />
-                    </div>
+                        {/* Infos */}
+                        <div className="flex-1 text-center md:text-left space-y-1">
+                          <h3 className="text-2xl font-bold tracking-tight">
+                            {schoolFormData.name || "Nom de l'école"}
+                          </h3>
+                          {schoolFormData.director && (
+                            <p className="text-lg text-muted-foreground">
+                              Directeur : <span className="font-semibold text-foreground">{schoolFormData.director}</span>
+                            </p>
+                          )}
+                          {schoolFormData.address && (
+                            <p className="text-sm text-muted-foreground flex items-center justify-center md:justify-start gap-1">
+                              <Building2 className="h-3.5 w-3.5" />
+                              {schoolFormData.address}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-3 justify-center md:justify-start text-sm text-muted-foreground pt-1">
+                            {schoolFormData.phone && (
+                              <span className="flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5" />
+                                {schoolFormData.phone}
+                              </span>
+                            )}
+                            {schoolFormData.email && (
+                              <span className="flex items-center gap-1">
+                                <Mail className="h-3.5 w-3.5" />
+                                {schoolFormData.email}
+                              </span>
+                            )}
+                            {schoolFormData.website && (
+                              <span className="flex items-center gap-1">
+                                <Globe className="h-3.5 w-3.5" />
+                                {schoolFormData.website}
+                              </span>
+                            )}
+                            {schoolFormData.founded_year && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3.5 w-3.5" />
+                                Créée en {schoolFormData.founded_year}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Formulaire détaillé */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Détails de l'établissement</CardTitle>
+                      <CardDescription>Modifiez les informations de votre école</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Logo */}
                       <div>
-                        <Label htmlFor="school-phone">Téléphone</Label>
-                        <Input
-                          id="school-phone"
-                          value={schoolFormData.phone || ''}
-                          onChange={(e) => setSchoolFormData({...schoolFormData, phone: e.target.value})}
-                          placeholder="+223 XX XX XX XX"
-                        />
+                        <Label>Logo de l'école</Label>
+                        <div className="flex items-center gap-4 mt-1.5">
+                          <div className="flex-shrink-0">
+                            {schoolFormData.logo ? (
+                              <img
+                                src={schoolFormData.logo}
+                                alt="Aperçu logo"
+                                className="w-16 h-16 object-contain rounded-lg border bg-white"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg border-2 border-dashed border-muted-foreground/30 flex items-center justify-center bg-muted/20">
+                                <Image className="h-6 w-6 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              value={schoolFormData.logo || ''}
+                              onChange={(e) => setSchoolFormData({...schoolFormData, logo: e.target.value})}
+                              placeholder="URL du logo"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const input = document.createElement('input')
+                                  input.type = 'file'
+                                  input.accept = 'image/*'
+                                  input.onchange = (e) => {
+                                    const file = (e.target as HTMLInputElement).files?.[0]
+                                    if (file) {
+                                      const reader = new FileReader()
+                                      reader.onload = (ev) => {
+                                        setSchoolFormData({...schoolFormData, logo: ev.target?.result as string})
+                                      }
+                                      reader.readAsDataURL(file)
+                                    }
+                                  }
+                                  input.click()
+                                }}
+                              >
+                                <Image className="h-4 w-4 mr-1" />
+                                Choisir un fichier
+                              </Button>
+                              {schoolFormData.logo && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSchoolFormData({...schoolFormData, logo: ''})}
+                                >
+                                  <X className="h-4 w-4 mr-1" />
+                                  Retirer
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor="school-email">Email</Label>
-                        <Input
-                          id="school-email"
-                          type="email"
-                          value={schoolFormData.email || ''}
-                          onChange={(e) => setSchoolFormData({...schoolFormData, email: e.target.value})}
-                          placeholder="email@exemple.com"
-                        />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="school-founded">Année de création</Label>
-                        <Input
-                          id="school-founded"
-                          type="number"
-                          value={schoolFormData.founded_year || ''}
-                          onChange={(e) => setSchoolFormData({...schoolFormData, founded_year: parseInt(e.target.value) || 0})}
-                          placeholder="2000"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="school-name">Nom de l'école</Label>
+                          <Input
+                            id="school-name"
+                            value={schoolFormData.name || ''}
+                            onChange={(e) => setSchoolFormData({...schoolFormData, name: e.target.value})}
+                            placeholder="Nom de l'école"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="school-director">Directeur / Directrice</Label>
+                          <Input
+                            id="school-director"
+                            value={schoolFormData.director || ''}
+                            onChange={(e) => setSchoolFormData({...schoolFormData, director: e.target.value})}
+                            placeholder="Nom du directeur"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor="school-website">Site web</Label>
-                        <Input
-                          id="school-website"
-                          value={schoolFormData.website || ''}
-                          onChange={(e) => setSchoolFormData({...schoolFormData, website: e.target.value})}
-                          placeholder="https://www.exemple.com"
-                        />
-                      </div>
-                    </div>
 
-                    <div className="flex justify-end pt-4 border-t">
-                      <Button onClick={handleSaveSchoolInfo} disabled={isSavingSchool}>
-                        {isSavingSchool ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4 mr-2" />
-                        )}
-                        Sauvegarder les modifications
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div>
+                        <Label htmlFor="school-address">Adresse</Label>
+                        <Input
+                          id="school-address"
+                          value={schoolFormData.address || ''}
+                          onChange={(e) => setSchoolFormData({...schoolFormData, address: e.target.value})}
+                          placeholder="Adresse complète"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="school-phone">Téléphone</Label>
+                          <Input
+                            id="school-phone"
+                            value={schoolFormData.phone || ''}
+                            onChange={(e) => setSchoolFormData({...schoolFormData, phone: e.target.value})}
+                            placeholder="+223 XX XX XX XX"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="school-email">Email</Label>
+                          <Input
+                            id="school-email"
+                            type="email"
+                            value={schoolFormData.email || ''}
+                            onChange={(e) => setSchoolFormData({...schoolFormData, email: e.target.value})}
+                            placeholder="email@exemple.com"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="school-founded">Année de création</Label>
+                          <Input
+                            id="school-founded"
+                            type="number"
+                            value={schoolFormData.founded_year || ''}
+                            onChange={(e) => setSchoolFormData({...schoolFormData, founded_year: parseInt(e.target.value) || 0})}
+                            placeholder="2000"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="school-website">Site web</Label>
+                          <Input
+                            id="school-website"
+                            value={schoolFormData.website || ''}
+                            onChange={(e) => setSchoolFormData({...schoolFormData, website: e.target.value})}
+                            placeholder="https://www.exemple.com"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4 border-t">
+                        <Button onClick={handleSaveSchoolInfo} disabled={isSavingSchool}>
+                          {isSavingSchool ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
+                          Sauvegarder les modifications
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
               ) : (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">

@@ -1,6 +1,6 @@
 import { and, eq, gte, lte, sql, count } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { payments, feeTypes, students } from "@/lib/models/schema";
+import { payments, feeTypes, students, classes } from "@/lib/models/schema";
 
 // Fee Types
 export async function findAllFeeTypes() {
@@ -97,4 +97,52 @@ export async function getStudentPaymentSummary(studentId: number) {
   }).from(payments).where(and(eq(payments.studentId, studentId), eq(payments.status, "payé")));
 
   return { totalPaid: rows[0]?.totalPaid ?? 0 };
+}
+
+export async function findUnpaidStudents(filters?: { classId?: number; academicYearId?: number; page?: number; limit?: number }) {
+  let conditions = sql`s.status = 'Actif'`;
+  if (filters?.classId) {
+    conditions = sql`${conditions} AND s.class_id = ${filters.classId}`;
+  }
+
+  const joinClause = filters?.academicYearId
+    ? sql`JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${filters.academicYearId}`
+    : sql``;
+
+  const countResult = db.get(sql`
+    SELECT COUNT(*) as total FROM (
+      SELECT s.id
+      FROM students s
+      ${joinClause}
+      JOIN classes c ON s.class_id = c.id
+      LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+      WHERE ${conditions}
+      GROUP BY s.id
+      HAVING COALESCE(SUM(p.amount), 0) < c.total_fee
+    )
+  `) as { total: number } | undefined;
+  const total = countResult?.total ?? 0;
+
+  let limitOffset = sql``;
+  if (filters?.page && filters?.limit) {
+    const offset = (filters.page - 1) * filters.limit;
+    limitOffset = sql`LIMIT ${filters.limit} OFFSET ${offset}`;
+  }
+
+  const rows = db.all(sql`
+    SELECT s.id, s.first_name, s.last_name, s.class_id,
+           c.name as class_name, c.total_fee,
+           COALESCE(SUM(p.amount), 0) as total_paid
+    FROM students s
+    ${joinClause}
+    JOIN classes c ON s.class_id = c.id
+    LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+    WHERE ${conditions}
+    GROUP BY s.id
+    HAVING COALESCE(SUM(p.amount), 0) < c.total_fee
+    ORDER BY s.last_name, s.first_name
+    ${limitOffset}
+  `) as { id: number; first_name: string; last_name: string; class_id: number; class_name: string; total_fee: number; total_paid: number }[];
+
+  return { data: rows, total };
 }

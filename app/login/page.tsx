@@ -11,7 +11,7 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Mail,
+  User,
   GraduationCap,
   AlertCircle,
   CheckCircle
@@ -21,7 +21,7 @@ import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    email: "", // Changé de username à email
+    username: "",
     password: "",
     rememberMe: false
   })
@@ -57,11 +57,10 @@ export default function LoginPage() {
     setSuccess("")
 
     try {
-      await login(formData.email, formData.password, formData.rememberMe)
+      await login(formData.username, formData.password, formData.rememberMe)
       setSuccess("Connexion réussie ! Redirection...")
-      // La redirection est gérée par le useEffect
     } catch (err: any) {
-      setError(err.message || "Email ou mot de passe incorrect")
+      setError(err.message || "Nom d'utilisateur ou mot de passe incorrect")
       console.error('Login error:', err)
     }
   }
@@ -98,7 +97,7 @@ export default function LoginPage() {
               Connexion
             </CardTitle>
             <CardDescription className="text-center">
-              Connectez-vous avec votre email et mot de passe
+              Connectez-vous avec votre nom d'utilisateur et mot de passe
             </CardDescription>
           </CardHeader>
 
@@ -133,19 +132,19 @@ export default function LoginPage() {
 
             {/* Formulaire */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
+              {/* Nom d'utilisateur */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email
+                <Label htmlFor="username" className="text-sm font-medium">
+                  Nom d'utilisateur
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="Entrez votre email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    id="username"
+                    type="text"
+                    placeholder="Entrez votre nom d'utilisateur"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange("username", e.target.value)}
                     className="pl-10"
                     required
                     disabled={authLoading}
@@ -220,14 +219,14 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Informations de test */}
+            {/* Informations de connexion */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-medium text-gray-900 mb-2">
-                Identifiants de test :
+                Identifiants par défaut :
               </h3>
               <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Email :</strong> admin@edumali.ml</p>
-                <p><strong>Mot de passe :</strong> admin12345</p>
+                <p><strong>Nom d'utilisateur :</strong> admin</p>
+                <p><strong>Mot de passe :</strong> admin</p>
               </div>
             </div>
 

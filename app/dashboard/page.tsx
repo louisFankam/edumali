@@ -23,56 +23,19 @@ import {
 } from "lucide-react"
 
 import Link from "next/link"
-import { NotificationBellMain } from "@/components/notifications/notification-bell-main"
-import { AlertsSection } from "@/components/alerts/alerts-section"
 
-// Données en dur pour le mode front-only
-const DASHBOARD_DATA = {
-  students: {
-    total: 450,
-    growth: 5.2,
-    newThisMonth: 12,
-    byClass: [
-      { name: "1ère Année", count: 45, capacity: 50, percentage: 90 },
-      { name: "2ème Année", count: 42, capacity: 50, percentage: 84 },
-      { name: "3ème Année", count: 48, capacity: 50, percentage: 96 },
-      { name: "4ème Année", count: 40, capacity: 50, percentage: 80 },
-    ]
-  },
-  attendance: {
-    overall: 92,
-    trend: 2.1,
-    byClass: [
-      { class: "1ère A", rate: 95, trend: 1.5 },
-      { class: "2ème A", rate: 88, trend: -0.5 },
-      { class: "3ème A", rate: 94, trend: 2.0 },
-    ]
-  },
-  financial: {
-    totalRevenue: 15000000,
-    growth: 8.5,
-    monthlyAverage: 1250000,
-    outstandingPayments: 2000000
-  },
-  exams: {
-    passRate: 78,
-    averageScore: 14.5,
-    topSubjects: [
-      { subject: "Mathématiques", average: 15.2, students: 120 },
-      { subject: "Français", average: 14.8, students: 120 },
-      { subject: "Sciences", average: 16.0, students: 45 },
-    ]
-  }
-}
+import { AlertsSection } from "@/components/alerts/alerts-section"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useAcademicYears } from "@/hooks/use-settings"
 
 export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("month")
-  const [isLoading, setIsLoading] = useState(false)
+  const { currentYear } = useAcademicYears()
+  const { data, isLoading, error, refetch } = useDashboard(
+    currentYear ? { from: currentYear.startDate, to: currentYear.endDate } : undefined
+  )
 
-  const handleRefresh = () => {
-    setIsLoading(true)
-    setTimeout(() => setIsLoading(false), 500)
-  }
+  const handleRefresh = () => refetch()
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -82,7 +45,52 @@ export default function DashboardPage() {
     }).format(amount)
   }
 
-  const data = DASHBOARD_DATA
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-red-500">Erreur: {error}</p>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (!data) return null
+
+  const alerts = [
+    ...(data.alerts.unpaidStudents > 0 ? [{
+      type: "payment" as const,
+      title: "Paiements en retard",
+      urgency: "high" as const,
+      description: `${data.alerts.unpaidStudents} élève${data.alerts.unpaidStudents > 1 ? "s" : ""} ${data.alerts.unpaidStudents > 1 ? "ont" : "a"} des frais impayés`,
+      amount: data.alerts.unpaidAmount,
+      link: "/finances",
+    }] : []),
+    ...(data.alerts.recentAbsences > 0 ? [{
+      type: "attendance" as const,
+      title: "Absences récentes",
+      urgency: (data.alerts.recentAbsences >= 5 ? "high" : "medium") as "high" | "medium",
+      description: `${data.alerts.recentAbsences} absence${data.alerts.recentAbsences > 1 ? "s" : ""} non justifiée${data.alerts.recentAbsences > 1 ? "s" : ""} cette semaine`,
+      link: "/students/presence",
+    }] : []),
+    ...(data.alerts.upcomingExams > 0 ? [{
+      type: "exam" as const,
+      title: "Examens à venir",
+      urgency: "medium" as const,
+      description: `${data.alerts.upcomingExams} examen${data.alerts.upcomingExams > 1 ? "s" : ""} prévu${data.alerts.upcomingExams > 1 ? "s" : ""} dans les 7 jours`,
+      link: "/planning/examens",
+    }] : []),
+  ]
 
   return (
     <AppLayout>
@@ -91,7 +99,6 @@ export default function DashboardPage() {
               title="Tableau de bord"
               description="Vue d'ensemble de l'établissement scolaire"
             >
-              <NotificationBellMain />
             </PageHeader>
             <div className="flex items-center space-x-2">
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
@@ -183,7 +190,7 @@ export default function DashboardPage() {
                 </div>
                 <Progress value={data.exams.passRate} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {data.exams.topSubjects.length} matières évaluées
+                  {data.exams.averageScore > 0 ? "Notes disponibles" : "Aucune note"}
                 </p>
               </CardContent>
             </Card>
@@ -224,7 +231,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <AlertsSection />
+            <AlertsSection alerts={alerts} />
           </div>
 
           <Card>

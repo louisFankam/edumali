@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 export interface TeacherData {
   id: string
@@ -132,28 +132,35 @@ export interface TeacherAttendanceRecord {
   teacher?: TeacherData | null
 }
 
-export function useTeacherAttendance(filters?: { teacherId?: string; date?: string }) {
+export function useTeacherAttendance(filters?: { teacherId?: string; date?: string; from?: string; to?: string }) {
   const [records, setRecords] = useState<TeacherAttendanceRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestId = useRef(0)
 
   const load = useCallback(async () => {
+    if (!filters) { setIsLoading(false); return }
+    const id = ++requestId.current
     setIsLoading(true)
     setError(null)
     try {
       const params = new URLSearchParams()
       if (filters?.teacherId) params.set("teacherId", filters.teacherId)
       if (filters?.date) params.set("date", filters.date)
+      if (filters?.from) params.set("from", filters.from)
+      if (filters?.to) params.set("to", filters.to)
       const res = await window.fetch(`/api/teachers/attendance?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
+      if (id !== requestId.current) return
       if (!json.ok) throw new Error(json.message)
       setRecords(json.data)
     } catch (e) {
+      if (id !== requestId.current) return
       setError(String(e))
     } finally {
-      setIsLoading(false)
+      if (id === requestId.current) setIsLoading(false)
     }
-  }, [filters?.teacherId, filters?.date])
+  }, [filters?.teacherId, filters?.date, filters?.from, filters?.to])
 
   useEffect(() => { load() }, [load])
 
@@ -185,12 +192,15 @@ export interface PayrollRecord {
   notes: string
 }
 
-export function usePayroll(filters?: { teacherId?: string; month?: number; year?: number }) {
+export function usePayroll(filters?: { teacherId?: string; month?: number; year?: number; from?: string; to?: string }) {
   const [records, setRecords] = useState<PayrollRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestId = useRef(0)
 
   const load = useCallback(async () => {
+    if (!filters) { setIsLoading(false); return }
+    const id = ++requestId.current
     setIsLoading(true)
     setError(null)
     try {
@@ -198,16 +208,20 @@ export function usePayroll(filters?: { teacherId?: string; month?: number; year?
       if (filters?.teacherId) params.set("teacherId", filters.teacherId)
       if (filters?.month !== undefined) params.set("month", String(filters.month))
       if (filters?.year !== undefined) params.set("year", String(filters.year))
+      if (filters?.from) params.set("from", filters.from)
+      if (filters?.to) params.set("to", filters.to)
       const res = await window.fetch(`/api/teachers/payroll?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
+      if (id !== requestId.current) return
       if (!json.ok) throw new Error(json.message)
       setRecords(json.data)
     } catch (e) {
+      if (id !== requestId.current) return
       setError(String(e))
     } finally {
-      setIsLoading(false)
+      if (id === requestId.current) setIsLoading(false)
     }
-  }, [filters?.teacherId, filters?.month, filters?.year])
+  }, [filters?.teacherId, filters?.month, filters?.year, filters?.from, filters?.to])
 
   useEffect(() => { load() }, [load])
 

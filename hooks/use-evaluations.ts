@@ -24,11 +24,13 @@ export interface EvaluationFilters {
   trimester?: string
   academicYearId?: string
   status?: string
+  type?: string
 }
 
 export function useEvaluations(filters: EvaluationFilters = {}) {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const params = new URLSearchParams()
   if (filters.classId) params.set("classId", filters.classId)
@@ -36,14 +38,19 @@ export function useEvaluations(filters: EvaluationFilters = {}) {
   if (filters.trimester) params.set("trimester", filters.trimester)
   if (filters.academicYearId) params.set("academicYearId", filters.academicYearId)
   if (filters.status) params.set("status", filters.status)
+  if (filters.type) params.set("type", filters.type)
   const qs = params.toString()
 
   const load = useCallback(async () => {
     setIsLoading(true)
+    setError(null)
     try {
       const res = await window.fetch(`/api/evaluations${qs ? `?${qs}` : ""}`)
       const json = await res.json()
       if (json.ok) setEvaluations(json.data)
+    } catch (e) {
+      console.error("useEvaluations.load", e)
+      setError(String(e))
     } finally {
       setIsLoading(false)
     }
@@ -85,5 +92,5 @@ export function useEvaluations(filters: EvaluationFilters = {}) {
     return json
   }
 
-  return { evaluations, isLoading, create, update, remove, refetch: load }
+  return { evaluations, isLoading, error, create, update, remove, refetch: load }
 }

@@ -194,7 +194,9 @@ export const evaluations = sqliteTable("evaluations", {
   status: text("status", { enum: ["draft", "published"] }).notNull().default("draft"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  uniqueEvalPeriod: uniqueIndex("eval_unique_period").on(table.classId, table.subjectId, table.trimester, table.type),
+}));
 
 export const grades = sqliteTable("grades", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -202,6 +204,7 @@ export const grades = sqliteTable("grades", {
   studentId: integer("student_id").notNull().references(() => students.id),
   score: real("score").notNull(),
   remarks: text("remarks"),
+  isAbsent: integer("is_absent").default(0).notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 }, (table) => ({
@@ -290,6 +293,26 @@ export const enrollments = sqliteTable("enrollments", {
   enrollmentDate: text("enrollment_date").notNull(),
   status: text("status", { enum: ["inscrit", "réinscrit", "transféré", "sorti"] }).notNull().default("inscrit"),
   notes: text("notes"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const userPreferences = sqliteTable("user_preferences", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  theme: text("theme", { enum: ["light", "dark", "auto"] }).notNull().default("light"),
+  primaryColor: text("primary_color").notNull().default("#dc2626"),
+  secondaryColor: text("secondary_color").notNull().default("#3b82f6"),
+  accentColor: text("accent_color").notNull().default("#10b981"),
+  sidebarColor: text("sidebar_color").notNull().default("#374151"),
+  sidebarTextColor: text("sidebar_text_color").notNull().default("#ffffff"),
+  borderRadius: text("border_radius", { enum: ["none", "small", "medium", "large"] }).notNull().default("medium"),
+  fontSize: text("font_size", { enum: ["small", "medium", "large"] }).notNull().default("medium"),
+  fontFamily: text("font_family").notNull().default("Inter, sans-serif"),
+  denseMode: integer("dense_mode", { mode: "boolean" }).notNull().default(false),
+  compactSidebar: integer("compact_sidebar", { mode: "boolean" }).notNull().default(false),
+  animations: integer("animations", { mode: "boolean" }).notNull().default(true),
+  highContrast: integer("high_contrast", { mode: "boolean" }).notNull().default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
@@ -391,6 +414,35 @@ export const classSubjectsRelations = relations(classSubjects, ({ one }) => ({
   class: one(classes, { fields: [classSubjects.classId], references: [classes.id] }),
   subject: one(subjects, { fields: [classSubjects.subjectId], references: [subjects.id] }),
 }));
+
+export const schedules = sqliteTable("schedules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  academicYearId: integer("academic_year_id").notNull().references(() => academicYears.id),
+  day: integer("day").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  subjectId: integer("subject_id").references(() => subjects.id),
+  teacherId: integer("teacher_id").references(() => teachers.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const exams = sqliteTable("exams", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  academicYearId: integer("academic_year_id").notNull().references(() => academicYears.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  teacherId: integer("teacher_id").references(() => teachers.id),
+  trimester: integer("trimester").notNull(),
+  date: text("date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  room: text("room").default(""),
+  status: text("status", { enum: ["draft", "confirmed"] }).default("draft"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
 
 export const closedPeriodsRelations = relations(closedPeriods, ({}) => ({}));
 
