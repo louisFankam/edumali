@@ -510,7 +510,7 @@ async function ensureAuthSchema(db: any) {
   }
 
   const countRow = db.get(sql`SELECT COUNT(*) as count FROM students`) as { count: number } | undefined;
-  const studentCount = countRow?.count ?? 0;
+  let studentCount = countRow?.count ?? 0;
 
   if (studentCount === 0) {
     await db.run(sql`
@@ -520,6 +520,7 @@ async function ensureAuthSchema(db: any) {
         ('Fatoumata', 'Traoré', 'Féminin', '2015-08-22', 'Malienne', 'Oumar Traoré', '66123456', 1, '2024-09-05', 'Actif')
     `);
     console.log("[EduMali] 2 élèves de démonstration créés");
+    studentCount = 2;
   }
 
   // Ensure enrollments exist for all students
@@ -536,6 +537,10 @@ async function ensureAuthSchema(db: any) {
     }
     console.log(`[EduMali] ${studentsToEnroll.length} inscription(s) créée(s) pour les élèves existants`);
   }
+}
+
+export function resetBootstrap() {
+  initialized = false;
 }
 
 export async function initializeApp() {

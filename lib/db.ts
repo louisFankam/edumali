@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import * as schema from "./models/schema";
 
-const databasePath = `${process.cwd()}/edumali_db/data.db`;
+const databasePath = process.env.DB_PATH || `${process.cwd()}/edumali_db/data.db`;
 const sqlite = new Database(databasePath);
 
 export const db = drizzle(sqlite, { schema });

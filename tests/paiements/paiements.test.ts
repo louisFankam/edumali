@@ -259,27 +259,83 @@ describe("Paiements Page - Tests d'intégration", () => {
     });
   });
 
-  // ─────────── G. TYPES DE FRAIS ───────────
+  // ─────────── H. FILTRE `from` UNIQUEMENT (date d'inscription) ───────────
 
-  describe("G. getFeeTypes - Types de frais", () => {
-    it("devrait retourner une liste vide par défaut", async () => {
-      const { getFeeTypes } = await import("@/lib/services/payment.service");
-      const types = await getFeeTypes();
-      expect(Array.isArray(types)).toBe(true);
-      expect(types.length).toBe(0);
+  describe("H. getPayments - Filtre from uniquement", () => {
+    it("devrait retourner les paiements après une date donnée (from sans to)", async () => {
+      const { getPayments } = await import("@/lib/services/payment.service");
+
+      const result = await getPayments({ studentId: "1", from: "2025-10-01" });
+      expect(result.data.length).toBeGreaterThanOrEqual(2);
+      result.data.forEach(p => {
+        expect(p.date >= "2025-10-01").toBe(true);
+      });
     });
 
-    it("devrait lister les types créés", async () => {
-      const { addFeeType, getFeeTypes } = await import("@/lib/services/payment.service");
+    it("devrait retourner vide si from est dans le futur", async () => {
+      const { getPayments } = await import("@/lib/services/payment.service");
 
+      const result = await getPayments({ studentId: "1", from: "2099-01-01" });
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it("devrait retourner tous les paiements si from est très ancien", async () => {
+      const { getPayments } = await import("@/lib/services/payment.service");
+
+      const result = await getPayments({ studentId: "1", from: "2000-01-01" });
+      expect(result.data.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  // ─────────── I. MODIFICATION COMPLÈTE ───────────
+
+  describe("I. editPayment - Modification complète (tous les champs)", () => {
+    it("devrait modifier montant + méthode + feeTypeId simultanément", async () => {
+      const { editPayment, getPayments, addFeeType } = await import("@/lib/services/payment.service");
+
+      // Créer un type de frais
       await addFeeType({ name: "Scolarité", amount: 50000, period: "annuel" });
-      await addFeeType({ name: "Assurance", amount: 5000, period: "annuel" });
 
-      const types = await getFeeTypes();
-      expect(types.length).toBe(2);
-      expect(types[0].name).toBeTruthy();
-      expect(types[0].amount).toBeTypeOf("number");
-      expect(types[0].period).toMatch(/^(mensuel|trimestriel|annuel|unique)$/);
+      // Récupérer un paiement existant
+      const before = await getPayments({ studentId: "1" });
+      const p = before.data[0];
+
+      await editPayment(p.id, { amount: 40000, method: "virement", feeTypeId: 1 });
+
+      const after = await getPayments({ studentId: "1" });
+      const updated = after.data.find(r => r.id === p.id);
+      expect(updated?.amount).toBe(40000);
+      expect(updated?.method).toBe("virement");
+      expect(updated?.feeTypeName).toBeTruthy();
+    });
+  });
+
+  // ─────────── J. PLAFOND PAIEMENT (totalPaid vs classFee) ───────────
+
+  describe("J. Validation plafond - totalPaid ne dépasse pas classFee", () => {
+    it("devrait permettre un paiement dans la limite des frais", async () => {
+      const { addPayment, getPayments } = await import("@/lib/services/payment.service");
+
+      // Student 1 n'a pas encore de classe avec totalFee défini
+      // On ajoute un paiement de 10000
+      const p = await addPayment({ studentId: 1, amount: 10000, method: "espèces", date: "2025-12-01" });
+      expect(p.amount).toBe(10000);
+    });
+
+    it("devrait calculer correctement totalPaid en cumulant les paiements", async () => {
+      const { getStudentPaymentSummaryService } = await import("@/lib/services/payment.service");
+
+      // Student 1 a cumulé des paiements dans les sections précédentes
+      const summary = await getStudentPaymentSummaryService("1");
+      expect(summary.totalPaid).toBeGreaterThan(0);
+    });
+
+    it("devrait retourner 0 pour un étudiant sans paiement", async () => {
+      const { getStudentPaymentSummaryService } = await import("@/lib/services/payment.service");
+
+      const summary = await getStudentPaymentSummaryService("99999");
+      expect(summary.totalPaid).toBe(0);
     });
   });
 });

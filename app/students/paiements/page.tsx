@@ -14,14 +14,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  DollarSign, Search, CheckCircle, Clock, ArrowLeft, PlusCircle, Trash2, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Download,
+  DollarSign, Search, CheckCircle, Clock, ArrowLeft, PlusCircle, Trash2, Pencil, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useStudents } from "@/hooks/use-students"
 import { usePayments, useFeeTypes, useUnpaidStudents } from "@/hooks/use-payments"
 import { useClasses } from "@/hooks/use-classes"
 import { useSchoolInfo, useAcademicYears } from "@/hooks/use-settings"
+import { useEnrollments } from "@/hooks/use-enrollments"
 import { format } from "date-fns"
+import { toast } from "sonner"
 
 const LIMIT = 20
 
@@ -34,6 +36,11 @@ export default function StudentPaymentsPage() {
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("espèces")
   const [paymentFeeType, setPaymentFeeType] = useState("")
+  const [showEditPayment, setShowEditPayment] = useState(false)
+  const [editPayment, setEditPayment] = useState<any>(null)
+  const [editAmount, setEditAmount] = useState("")
+  const [editMethod, setEditMethod] = useState("espèces")
+  const [editFeeType, setEditFeeType] = useState("")
 
   // Unpaid section
   const [unpaidClassFilter, setUnpaidClassFilter] = useState("all")
@@ -48,8 +55,15 @@ export default function StudentPaymentsPage() {
     page,
     limit: LIMIT,
   })
-  const { payments, isLoading: paymentsLoading, create: createPayment, remove: removePayment, refetch: refetchPayments } = usePayments(
-    selectedStudent ? { studentId: selectedStudent.id, from: currentYear?.startDate, to: currentYear?.endDate } : undefined
+  const { enrollments } = useEnrollments(
+    selectedStudent && currentYear ? { studentId: selectedStudent.id, academicYearId: currentYear.id } : undefined
+  )
+  const enrollmentFrom = useMemo(() => {
+    if (enrollments.length === 0) return undefined
+    return [...enrollments].sort((a, b) => a.enrollmentDate.localeCompare(b.enrollmentDate))[0].enrollmentDate
+  }, [enrollments])
+  const { payments, isLoading: paymentsLoading, create: createPayment, update: updatePayment, remove: removePayment, refetch: refetchPayments } = usePayments(
+    selectedStudent ? { studentId: selectedStudent.id, from: enrollmentFrom } : undefined
   )
   const { data: unpaidData, total: unpaidTotal, isLoading: unpaidLoading } = useUnpaidStudents(
     unpaidClassFilter !== "all" ? unpaidClassFilter : undefined,
@@ -82,16 +96,45 @@ export default function StudentPaymentsPage() {
 
   const handleAddPayment = async () => {
     if (!selectedStudent || !paymentAmount) return
-    await createPayment({
-      studentId: Number(selectedStudent.id),
-      feeTypeId: paymentFeeType ? Number(paymentFeeType) : undefined,
-      amount: Number(paymentAmount),
-      method: paymentMethod as any,
-      date: format(new Date(), "yyyy-MM-dd"),
-    })
-    setPaymentAmount("")
-    setShowAddPayment(false)
-    refetchPayments()
+    const amount = Number(paymentAmount)
+    if (totalPaid + amount > classFee) {
+      toast.error(`Le total payé (${(totalPaid + amount).toLocaleString()} FCFA) dépasserait les frais de classe (${classFee.toLocaleString()} FCFA)`)
+      return
+    }
+    try {
+      const result = await createPayment({
+        studentId: Number(selectedStudent.id),
+        feeTypeId: paymentFeeType ? Number(paymentFeeType) : undefined,
+        amount,
+        method: paymentMethod as any,
+        date: format(new Date(), "yyyy-MM-dd"),
+      })
+      if (!result.ok) throw new Error(result.message || "Erreur lors du paiement")
+      toast.success("Paiement enregistré")
+      setPaymentAmount("")
+      setShowAddPayment(false)
+      refetchPayments()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors du paiement")
+    }
+  }
+
+  const handleUpdatePayment = async () => {
+    if (!editPayment) return
+    try {
+      const result = await updatePayment(editPayment.id, {
+        amount: editAmount ? Number(editAmount) : undefined,
+        method: editMethod,
+        feeTypeId: editFeeType ? Number(editFeeType) : undefined,
+      })
+      if (!result.ok) throw new Error(result.message || "Erreur lors de la modification")
+      toast.success("Paiement modifié")
+      setShowEditPayment(false)
+      setEditPayment(null)
+      refetchPayments()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la modification")
+    }
   }
 
   const handleDeletePayment = async (paymentId: string) => {
@@ -202,6 +245,9 @@ export default function StudentPaymentsPage() {
                         <TableCell>{p.method}</TableCell>
                         <TableCell>{p.feeTypeName || "-"}</TableCell>
                         <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => { setEditPayment(p); setEditAmount(String(p.amount)); setEditMethod(p.method); setEditFeeType(p.feeTypeId || ""); setShowEditPayment(true) }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeletePayment(p.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -251,6 +297,47 @@ export default function StudentPaymentsPage() {
               </div>
               <Button onClick={handleAddPayment} className="w-full" disabled={!paymentAmount}>
                 Enregistrer le paiement
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditPayment} onOpenChange={(v) => { setShowEditPayment(v); if (!v) setEditPayment(null) }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifier le paiement</DialogTitle>
+              <DialogDescription>{selectedStudent.firstName} {selectedStudent.lastName}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Montant (FCFA)</Label>
+                <Input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} placeholder="50000" />
+              </div>
+              <div>
+                <Label>Type de frais</Label>
+                <Select value={editFeeType} onValueChange={setEditFeeType}>
+                  <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
+                  <SelectContent>
+                    {feeTypes.map(ft => (
+                      <SelectItem key={ft.id} value={ft.id}>{ft.name} - {ft.amount.toLocaleString()} FCFA</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Mode de paiement</Label>
+                <Select value={editMethod} onValueChange={setEditMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="espèces">Espèces</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="virement">Virement</SelectItem>
+                    <SelectItem value="chèque">Chèque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleUpdatePayment} className="w-full" disabled={!editAmount}>
+                Enregistrer les modifications
               </Button>
             </div>
           </DialogContent>

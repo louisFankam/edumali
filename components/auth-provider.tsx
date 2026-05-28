@@ -12,7 +12,7 @@ interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -44,11 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [])
 
-  const login = useCallback(async (email: string, password: string, rememberMe = false) => {
+  const login = useCallback(async (username: string, password: string, rememberMe = false) => {
     const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, rememberMe }),
+      body: JSON.stringify({ username, password, rememberMe }),
     })
     const data = await response.json()
     if (!response.ok || !data.ok) {

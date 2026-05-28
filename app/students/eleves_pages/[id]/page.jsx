@@ -27,14 +27,25 @@ import { useMedicalInfo } from "@/hooks/use-medical-info"
 import { useFamilyInfo } from "@/hooks/use-family-info"
 import { useAcademicHistory } from "@/hooks/use-academic-history"
 import { useAcademicYears } from "@/hooks/use-settings"
+import { useEnrollments } from "@/hooks/use-enrollments"
 import { format } from "date-fns"
+import { toast } from "sonner"
 
 export default function StudentProfilePage() {
   const params = useParams()
   const id = params?.id
-  const { currentYear } = useAcademicYears()
   const { student, isLoading } = useStudent(id)
-  const { payments, create: createPayment, refetch: refetchPayments } = usePayments(id ? { studentId: id, from: currentYear?.startDate, to: currentYear?.endDate } : undefined)
+  const { currentYear } = useAcademicYears()
+  const { enrollments } = useEnrollments(
+    id && currentYear ? { studentId: id, academicYearId: currentYear.id } : undefined
+  )
+  const enrollmentFrom = useMemo(() => {
+    if (enrollments.length === 0) return undefined
+    return [...enrollments].sort((a, b) => a.enrollmentDate.localeCompare(b.enrollmentDate))[0].enrollmentDate
+  }, [enrollments])
+  const { payments, create: createPayment, refetch: refetchPayments } = usePayments(
+    id ? { studentId: id, from: enrollmentFrom } : undefined
+  )
   const { feeTypes } = useFeeTypes()
   const { classes } = useClasses()
   const { data: medicalData, isLoading: medicalLoading, save: saveMedical } = useMedicalInfo(id)
@@ -74,16 +85,27 @@ export default function StudentProfilePage() {
 
   const handleAddPayment = async () => {
     if (!student || !payAmount) return
-    await createPayment({
-      studentId: Number(student.id),
-      feeTypeId: payFeeType ? Number(payFeeType) : undefined,
-      amount: Number(payAmount),
-      method: payMethod,
-      date: format(new Date(), "yyyy-MM-dd"),
-    })
-    setPayAmount("")
-    setShowAddPayment(false)
-    refetchPayments()
+    const amount = Number(payAmount)
+    if (totalPaid + amount > classFee) {
+      toast.error(`Le total payé (${(totalPaid + amount).toLocaleString()} FCFA) dépasserait les frais de classe (${classFee.toLocaleString()} FCFA)`)
+      return
+    }
+    try {
+      const result = await createPayment({
+        studentId: Number(student.id),
+        feeTypeId: payFeeType ? Number(payFeeType) : undefined,
+        amount,
+        method: payMethod,
+        date: format(new Date(), "yyyy-MM-dd"),
+      })
+      if (!result.ok) throw new Error(result.message || "Erreur lors du paiement")
+      toast.success("Paiement enregistré")
+      setPayAmount("")
+      setShowAddPayment(false)
+      refetchPayments()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors du paiement")
+    }
   }
 
   const openMedEdit = () => {

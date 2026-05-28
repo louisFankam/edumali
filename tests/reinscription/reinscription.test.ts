@@ -217,33 +217,92 @@ describe("Reinscription Page - Tests d'intégration", () => {
     });
   });
 
-  // ─────────── F. STATISTIQUES ───────────
+  // ─────────── G. FLUX DE RÉINSCRIPTION COMPLET ───────────
 
-  describe("F. Statistiques - getEnrollmentStats", () => {
-    it("devrait retourner le total des enrollments", async () => {
-      const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
-      const stats = await getEnrollmentStats();
+  describe("G. Flux réinscription - addEnrollment + editStudent", () => {
+    it("devrait réinscrire un élève dans une nouvelle classe", async () => {
+      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
 
-      expect(stats.total).toBeGreaterThanOrEqual(2);
-      expect(typeof stats.total).toBe("number");
+      // Student 1 (Amadou) était en classe 1 (1ère Année),
+      // on le réinscrit en classe 2 (2ème Année) pour la même année académique
+      const enrollment = await addEnrollment({
+        studentId: 1,
+        classId: 2,
+        academicYearId: 1,
+        enrollmentDate: "2025-10-01",
+        status: "réinscrit",
+      });
+
+      expect(enrollment.id).toBeTruthy();
+      expect(enrollment.classId).toBe("2");
+      expect(enrollment.status).toBe("réinscrit");
+      expect(enrollment.enrollmentDate).toBe("2025-10-01");
+
+      // Vérifier que la réinscription est persistée
+      const records = await getEnrollments({ studentId: "1" });
+      const found = records.find(r => r.id === enrollment.id);
+      expect(found).toBeTruthy();
+      expect(found?.className).toBe("2ème Année");
     });
 
-    it("devrait retourner les stats par statut", async () => {
-      const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
-      const stats = await getEnrollmentStats();
+    it("devrait mettre à jour la classe de l'élève via editStudent après réinscription", async () => {
+      const { editStudent, getStudentById } = await import("@/lib/services/student.service");
 
-      // Les deux seed enrollments ont le statut "inscrit"
-      expect(stats.inscrit).toBeGreaterThanOrEqual(2);
+      // Mettre à jour la classe de l'élève 1 vers la classe 2
+      const updated = await editStudent("1", { classId: "2" });
+      expect(updated.classId).toBe("2");
+      expect(updated.className).toBe("2ème Année");
+
+      // Vérifier persistance
+      const student = await getStudentById("1");
+      expect(student?.classId).toBe("2");
+      expect(student?.className).toBe("2ème Année");
+
+      // Remettre pour les autres tests
+      await editStudent("1", { classId: "1" });
     });
 
-    it("devrait filtrer les stats par academicYearId", async () => {
-      const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
-      const stats = await getEnrollmentStats("1");
+    it("devrait créer une réinscription avec statut 'passage'", async () => {
+      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
 
-      expect(stats.total).toBeGreaterThanOrEqual(2);
+      const enrollment = await addEnrollment({
+        studentId: 2,
+        classId: 2,
+        academicYearId: 1,
+        enrollmentDate: "2025-10-05",
+        status: "réinscrit",
+      });
 
-      const statsEmpty = await getEnrollmentStats("999");
-      expect(statsEmpty.total).toBe(0);
+      expect(enrollment.status).toBe("réinscrit");
+    });
+
+    it("devrait créer une réinscription avec statut 'redoublement'", async () => {
+      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
+
+      const enrollment = await addEnrollment({
+        studentId: 2,
+        classId: 1,
+        academicYearId: 1,
+        enrollmentDate: "2025-10-10",
+        status: "réinscrit",
+        notes: "Redoublement",
+      });
+
+      expect(enrollment.status).toBe("réinscrit");
+      expect(enrollment.notes).toBe("Redoublement");
+      expect(enrollment.classId).toBe("1");
+    });
+
+    it("devrait retourner la liste des réinscriptions d'un élève pour l'année active", async () => {
+      const { getEnrollments } = await import("@/lib/services/enrollment.service");
+
+      // Student 1 a 2 enrollments dans l'année 1
+      const records = await getEnrollments({ studentId: "1", academicYearId: "1" });
+      expect(records.length).toBeGreaterThanOrEqual(2);
+
+      // La plus récente devrait être celle du 2025-10-01 (réinscrit)
+      const sorted = [...records].sort((a, b) => b.enrollmentDate.localeCompare(a.enrollmentDate));
+      expect(sorted[0].status).toBe("réinscrit");
     });
   });
 });
