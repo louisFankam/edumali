@@ -75,18 +75,20 @@ export async function GET(req: NextRequest) {
       rate: c.total > 0 ? Math.round((c.present / c.total) * 100) : 0,
     }));
 
+    const yearFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
+
     const [thisWeekTotal] = db.all(sql`
       SELECT COUNT(*) as total,
         SUM(CASE WHEN status = 'présent' OR status = 'congé' THEN 1 ELSE 0 END) as present
-      FROM attendance
-      WHERE date >= date('now', 'weekday 0', '-7 days')
+      FROM attendance a
+      WHERE date >= date('now', 'weekday 0', '-7 days') ${yearFilter}
     `) as { total: number; present: number }[];
 
     const [lastWeekTotal] = db.all(sql`
       SELECT COUNT(*) as total,
         SUM(CASE WHEN status = 'présent' OR status = 'congé' THEN 1 ELSE 0 END) as present
-      FROM attendance
-      WHERE date >= date('now', 'weekday 0', '-14 days') AND date < date('now', 'weekday 0', '-7 days')
+      FROM attendance a
+      WHERE date >= date('now', 'weekday 0', '-14 days') AND date < date('now', 'weekday 0', '-7 days') ${yearFilter}
     `) as { total: number; present: number }[];
 
     const thisWeekRate = thisWeekTotal.total > 0 ? (thisWeekTotal.present / thisWeekTotal.total) * 100 : 0;
@@ -173,8 +175,8 @@ export async function GET(req: NextRequest) {
 
     const [recentAbsences] = db.all(sql`
       SELECT COUNT(*) as count
-      FROM attendance
-      WHERE status = 'absent' AND date >= date('now', '-7 days')
+      FROM attendance a
+      WHERE status = 'absent' AND date >= date('now', '-7 days') ${yearFilter}
     `) as { count: number }[];
 
     const [upcomingExams] = db.all(sql`

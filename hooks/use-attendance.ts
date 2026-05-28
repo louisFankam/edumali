@@ -17,11 +17,13 @@ export function useAttendanceByDateClass() {
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const load = useCallback(async (date: string, classId?: string) => {
+  const load = useCallback(async (date: string, classId?: string, from?: string, to?: string) => {
     setIsLoading(true)
     try {
       const params = new URLSearchParams({ date })
       if (classId) params.set("classId", classId)
+      if (from) params.set("from", from)
+      if (to) params.set("to", to)
       const res = await window.fetch(`/api/attendance?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
       if (json.ok) setRecords(json.data)

@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
 
     if (!date) return NextResponse.json({ ok: false, message: "Paramètre 'date' requis" }, { status: 400 });
     const data = await getAttendanceByDateAndClass(date, classId ?? undefined);
-    return NextResponse.json({ ok: true, data });
+    let result = data;
+    if (from) result = result.filter(a => a.date >= from);
+    if (to) result = result.filter(a => a.date <= to);
+    return NextResponse.json({ ok: true, data: result });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
   }

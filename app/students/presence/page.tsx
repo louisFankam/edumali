@@ -57,11 +57,11 @@ export default function AttendancePage() {
   // When students load, try to load existing attendance
   useEffect(() => {
     if (selectedClassId && students.length > 0) {
-      loadAttendance(dateStr, selectedClassId).then(() => {
+      loadAttendance(dateStr, selectedClassId, currentYear?.startDate, currentYear?.endDate).then(() => {
         // set attendance from existing records
       })
     }
-  }, [selectedClassId, dateStr, students.length, loadAttendance])
+  }, [selectedClassId, dateStr, students.length, loadAttendance, currentYear?.startDate, currentYear?.endDate])
 
   useEffect(() => {
     if (records.length > 0) {
@@ -145,7 +145,8 @@ export default function AttendancePage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} locale={fr} />
+                        <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} locale={fr}
+                          disabled={currentYear ? [{ before: new Date(currentYear.startDate) }, { after: new Date(currentYear.endDate) }] as any : undefined} />
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -254,7 +255,8 @@ export default function AttendancePage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={historyFrom} onSelect={(d) => d && setHistoryFrom(d)} locale={fr} />
+                        <Calendar mode="single" selected={historyFrom} onSelect={(d) => d && setHistoryFrom(d)} locale={fr}
+                          disabled={currentYear ? [{ before: new Date(currentYear.startDate) }, { after: new Date(currentYear.endDate) }] as any : undefined} />
                       </PopoverContent>
                     </Popover>
                   </div>
@@ -268,7 +270,8 @@ export default function AttendancePage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={historyTo} onSelect={(d) => d && setHistoryTo(d)} locale={fr} />
+                        <Calendar mode="single" selected={historyTo} onSelect={(d) => d && setHistoryTo(d)} locale={fr}
+                          disabled={currentYear ? [{ before: new Date(currentYear.startDate) }, { after: new Date(currentYear.endDate) }] as any : undefined} />
                       </PopoverContent>
                     </Popover>
                   </div>

@@ -130,7 +130,8 @@ export default function TeacherAttendancePage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={selectedDate} onSelect={(d) => { if (d) { setSelectedDate(d); reloadAttendance() } }} locale={fr} />
+                        <Calendar mode="single" selected={selectedDate} onSelect={(d) => { if (d) { setSelectedDate(d); reloadAttendance() } }} locale={fr}
+                          disabled={currentYear ? [{ before: new Date(currentYear.startDate) }, { after: new Date(currentYear.endDate) }] as any : undefined} />
                       </PopoverContent>
                     </Popover>
                   </div>
