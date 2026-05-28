@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -192,6 +193,7 @@ export default function StudentProfilePage() {
   return (
     <AppLayout>
       <PageHeader title={`Profil de ${fullName}`} description={`Élève · ${student.className} · ${student.status}`}>
+        <HelpButton section="eleves" />
         <div className="flex items-center space-x-2">
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />

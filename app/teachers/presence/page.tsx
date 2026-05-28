@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -106,7 +107,9 @@ export default function TeacherAttendancePage() {
 
   return (
     <AppLayout>
-          <PageHeader title="Présences des Professeurs" description="Suivre les présences quotidiennes du personnel" />
+          <PageHeader title="Présences des Professeurs" description="Suivre les présences quotidiennes du personnel">
+  <HelpButton section="professeurs" />
+</PageHeader>
 
           <Tabs defaultValue="daily" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">

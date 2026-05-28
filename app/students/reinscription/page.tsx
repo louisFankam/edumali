@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -154,7 +155,9 @@ export default function ReinscriptionPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="Réinscription" description="Réinscrire les anciens élèves pour la nouvelle année" />
+      <PageHeader title="Réinscription" description="Réinscrire les anciens élèves pour la nouvelle année">
+  <HelpButton section="eleves" />
+</PageHeader>
 
       <Card>
         <CardHeader><CardTitle>Recherche</CardTitle></CardHeader>

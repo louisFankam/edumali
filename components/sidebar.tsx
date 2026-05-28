@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useSchoolInfo } from '@/hooks/use-school-info'
-import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays } from "lucide-react"
+import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle } from "lucide-react"
 
 interface NavigationItem {
   name: string
@@ -67,8 +67,10 @@ const navigation: NavigationItem[] = [
   { name: "Années scolaires", href: "/school-years", icon: Calendar },
   { name: "Trésorerie", href: "/finances", icon: DollarSign },
   { name: "Historique académique", href: "/academic-history", icon: BookOpen },
+  { name: "Base de données", href: "/settings/database", icon: Database },
   { name: "Paramètres", href: "/settings", icon: Settings },
   { name: "Personnalisation", href: "/personalization", icon: Palette },
+  { name: "Aide", href: "/aide", icon: HelpCircle },
 ]
 
 export function Sidebar() {

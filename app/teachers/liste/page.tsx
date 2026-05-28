@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -89,8 +90,9 @@ export default function TeachersListPage() {
 
   return (
     <AppLayout>
-          <PageHeader title="Gestion des Professeurs" description="Gérer le personnel enseignant et administratif">
-            <div className="flex items-center space-x-2">
+<PageHeader title="Gestion des Professeurs" description="Gérer le personnel enseignant et administratif">
+          <HelpButton section="professeurs" />
+        <div className="flex items-center space-x-2">
               <Button onClick={() => setIsAddModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau professeur

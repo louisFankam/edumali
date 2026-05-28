@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -106,6 +107,7 @@ export default function BulletinPage() {
     <AppLayout>
       <div className="space-y-6">
         <PageHeader title="Bulletins" description="Générer les bulletins scolaires par classe et trimestre">
+          <HelpButton section="notes" />
           {data && (
             <Button variant="outline" onClick={handlePrintAll}>
               <Printer className="h-4 w-4 mr-2" /> Tout imprimer

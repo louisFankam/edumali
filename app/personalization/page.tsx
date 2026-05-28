@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -143,7 +144,9 @@ export default function PersonalizationPage() {
           <PageHeader
             title="Personnalisation"
             description="Personnalisez l'apparence et le comportement de l'application"
-          />
+          >
+            <HelpButton section="personnalisation" />
+          </PageHeader>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {/* Thème */}

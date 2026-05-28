@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -58,7 +59,9 @@ export default function ClassDetailPage() {
         </Button>
         <div className="flex items-center gap-3">
           <div className="w-4 h-8 rounded" style={{ backgroundColor: classData.color || "#6366f1" }} />
-          <PageHeader title={classData.name} description={`Niveau ${classData.level || "—"}`} />
+          <PageHeader title={classData.name} description={`Niveau ${classData.level || "—"}`}>
+  <HelpButton section="parametres" />
+</PageHeader>
         </div>
       </div>
 

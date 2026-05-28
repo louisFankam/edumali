@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +32,6 @@ import {
   UserCheck,
   AlertCircle,
   CheckCircle,
-  Clock,
   Building2,
   DollarSign,
   Users,
@@ -88,15 +88,15 @@ interface SchoolInfo {
 }
 
 interface UserAccount {
-  id: string
-  username: string
+  id: number
   email: string
   full_name: string
-  phone: string
-  role: string
-  last_login: string
-  avatar: string
-  status: string
+  created_at: number | null
+}
+
+interface AccountMessage {
+  type: "success" | "error"
+  text: string
 }
 
 interface AcademicYear {
@@ -122,7 +122,7 @@ function ClassModal({
   onClose: () => void
   onSave: (data: any) => Promise<void>
   classData?: Class | null
-  teachers?: Teacher[]
+  teachers?: any[]
   academicYears?: AcademicYear[]
   selectedAcademicYear?: AcademicYear | null
 }) {
@@ -526,8 +526,7 @@ function UserAccountModal({
 }) {
   const [formData, setFormData] = useState({
     full_name: userData?.full_name || "",
-    email: userData?.email || "",
-    phone: userData?.phone || "",
+    username: userData?.email || "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: ""
@@ -545,10 +544,8 @@ function UserAccountModal({
       newErrors.full_name = "Le nom complet est requis"
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = "L'email est requis"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Format d'email invalide"
+    if (!formData.username.trim()) {
+      newErrors.username = "Le nom d'utilisateur est requis"
     }
 
     if (formData.newPassword && formData.newPassword.length < 6) {
@@ -575,8 +572,7 @@ function UserAccountModal({
       const updatedUser = {
         ...userData,
         full_name: formData.full_name,
-        email: formData.email,
-        phone: formData.phone,
+        username: formData.username,
       }
       
       // Ajouter les champs pour le mot de passe si modifié
@@ -601,8 +597,7 @@ function UserAccountModal({
     if (isOpen && userData) {
       setFormData({
         full_name: userData.full_name || "",
-        email: userData.email || "",
-        phone: userData.phone || "",
+        username: userData.email || "",
         currentPassword: "",
         newPassword: "",
         confirmPassword: ""
@@ -628,48 +623,37 @@ function UserAccountModal({
               <span>Informations personnelles</span>
             </h3>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="full_name" className="text-sm font-medium">Nom complet</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  placeholder="Nom complet"
-                  className={errors.full_name ? "border-red-500" : ""}
-                  disabled={isSubmitting}
-                />
-                {errors.full_name && (
-                  <p className="text-xs text-red-500 mt-1">{errors.full_name}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="email@exemple.com"
-                  className={errors.email ? "border-red-500" : ""}
-                  disabled={isSubmitting}
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="full_name" className="text-sm font-medium">Nom complet</Label>
+              <Input
+                id="full_name"
+                value={formData.full_name}
+                onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                placeholder="Nom complet"
+                className={errors.full_name ? "border-red-500" : ""}
+                disabled={isSubmitting}
+              />
+              {errors.full_name && (
+                <p className="text-xs text-red-500 mt-1">{errors.full_name}</p>
+              )}
             </div>
 
             <div>
-              <Label htmlFor="phone" className="text-sm font-medium">Téléphone</Label>
+              <Label htmlFor="username" className="text-sm font-medium">Nom d'utilisateur</Label>
               <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="+223 XX XX XX XX"
+                id="username"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                placeholder="Nom d'utilisateur"
+                className={errors.username ? "border-red-500" : ""}
                 disabled={isSubmitting}
               />
+              {errors.username && (
+                <p className="text-xs text-red-500 mt-1">{errors.username}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">Utilisé pour vous connecter</p>
             </div>
+
           </div>
 
           {/* Changement de mot de passe */}
@@ -912,32 +896,27 @@ export default function SettingsPage() {
   }, [apiYears])
 
 
-  // Récupérer les données utilisateur depuis localStorage
-  const getUserAccount = (): UserAccount | null => {
-    const authData = localStorage.getItem('edumali_auth')
-    if (!authData) return null
-    try {
-      const { record } = JSON.parse(authData)
-      return {
-        id: record.id,
-        username: record.username || record.email,
-        email: record.email,
-        full_name: record.full_name,
-        phone: record.phone,
-        role: record.role,
-        last_login: record.last_login,
-        avatar: record.avatar,
-        status: record.status === 'active' ? 'active' : 'inactive'
-      }
-    } catch {
-      return null
-    }
-  }
-
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null)
+  const [accountMessage, setAccountMessage] = useState<AccountMessage | null>(null)
+  const [isAccountLoading, setIsAccountLoading] = useState(true)
 
   useEffect(() => {
-    setUserAccount(getUserAccount())
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" })
+        if (!res.ok) {
+          setUserAccount(null)
+          return
+        }
+        const data = await res.json()
+        setUserAccount(data.user)
+      } catch {
+        setUserAccount(null)
+      } finally {
+        setIsAccountLoading(false)
+      }
+    }
+    fetchUser()
   }, [])
 
 
@@ -1074,26 +1053,55 @@ export default function SettingsPage() {
 
   const handleSaveUserAccount = async (userData: any) => {
     try {
-      const updatedUser: UserAccount = {
-        ...userAccount,
-        ...userData,
-        id: userData.id || userAccount?.id || crypto.randomUUID(),
-        status: userData.status || userAccount?.status || "active",
-        role: userData.role || userAccount?.role || "admin",
-        username: userData.username || userData.email,
-        last_login: userAccount?.last_login || "",
-        avatar: userAccount?.avatar || "",
+      const res = await fetch("/api/auth/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: userData.full_name,
+          username: userData.username,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message ?? "Erreur lors de la mise à jour")
       }
-      setUserAccount(updatedUser)
-      
-      // Mettre à jour le localStorage
-      const authData = localStorage.getItem('edumali_auth')
-      const currentAuthData = authData ? JSON.parse(authData) : { record: {} }
-      currentAuthData.record = { ...currentAuthData.record, ...updatedUser }
-      localStorage.setItem('edumali_auth', JSON.stringify(currentAuthData))
-    
-    } catch (error) {
-      console.error('Erreur modification utilisateur:', error)
+
+      setUserAccount(data.user)
+
+      if (userData.password) {
+        await handleChangePassword({
+          currentPassword: userData.oldPassword,
+          newPassword: userData.password,
+          confirmPassword: userData.passwordConfirm,
+        })
+      } else {
+        setAccountMessage({ type: "success", text: "Profil mis à jour avec succès." })
+      }
+    } catch (error: any) {
+      console.error("Erreur modification utilisateur:", error)
+      setAccountMessage({ type: "error", text: error.message || "Erreur lors de la mise à jour." })
+      throw error
+    }
+  }
+
+  const handleChangePassword = async (passwordData: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+    try {
+      const res = await fetch("/api/auth/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(passwordData),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message ?? "Erreur lors du changement de mot de passe")
+      }
+
+      setAccountMessage({ type: "success", text: "Mot de passe modifié avec succès." })
+    } catch (error: any) {
+      console.error("Erreur changement mot de passe:", error)
+      setAccountMessage({ type: "error", text: error.message || "Erreur lors du changement de mot de passe." })
       throw error
     }
   }
@@ -1118,6 +1126,7 @@ export default function SettingsPage() {
             description="Configurez les paramètres de l'école et gérez les données de base"
             className=""
           >
+            <HelpButton section="parametres" />
           </PageHeader>
 
           <Tabs defaultValue="classes" className="space-y-6">
@@ -1600,13 +1609,29 @@ export default function SettingsPage() {
                   <h2 className="text-2xl font-bold">Gestion du Compte</h2>
                   <p className="text-muted-foreground">Gérez vos informations personnelles et votre mot de passe</p>
                 </div>
-                <Button onClick={() => setShowUserAccountModal(true)}>
+                <Button onClick={() => setShowUserAccountModal(true)} disabled={!userAccount}>
                   <Edit className="h-4 w-4 mr-2" />
                   Modifier le compte
                 </Button>
               </div>
 
-              {userAccount ? (
+              {accountMessage && (
+                <div className={`p-4 rounded-lg border ${
+                  accountMessage.type === "success"
+                    ? "bg-green-50 border-green-200 text-green-800"
+                    : "bg-red-50 border-red-200 text-red-800"
+                }`}>
+                  <p className="text-sm font-medium">{accountMessage.text}</p>
+                </div>
+              )}
+
+              {isAccountLoading ? (
+                <Card>
+                  <CardContent className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : userAccount ? (
                 <div className="grid gap-6 md:grid-cols-2">
                   {/* Informations du compte */}
                   <Card>
@@ -1624,7 +1649,6 @@ export default function SettingsPage() {
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-semibold">{userAccount.full_name}</h3>
-                          <p className="text-sm text-muted-foreground capitalize">{userAccount.role}</p>
                         </div>
                       </div>
 
@@ -1633,35 +1657,25 @@ export default function SettingsPage() {
                           <User className="h-4 w-4 text-muted-foreground" />
                           <div>
                             <p className="text-sm font-medium">Nom d'utilisateur</p>
-                            <p className="text-sm text-muted-foreground">{userAccount.username}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">Email</p>
                             <p className="text-sm text-muted-foreground">{userAccount.email}</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-3">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">Téléphone</p>
-                            <p className="text-sm text-muted-foreground">{userAccount.phone || 'Non renseigné'}</p>
+                        {userAccount.created_at && (
+                          <div className="flex items-center space-x-3">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">Membre depuis</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(userAccount.created_at).toLocaleDateString('fr-FR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                          <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">Statut</p>
-                            <Badge variant={userAccount.status === 'active' ? "default" : "secondary"}>
-                              {userAccount.status === 'active' ? "Actif" : "Inactif"}
-                            </Badge>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -1687,43 +1701,17 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
-                        {userAccount.last_login && (
-                          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <div className="flex items-center space-x-3">
-                              <Clock className="h-5 w-5 text-blue-600" />
-                              <div>
-                                <p className="text-sm font-medium text-blue-800">Dernière connexion</p>
-                                <p className="text-xs text-blue-600">
-                                  {new Date(userAccount.last_login).toLocaleDateString('fr-FR', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium">Actions de sécurité</h4>
-                          <div className="space-y-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full justify-start"
-                              onClick={() => setShowUserAccountModal(true)}
-                            >
-                              <Lock className="h-4 w-4 mr-2" />
-                              Changer le mot de passe
-                            </Button>
-                            <Button variant="outline" size="sm" className="w-full justify-start">
-                              <Eye className="h-4 w-4 mr-2" />
-                              Voir l'historique de connexion
-                            </Button>
-                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full justify-start"
+                            onClick={() => setShowUserAccountModal(true)}
+                          >
+                            <Lock className="h-4 w-4 mr-2" />
+                            Changer le mot de passe
+                          </Button>
                         </div>
                       </div>
                     </CardContent>

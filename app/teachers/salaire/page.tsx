@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -137,6 +138,7 @@ export default function SalairesPage() {
   return (
     <AppLayout>
           <PageHeader title="Gestion des Salaires" description="Calcul et suivi des rémunérations">
+            <HelpButton section="professeurs" />
             <Button onClick={handleExportCSV}>
               <Download className="h-4 w-4 mr-2" />
               Exporter CSV

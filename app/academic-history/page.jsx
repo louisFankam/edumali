@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -511,6 +512,7 @@ export default function AcademicHistoryPage() {
         title="Historique Académique"
         description="Suivi des résultats scolaires et progression des élèves"
       >
+        <HelpButton section="historique-academique" />
         <div className="flex items-center space-x-2">
           <Select value={selectedTrimester} onValueChange={setSelectedTrimester}>
             <SelectTrigger className="w-40">

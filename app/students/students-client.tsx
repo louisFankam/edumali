@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { StudentsTable } from "@/components/students/students-table"
 import { AddStudentModal } from "@/components/students/add-student-modal"
@@ -102,7 +103,9 @@ export function StudentsClient() {
   if (error) {
     return (
       <AppLayout>
-        <PageHeader title="Gestion des Élèves" description="Gérer les inscriptions et profils des élèves" />
+        <PageHeader title="Gestion des Élèves" description="Gérer les inscriptions et profils des élèves">
+          <HelpButton section="eleves" />
+        </PageHeader>
         <Card>
           <CardContent className="py-8 text-center text-red-500">
             Erreur de chargement : {error}
@@ -115,6 +118,7 @@ export function StudentsClient() {
   return (
     <AppLayout>
       <PageHeader title="Gestion des Élèves" description="Gérer les inscriptions et profils des élèves">
+          <HelpButton section="eleves" />
         <div className="flex items-center space-x-2">
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -332,7 +333,9 @@ export default function FinancesPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="Trésorerie" description="Revenus, dépenses et flux de trésorerie" />
+      <PageHeader title="Trésorerie" description="Revenus, dépenses et flux de trésorerie">
+  <HelpButton section="tresorerie" />
+</PageHeader>
 
       {isLoading ? (
         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>

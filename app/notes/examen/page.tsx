@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -76,7 +77,9 @@ export default function ExamensPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <PageHeader title="Évaluations" description="Gérer les devoirs et les évaluations trimestrielles" />
+        <PageHeader title="Évaluations" description="Gérer les devoirs et les évaluations trimestrielles">
+  <HelpButton section="notes" />
+</PageHeader>
 
         <Card>
           <CardContent className="pt-6">

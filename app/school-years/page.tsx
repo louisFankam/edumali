@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { SchoolYearsTable } from "@/components/school-years/school-years-table"
 import { CreateSchoolYearModal } from "@/components/school-years/create-school-year-modal"
@@ -95,6 +96,7 @@ export default function SchoolYearsPage() {
   return (
     <AppLayout>
       <PageHeader title="Gestion des Années Scolaires" description="Gérer les années scolaires">
+        <HelpButton section="annees-scolaires" />
         <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvelle année

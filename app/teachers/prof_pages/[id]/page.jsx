@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useParams } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -79,6 +80,7 @@ export default function TeacherProfilePage() {
             title={`Profil de ${teacher.full_name}`}
             description={`${teacher.speciality_names?.join(", ") || "Aucune spécialité"} - ${teacher.contrat === "mensuel" ? "Mensuel" : "Horaire"}`}
           >
+            <HelpButton section="professeurs" />
             <div className="flex items-center space-x-2">
               <Button variant="outline" onClick={() => window.print()}>
                 <Download className="h-4 w-4 mr-2" />

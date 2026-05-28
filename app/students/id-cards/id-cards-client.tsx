@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -345,7 +346,9 @@ export function IdCardsClient() {
 
   return (
     <AppLayout>
-      <PageHeader title="Cartes d'identité" description="Générer les cartes d'identité des élèves" />
+      <PageHeader title="Cartes d'identité" description="Générer les cartes d'identité des élèves">
+  <HelpButton section="eleves" />
+</PageHeader>
 
       <Card>
         <CardHeader>

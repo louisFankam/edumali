@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -204,7 +205,9 @@ export default function StudentPaymentsPage() {
       <AppLayout>
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => setSelectedStudent(null)}><ArrowLeft /></Button>
-          <PageHeader title={`Paiements: ${selectedStudent.firstName} ${selectedStudent.lastName}`} description={selectedStudent.className} />
+          <PageHeader title={`Paiements: ${selectedStudent.firstName} ${selectedStudent.lastName}`} description={selectedStudent.className}>
+  <HelpButton section="eleves" />
+</PageHeader>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -348,7 +351,9 @@ export default function StudentPaymentsPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="Paiements Scolarité" description="Suivi financier des élèves" />
+      <PageHeader title="Paiements Scolarité" description="Suivi financier des élèves">
+  <HelpButton section="eleves" />
+</PageHeader>
 
       <Tabs defaultValue="paiements" className="mt-6">
         <TabsList>

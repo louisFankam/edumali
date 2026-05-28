@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -149,6 +150,7 @@ export default function ExamensPage() {
   return (
     <AppLayout>
       <PageHeader title="Examens" description="Programme des examens par classe et trimestre">
+        <HelpButton section="planning" />
         <Button variant="outline" onClick={handlePrint} disabled={exams.length === 0}>
           <Download className="h-4 w-4 mr-2" /> Télécharger
         </Button>

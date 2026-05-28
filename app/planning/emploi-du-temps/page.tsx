@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -241,6 +242,7 @@ export default function EmploiDuTempsPage() {
   return (
     <AppLayout>
       <PageHeader title="Emploi du temps" description="Gérer les emplois du temps par classe">
+        <HelpButton section="planning" />
         <Button variant="outline" onClick={handlePrint}><Download className="h-4 w-4 mr-2" /> Télécharger</Button>
       </PageHeader>
 

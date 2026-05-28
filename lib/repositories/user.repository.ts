@@ -35,3 +35,19 @@ export async function createUser(input: {
 export async function updateUserPasswordHash(id: number, passwordHash: string) {
   await db.update(users).set({ passwordHash }).where(eq(users.id, id));
 }
+
+export async function updateUser(
+  id: number,
+  input: { email?: string; fullName?: string }
+) {
+  const [updated] = await db
+    .update(users)
+    .set({
+      ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.fullName !== undefined ? { fullName: input.fullName } : {}),
+    })
+    .where(eq(users.id, id))
+    .returning();
+
+  return updated;
+}
