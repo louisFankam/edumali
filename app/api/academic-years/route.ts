@@ -18,9 +18,21 @@ export async function GET(request: Request) {
   }
 }
 
+function isValidYearName(name: string): boolean {
+  if (!/^\d{4}-\d{4}$/.test(name)) return false;
+  const [start, end] = name.split("-").map(Number);
+  return end - start === 1;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    if (!body.name || !isValidYearName(body.name)) {
+      return NextResponse.json(
+        { ok: false, message: "Format invalide. Utilisez le format AAAA-AAAA (ex: 2025-2026)" },
+        { status: 400 },
+      );
+    }
     const data = await addAcademicYear(body);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {

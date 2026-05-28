@@ -5,35 +5,53 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { fr } from "date-fns/locale"
-import { cn } from "@/lib/utils"
 
-export function CreateSchoolYearModal({ isOpen, onClose, onCreate }) {
+function validateName(name, existingNames) {
+  if (!name.trim()) return "Le nom est requis"
+  if (!/^\d{4}-\d{4}$/.test(name)) return "Format invalide. Utilisez le format AAAA-AAAA (ex: 2025-2026)"
+  const start = Number.parseInt(name.split("-")[0])
+  const end = Number.parseInt(name.split("-")[1])
+  if (end - start !== 1) return "L'écart entre les années doit être de 1 an (ex: 2025-2026)"
+  if (existingNames.includes(name.trim())) return "Cette année scolaire existe déjà"
+  return null
+}
+
+export function CreateSchoolYearModal({ isOpen, onClose, onCreate, existingNames = [] }) {
   const [formData, setFormData] = useState({
     name: "",
     startDate: null,
     endDate: null,
   })
+  const [error, setError] = useState("")
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (formData.name && formData.startDate && formData.endDate) {
-      onCreate({
-        name: formData.name,
-        startDate: format(formData.startDate, "yyyy-MM-dd"),
-        endDate: format(formData.endDate, "yyyy-MM-dd"),
-      })
-      setFormData({ name: "", startDate: null, endDate: null })
-      onClose()
+    if (!formData.startDate) {
+      setError("Veuillez sélectionner une date de début")
+      return
     }
+    if (!formData.endDate) {
+      setError("Veuillez sélectionner une date de fin")
+      return
+    }
+    const validationError = validateName(formData.name, existingNames)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+    onCreate({
+      name: formData.name.trim(),
+      startDate: formData.startDate.toISOString().split("T")[0],
+      endDate: formData.endDate.toISOString().split("T")[0],
+    })
+    setFormData({ name: "", startDate: null, endDate: null })
+    setError("")
+    onClose()
   }
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+    if (field === "name") setError("")
   }
 
   return (
@@ -52,70 +70,38 @@ export function CreateSchoolYearModal({ isOpen, onClose, onCreate }) {
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
               placeholder="2025-2026"
+              className={error ? "border-red-500" : ""}
+              required
+            />
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Date de début *</Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={formData.startDate ? formData.startDate.toISOString().split("T")[0] : ""}
+              onChange={(e) => {
+                const val = e.target.value
+                handleInputChange("startDate", val ? new Date(val + "T00:00:00") : null)
+              }}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Date de début *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal bg-transparent",
-                    !formData.startDate && "text-muted-foreground",
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.startDate ? (
-                    format(formData.startDate, "dd MMMM yyyy", { locale: fr })
-                  ) : (
-                    <span>Sélectionner</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={formData.startDate}
-                  onSelect={(date) => handleInputChange("startDate", date)}
-                  initialFocus
-                  locale={fr}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Date de fin *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal bg-transparent",
-                    !formData.endDate && "text-muted-foreground",
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.endDate ? (
-                    format(formData.endDate, "dd MMMM yyyy", { locale: fr })
-                  ) : (
-                    <span>Sélectionner</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={formData.endDate}
-                  onSelect={(date) => handleInputChange("endDate", date)}
-                  initialFocus
-                  locale={fr}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="endDate">Date de fin *</Label>
+            <Input
+              id="endDate"
+              type="date"
+              value={formData.endDate ? formData.endDate.toISOString().split("T")[0] : ""}
+              onChange={(e) => {
+                const val = e.target.value
+                handleInputChange("endDate", val ? new Date(val + "T00:00:00") : null)
+              }}
+              required
+            />
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">

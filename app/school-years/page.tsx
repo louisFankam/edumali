@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { useAcademicYears, type AcademicYearData } from "@/hooks/use-settings"
 import { Plus, Calendar, TrendingUp, Archive } from "lucide-react"
+import { toast } from "sonner"
 
 export default function SchoolYearsPage() {
   const { years, currentYear, isLoading, create, update, remove } = useAcademicYears()
@@ -22,7 +23,6 @@ export default function SchoolYearsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [error, setError] = useState("")
 
   const stats = {
     activeYear: currentYear?.name || "Aucune",
@@ -32,48 +32,48 @@ export default function SchoolYearsPage() {
 
   const handleCreate = async (data: { name: string; startDate: string; endDate: string }) => {
     try {
-      setError("")
       await create(data)
+      toast.success("Année scolaire créée avec succès")
       setIsCreateModalOpen(false)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la création")
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la création")
     }
   }
 
   const handleEdit = async (data: { name: string; startDate: string; endDate: string }) => {
     if (!selectedSchoolYear?.id) return
     try {
-      setError("")
       await update(selectedSchoolYear.id, data)
+      toast.success("Année scolaire modifiée avec succès")
       setIsEditModalOpen(false)
       setSelectedSchoolYear(null)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la modification")
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la modification")
     }
   }
 
   const handleActivate = async (id: string) => {
     try {
-      setError("")
       for (const year of years) {
         if (year.id !== id && year.isCurrent) {
           await update(year.id, { isCurrent: false })
         }
       }
       await update(id, { isCurrent: true })
+      toast.success("Année scolaire activée")
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de l'activation")
+      toast.error(e instanceof Error ? e.message : "Erreur lors de l'activation")
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
-      setError("")
       await remove(id)
+      toast.success("Année scolaire supprimée")
       setIsDeleteModalOpen(false)
       setSelectedSchoolYear(null)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la suppression")
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la suppression")
     }
   }
 
@@ -100,14 +100,6 @@ export default function SchoolYearsPage() {
           Nouvelle année
         </Button>
       </PageHeader>
-
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <p className="text-red-800">{error}</p>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -183,6 +175,7 @@ export default function SchoolYearsPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreate}
+        existingNames={years.map((y) => y.name)}
       />
 
       <EditSchoolYearModal
@@ -193,6 +186,7 @@ export default function SchoolYearsPage() {
         }}
         schoolYear={selectedSchoolYear}
         onUpdate={handleEdit}
+        existingNames={years.map((y) => y.name)}
       />
 
       <SchoolYearDetailsModal
