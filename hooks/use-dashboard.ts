@@ -36,7 +36,7 @@ export interface DashboardData {
   }
 }
 
-export function useDashboard(filters?: { from?: string; to?: string }) {
+export function useDashboard(filters?: { from?: string; to?: string; academicYearId?: string }) {
   const [data, setData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +51,7 @@ export function useDashboard(filters?: { from?: string; to?: string }) {
       const params = new URLSearchParams()
       if (filters?.from) params.set("from", filters.from)
       if (filters?.to) params.set("to", filters.to)
+      if (filters?.academicYearId) params.set("academicYearId", filters.academicYearId)
       const qs = params.toString()
       const res = await window.fetch(`/api/dashboard${qs ? `?${qs}` : ""}`, { cache: "no-store" })
       const json = await res.json()
@@ -63,7 +64,7 @@ export function useDashboard(filters?: { from?: string; to?: string }) {
     } finally {
       if (id === requestId.current) setIsLoading(false)
     }
-  }, [filters?.from, filters?.to])
+  }, [filters?.from, filters?.to, filters?.academicYearId])
 
   useEffect(() => { load() }, [load])
 

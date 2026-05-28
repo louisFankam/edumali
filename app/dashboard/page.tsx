@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("month")
   const { currentYear } = useAcademicYears()
   const { data, isLoading, error, refetch } = useDashboard(
-    currentYear ? { from: currentYear.startDate, to: currentYear.endDate } : undefined
+    currentYear ? { from: currentYear.startDate, to: currentYear.endDate, academicYearId: currentYear.id } : undefined
   )
 
   const handleRefresh = () => refetch()

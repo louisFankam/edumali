@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const academicYearId = searchParams.get("academicYearId");
 
     const now = new Date();
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
@@ -20,17 +21,28 @@ export async function GET(req: NextRequest) {
     const paymentDateFilter = from && to ? sql`AND p.date >= ${from} AND p.date <= ${to}` : sql``;
     const evalFilter = from ? sql`AND e.date >= ${from} AND e.date <= ${to}` : sql``;
 
+    const enrollmentJoin = academicYearId
+      ? sql`JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${academicYearId}`
+      : sql``;
+    const enrollmentJoinLeft = academicYearId
+      ? sql`LEFT JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${academicYearId}`
+      : sql``;
+    const enrollmentWhere = academicYearId
+      ? sql`AND e.academic_year_id = ${academicYearId}`
+      : sql``;
+
     const [studentCount] = db.all(sql`
       SELECT
-        (SELECT COUNT(*) FROM students WHERE status = 'Actif') as active,
-        (SELECT COUNT(*) FROM students) as total,
-        (SELECT COUNT(*) FROM students WHERE status = 'Actif' AND registration_date >= ${firstOfMonth}) as new_this_month
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif') as active,
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin}) as total,
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif' AND s.registration_date >= ${firstOfMonth}) as new_this_month
     `) as { active: number; total: number; new_this_month: number }[];
 
     const studentsByClass = db.all(sql`
       SELECT c.name, c.capacity, COUNT(s.id) as count
       FROM classes c
-      LEFT JOIN students s ON s.class_id = c.id AND s.status = 'Actif'
+      LEFT JOIN enrollments e ON e.class_id = c.id ${enrollmentWhere}
+      LEFT JOIN students s ON s.id = e.student_id AND s.status = 'Actif'
       WHERE c.status = 'active'
       GROUP BY c.id
       ORDER BY c.name
@@ -118,6 +130,7 @@ export async function GET(req: NextRequest) {
         FROM students s
         JOIN classes c ON s.class_id = c.id
         LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+        ${enrollmentJoin}
         WHERE s.status = 'Actif' AND c.total_fee > 0
         GROUP BY s.id
         HAVING c.total_fee - COALESCE(SUM(p.amount), 0) > 0
@@ -151,6 +164,7 @@ export async function GET(req: NextRequest) {
         FROM students s
         JOIN classes c ON s.class_id = c.id
         LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+        ${enrollmentJoin}
         WHERE s.status = 'Actif' AND c.total_fee > 0
         GROUP BY s.id
         HAVING c.total_fee - COALESCE(SUM(p.amount), 0) > 0
@@ -171,8 +185,8 @@ export async function GET(req: NextRequest) {
 
     const [growth] = db.all(sql`
       SELECT
-        (SELECT COUNT(*) FROM students WHERE status = 'Actif' AND registration_date < ${firstOfMonth}) as prev_month,
-        (SELECT COUNT(*) FROM students WHERE status = 'Actif') as current
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif' AND s.registration_date < ${firstOfMonth}) as prev_month,
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif') as current
     `) as { prev_month: number; current: number }[];
     const studentGrowth = growth.prev_month > 0
       ? Math.round(((growth.current - growth.prev_month) / growth.prev_month) * 100 * 10) / 10
