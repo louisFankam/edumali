@@ -27,4 +27,4 @@ yarn-error.log*
 next-env.d.ts
 
 # database
-edumali_db/data.db
+.data.db
