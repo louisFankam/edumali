@@ -1,9 +1,9 @@
 export const openapi = {
   openapi: "3.0.3",
   info: {
-    title: "EduMali API",
+    title: "Ekima API",
     version: "1.0.0",
-    description: "API de gestion scolaire EduMali — élèves, classes, matières, paramètres",
+    description: "API de gestion scolaire Ekima — élèves, classes, matières, paramètres",
   },
   servers: [{ url: "/", description: "Local" }],
   paths: {
@@ -209,7 +209,7 @@ export const openapi = {
         type: "object",
         required: ["email", "password"],
         properties: {
-          email: { type: "string", format: "email", example: "admin@edumali.ml" },
+          email: { type: "string", format: "email", example: "admin@ekima.ml" },
           password: { type: "string", format: "password", example: "admin12345" },
           rememberMe: { type: "boolean", default: false },
         },

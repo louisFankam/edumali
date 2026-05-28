@@ -89,7 +89,7 @@ export default function AidePage() {
     <AppLayout>
       <PageHeader
         title="Aide et documentation"
-        description="Tout ce que vous devez savoir pour utiliser EduMali"
+        description="Tout ce que vous devez savoir pour utiliser Ekima"
       />
 
       <TableOfContents />

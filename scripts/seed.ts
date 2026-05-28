@@ -3,7 +3,7 @@
 
 import Database from "better-sqlite3";
 
-const dbPath = process.cwd() + "/edumali_db/data.db";
+const dbPath = process.cwd() + "/ekima_db/data.db";
 const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("synchronous = OFF");

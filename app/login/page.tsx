@@ -82,7 +82,7 @@ export default function LoginPage() {
           </div>
           <div className="mb-4">
             <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2">
-              EduMali
+              Ekima
             </h1>
             <p className="text-sm text-gray-600">
               Gestion Scolaire

@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "EduMali - Gestion Scolaire",
+  title: "Ekima - Gestion Scolaire",
   description: "Application de gestion scolaire pour l'École Primaire de Bamako",
   generator: "v0.app",
 }

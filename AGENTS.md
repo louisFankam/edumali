@@ -1,4 +1,4 @@
-# EduMali — AGENTS.md
+# Ekima — AGENTS.md
 
 ## Stack
 - **Next.js 15** App Router, Tailwind CSS v4, shadcn/ui
@@ -40,7 +40,7 @@ pnpm build
 - `serverExternalPackages: ["better-sqlite3"]`
 
 ## DB / Auth
-- SQLite: `edumali_db/data.db`
+- SQLite: `ekima_db/data.db`
 - Session cookie: `edumali_session` (httpOnly, 8h TTL, 7x avec rememberMe)
 - Schéma: `lib/models/schema.ts` (table `users`)
 - Instrumentation: `lib/bootstrap.ts` crée le schéma et l'admin par défaut

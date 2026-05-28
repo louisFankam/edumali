@@ -133,7 +133,7 @@ export function Sidebar() {
                 <GraduationCap className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-lg font-serif font-bold text-sidebar-foreground">EduMali</h1>
+                <h1 className="text-lg font-serif font-bold text-sidebar-foreground">Ekima</h1>
                 <p className="text-xs text-sidebar-foreground/60">Gestion Scolaire</p>
               </div>
             </div>

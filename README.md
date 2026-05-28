@@ -1,4 +1,4 @@
-# EduMali - Système de Gestion Scolaire
+# Ekima - Système de Gestion Scolaire
 
 Application de gestion scolaire conçue pour les établissements primaires et secondaires en Afrique de l'Ouest.
 
@@ -236,7 +236,7 @@ pnpm drizzle-kit migrate
 ```
 
 Effet:
-- Exécute les migrations SQL sur `edumali_db/data.db`.
+- Exécute les migrations SQL sur `ekima_db/data.db`.
 - Met à jour la structure réelle de la base.
 
 ## 4) Vérifier
@@ -263,7 +263,7 @@ Exemple: tu ajoutes `role` dans `users`.
 
 ## Conseils pratiques pour éviter les erreurs de migration
 
-- Toujours faire un backup de `edumali_db/data.db` avant une migration sensible.
+- Toujours faire un backup de `ekima_db/data.db` avant une migration sensible.
 - Ne jamais éditer manuellement une migration déjà appliquée.
 - Créer une nouvelle migration corrective si nécessaire.
 - En CI/CD: exécuter `drizzle-kit migrate` au déploiement backend.

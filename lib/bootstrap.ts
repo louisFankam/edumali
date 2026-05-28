@@ -257,8 +257,8 @@ async function ensureAuthSchema(db: any) {
     await db.run(sql`
       INSERT INTO teachers (first_name, last_name, email, phone, address, gender, hire_date, salary, contrat, status)
       VALUES
-        ('Fatoumata', 'Diarra', 'f.diarra@edumali.ml', '70000001', 'Bamako Coura', 'Féminin', '2020-09-01', 150000, 'mensuel', 'active'),
-        ('Moussa', 'Koné', 'm.kone@edumali.ml', '70000002', 'Kalaban Coro', 'Masculin', '2021-10-15', 140000, 'mensuel', 'active')
+        ('Fatoumata', 'Diarra', 'f.diarra@ekima.ml', '70000001', 'Bamako Coura', 'Féminin', '2020-09-01', 150000, 'mensuel', 'active'),
+        ('Moussa', 'Koné', 'm.kone@ekima.ml', '70000002', 'Kalaban Coro', 'Masculin', '2021-10-15', 140000, 'mensuel', 'active')
     `);
 
     if (mathSubject) {

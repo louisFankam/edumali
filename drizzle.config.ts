@@ -5,6 +5,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "sqlite",
   dbCredentials: {
-    url: "file:edumali_db/data.db",
+    url: "file:ekima_db/data.db",
   },
 });

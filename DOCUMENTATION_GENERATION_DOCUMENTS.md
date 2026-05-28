@@ -1,8 +1,8 @@
-# 📄 Système de Génération de Documents - EduMali
+# 📄 Système de Génération de Documents - Ekima
 
 ## 🎯 Vue d'ensemble
 
-Le système de génération de documents d'EduMali permet de créer, personnaliser et gérer tous les documents scolaires directement depuis l'interface frontend. Les documents sont stockés dans des dossiers locaux avec leurs métadonnées.
+Le système de génération de documents d'Ekima permet de créer, personnaliser et gérer tous les documents scolaires directement depuis l'interface frontend. Les documents sont stockés dans des dossiers locaux avec leurs métadonnées.
 
 ## 🏗️ Architecture
 
@@ -355,5 +355,5 @@ Pour toute question ou problème :
 
 ---
 
-**EduMali - Système de Gestion Scolaire**  
+**Ekima - Système de Gestion Scolaire**  
 *Génération de documents professionnels avec stockage local*
