@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
@@ -27,24 +27,55 @@ import Link from "next/link"
 
 import { AlertsSection } from "@/components/alerts/alerts-section"
 import { useDashboard } from "@/hooks/use-dashboard"
-import { useAcademicYears } from "@/hooks/use-settings"
+
+const currencyFormatter = new Intl.NumberFormat('fr-FR', {
+  style: 'currency',
+  currency: 'XOF',
+  minimumFractionDigits: 0
+})
+
+const quickAccess = [
+  { title: "Inscription", sub: "Inscrire un élève", href: "/students/inscription", icon: GraduationCap, color: "bg-blue-100 text-blue-600" },
+  { title: "Saisir notes", sub: "Entrer les notes", href: "/notes/examen", icon: FileText, color: "bg-purple-100 text-purple-600" },
+  { title: "Emploi du temps", sub: "Gérer planning", href: "/planning/emploi-du-temps", icon: Clock, color: "bg-orange-100 text-orange-600" },
+  { title: "Finances", sub: "Gérer paiements", href: "/finances", icon: DollarSign, color: "bg-green-100 text-green-600" },
+]
 
 export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("month")
-  const { currentYear } = useAcademicYears()
-  const { data, isLoading, error, refetch } = useDashboard(
-    currentYear ? { from: currentYear.startDate, to: currentYear.endDate, academicYearId: currentYear.id } : undefined
-  )
+  const { data, isLoading, error, refetch } = useDashboard()
 
   const handleRefresh = () => refetch()
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
+  const formatCurrency = (amount: number) => currencyFormatter.format(amount)
+
+  const alerts = useMemo(() => {
+    if (!data) return []
+    return [
+      ...(data.alerts.unpaidStudents > 0 ? [{
+        type: "payment" as const,
+        title: "Paiements en retard",
+        urgency: "high" as const,
+        description: `${data.alerts.unpaidStudents} élève${data.alerts.unpaidStudents > 1 ? "s" : ""} ${data.alerts.unpaidStudents > 1 ? "ont" : "a"} des frais impayés`,
+        amount: data.alerts.unpaidAmount,
+        link: "/finances",
+      }] : []),
+      ...(data.alerts.recentAbsences > 0 ? [{
+        type: "attendance" as const,
+        title: "Absences récentes",
+        urgency: (data.alerts.recentAbsences >= 5 ? "high" : "medium") as "high" | "medium",
+        description: `${data.alerts.recentAbsences} absence${data.alerts.recentAbsences > 1 ? "s" : ""} non justifiée${data.alerts.recentAbsences > 1 ? "s" : ""} cette semaine`,
+        link: "/students/presence",
+      }] : []),
+      ...(data.alerts.upcomingExams > 0 ? [{
+        type: "exam" as const,
+        title: "Examens à venir",
+        urgency: "medium" as const,
+        description: `${data.alerts.upcomingExams} examen${data.alerts.upcomingExams > 1 ? "s" : ""} prévu${data.alerts.upcomingExams > 1 ? "s" : ""} dans les 7 jours`,
+        link: "/planning/examens",
+      }] : []),
+    ]
+  }, [data?.alerts])
 
   if (isLoading) {
     return (
@@ -67,31 +98,6 @@ export default function DashboardPage() {
   }
 
   if (!data) return null
-
-  const alerts = [
-    ...(data.alerts.unpaidStudents > 0 ? [{
-      type: "payment" as const,
-      title: "Paiements en retard",
-      urgency: "high" as const,
-      description: `${data.alerts.unpaidStudents} élève${data.alerts.unpaidStudents > 1 ? "s" : ""} ${data.alerts.unpaidStudents > 1 ? "ont" : "a"} des frais impayés`,
-      amount: data.alerts.unpaidAmount,
-      link: "/finances",
-    }] : []),
-    ...(data.alerts.recentAbsences > 0 ? [{
-      type: "attendance" as const,
-      title: "Absences récentes",
-      urgency: (data.alerts.recentAbsences >= 5 ? "high" : "medium") as "high" | "medium",
-      description: `${data.alerts.recentAbsences} absence${data.alerts.recentAbsences > 1 ? "s" : ""} non justifiée${data.alerts.recentAbsences > 1 ? "s" : ""} cette semaine`,
-      link: "/students/presence",
-    }] : []),
-    ...(data.alerts.upcomingExams > 0 ? [{
-      type: "exam" as const,
-      title: "Examens à venir",
-      urgency: "medium" as const,
-      description: `${data.alerts.upcomingExams} examen${data.alerts.upcomingExams > 1 ? "s" : ""} prévu${data.alerts.upcomingExams > 1 ? "s" : ""} dans les 7 jours`,
-      link: "/planning/examens",
-    }] : []),
-  ]
 
   return (
     <AppLayout>
@@ -243,12 +249,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {[
-                  { title: "Inscription", sub: "Inscrire un élève", href: "/students/inscription", icon: GraduationCap, color: "bg-blue-100 text-blue-600" },
-                  { title: "Saisir notes", sub: "Entrer les notes", href: "/notes/examen", icon: FileText, color: "bg-purple-100 text-purple-600" },
-                  { title: "Emploi du temps", sub: "Gérer planning", href: "/planning/emploi-du-temps", icon: Clock, color: "bg-orange-100 text-orange-600" },
-                  { title: "Finances", sub: "Gérer paiements", href: "/finances", icon: DollarSign, color: "bg-green-100 text-green-600" },
-                ].map((item) => (
+                {quickAccess.map((item) => (
                   <Link href={item.href} key={item.title}>
                     <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                       <CardContent className="p-4">

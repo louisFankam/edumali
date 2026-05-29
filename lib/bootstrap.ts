@@ -474,6 +474,17 @@ async function ensureAuthSchema(db: any) {
 
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_payments_date ON payments (date)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_payments_student ON payments (student_id)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_attendance_class_date ON attendance (class_id, date)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_attendance_status_date ON attendance (status, date)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_students_status ON students (status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_students_registration ON students (registration_date)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_students_class_status ON students (class_id, status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_exams_date ON exams (date)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_evaluations_status ON evaluations (status)`);
+  await db.run(sql`CREATE INDEX IF NOT EXISTS idx_grades_score ON grades (is_absent, score)`);
 
   // Seed school_info if empty
   const schoolRow = db.get(sql`SELECT COUNT(*) as count FROM school_info`) as { count: number } | undefined;

@@ -43,7 +43,6 @@ export function useDashboard(filters?: { from?: string; to?: string; academicYea
   const requestId = useRef(0)
 
   const load = useCallback(async () => {
-    if (!filters) { setIsLoading(false); return }
     const id = ++requestId.current
     setIsLoading(true)
     setError(null)

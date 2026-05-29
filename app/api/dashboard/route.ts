@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const from = searchParams.get("from");
     const to = searchParams.get("to");
-    const academicYearId = searchParams.get("academicYearId");
+    const academicYearId = searchParams.get("academicYearId") 
+      ?? (db.get(sql`SELECT id FROM academic_years WHERE is_current = 1`) as { id: number } | undefined)?.id 
+      ?? null;
 
     const now = new Date();
     const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
@@ -18,25 +20,28 @@ export async function GET(req: NextRequest) {
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
 
     const dateFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
-    const paymentDateFilter = from && to ? sql`AND p.date >= ${from} AND p.date <= ${to}` : sql``;
+    const yearFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
     const evalFilter = from ? sql`AND e.date >= ${from} AND e.date <= ${to}` : sql``;
 
     const enrollmentJoin = academicYearId
       ? sql`JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${academicYearId}`
       : sql``;
-    const enrollmentJoinLeft = academicYearId
-      ? sql`LEFT JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${academicYearId}`
-      : sql``;
     const enrollmentWhere = academicYearId
       ? sql`AND e.academic_year_id = ${academicYearId}`
       : sql``;
 
-    const [studentCount] = db.all(sql`
+    // Combined student stats: active count, total, new this month, previous month
+    const [studentStats] = db.all(sql`
       SELECT
         (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif') as active,
         (SELECT COUNT(*) FROM students s ${enrollmentJoin}) as total,
-        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif' AND s.registration_date >= ${firstOfMonth}) as new_this_month
-    `) as { active: number; total: number; new_this_month: number }[];
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif' AND s.registration_date >= ${firstOfMonth}) as new_this_month,
+        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif' AND s.registration_date < ${firstOfMonth}) as prev_month
+    `) as any;
+
+    const studentGrowth = studentStats.prev_month > 0
+      ? Math.round(((studentStats.active - studentStats.prev_month) / studentStats.prev_month) * 100 * 10) / 10
+      : 0;
 
     const studentsByClass = db.all(sql`
       SELECT c.name, c.capacity, COUNT(s.id) as count
@@ -48,21 +53,29 @@ export async function GET(req: NextRequest) {
       ORDER BY c.name
     `) as { name: string; capacity: number; count: number }[];
 
-    const [attendanceOverall] = db.all(sql`
+    // Combined attendance: overall + this week + last week + by class + recent absences
+    const absRows = db.all(sql`
       SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'présent' OR status = 'congé' THEN 1 ELSE 0 END) as present
-      FROM attendance a
-      WHERE 1=1 ${dateFilter}
-    `) as { total: number; present: number }[];
-    const attendanceRate = attendanceOverall.total > 0
-      ? Math.round((attendanceOverall.present / attendanceOverall.total) * 100)
-      : 0;
+        (SELECT COUNT(*) FROM attendance a WHERE 1=1 ${dateFilter}) as att_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE 1=1 ${dateFilter}) as att_present,
+        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter}) as week_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter}) as week_present,
+        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter}) as last_week_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter}) as last_week_present,
+        (SELECT COUNT(*) FROM attendance a WHERE status = 'absent' AND date >= date('now','-7 days') ${yearFilter}) as recent_absences
+    `) as any;
+
+    const absRow = absRows[0];
+    const attendanceRate = absRow.att_total > 0
+      ? Math.round((absRow.att_present / absRow.att_total) * 100) : 0;
+    const thisWeekRate = absRow.week_total > 0 ? (absRow.week_present / absRow.week_total) * 100 : 0;
+    const lastWeekRate = absRow.last_week_total > 0 ? (absRow.last_week_present / absRow.last_week_total) * 100 : 0;
+    const attendanceTrend = lastWeekRate > 0 ? Math.round((thisWeekRate - lastWeekRate) * 10) / 10 : 0;
 
     const attendanceByClass = db.all(sql`
       SELECT c.name,
         COUNT(a.id) as total,
-        SUM(CASE WHEN a.status = 'présent' OR a.status = 'congé' THEN 1 ELSE 0 END) as present
+        SUM(CASE WHEN a.status IN ('présent','congé') THEN 1 ELSE 0 END) as present
       FROM classes c
       LEFT JOIN attendance a ON a.class_id = c.id
       WHERE c.status = 'active' ${dateFilter}
@@ -75,59 +88,26 @@ export async function GET(req: NextRequest) {
       rate: c.total > 0 ? Math.round((c.present / c.total) * 100) : 0,
     }));
 
-    const yearFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
+    // Combined payment stats: revenue, this month, last month, monthly avg, outstanding, unpaid count
+    const payRows = db.all(sql`
+      SELECT
+        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'payé'), 0) as total_revenue,
+        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'payé' AND date >= ${firstOfMonth}), 0) as this_month,
+        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'payé' AND date >= ${firstOfPrevMonth} AND date <= ${lastMonthEnd}), 0) as last_month,
+        COALESCE((SELECT AVG(monthly) FROM (SELECT SUM(amount) as monthly FROM payments WHERE status = 'payé' GROUP BY substr(date, 1, 7))), 0) as monthly_avg
+    `) as any;
 
-    const [thisWeekTotal] = db.all(sql`
-      SELECT COUNT(*) as total,
-        SUM(CASE WHEN status = 'présent' OR status = 'congé' THEN 1 ELSE 0 END) as present
-      FROM attendance a
-      WHERE date >= date('now', 'weekday 0', '-7 days') ${yearFilter}
-    `) as { total: number; present: number }[];
-
-    const [lastWeekTotal] = db.all(sql`
-      SELECT COUNT(*) as total,
-        SUM(CASE WHEN status = 'présent' OR status = 'congé' THEN 1 ELSE 0 END) as present
-      FROM attendance a
-      WHERE date >= date('now', 'weekday 0', '-14 days') AND date < date('now', 'weekday 0', '-7 days') ${yearFilter}
-    `) as { total: number; present: number }[];
-
-    const thisWeekRate = thisWeekTotal.total > 0 ? (thisWeekTotal.present / thisWeekTotal.total) * 100 : 0;
-    const lastWeekRate = lastWeekTotal.total > 0 ? (lastWeekTotal.present / lastWeekTotal.total) * 100 : 0;
-    const attendanceTrend = lastWeekRate > 0 ? Math.round((thisWeekRate - lastWeekRate) * 10) / 10 : 0;
-
-    const [revenue] = db.all(sql`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM payments p
-      WHERE status = 'payé' ${paymentDateFilter}
-    `) as { total: number }[];
-
-    const [thisMonthRevenue] = db.all(sql`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM payments
-      WHERE status = 'payé' AND date >= ${firstOfMonth}
-    `) as { total: number }[];
-
-    const [lastMonthRevenue] = db.all(sql`
-      SELECT COALESCE(SUM(amount), 0) as total
-      FROM payments
-      WHERE status = 'payé' AND date >= ${firstOfPrevMonth} AND date <= ${lastMonthEnd}
-    `) as { total: number }[];
-
-    const revenueGrowth = lastMonthRevenue.total > 0
-      ? Math.round(((thisMonthRevenue.total - lastMonthRevenue.total) / lastMonthRevenue.total) * 100 * 10) / 10
+    const payRow = payRows[0];
+    const revenueGrowth = payRow.last_month > 0
+      ? Math.round(((payRow.this_month - payRow.last_month) / payRow.last_month) * 100 * 10) / 10
       : 0;
 
-    const [monthlyAverage] = db.all(sql`
-      SELECT COALESCE(AVG(monthly), 0) as avg FROM (
-        SELECT SUM(amount) as monthly
-        FROM payments p
-        WHERE status = 'payé' ${paymentDateFilter}
-        GROUP BY substr(date, 1, 7)
-      )
-    `) as { avg: number }[];
-
-    const [outstanding] = db.all(sql`
-      SELECT COALESCE(SUM(due), 0) as total FROM (
+    // Outstanding & unpaid — combined in a single query
+    const [finData] = db.all(sql`
+      SELECT
+        COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total,
+        COUNT(CASE WHEN due > 0 THEN 1 END) as unpaid_count
+      FROM (
         SELECT c.total_fee - COALESCE(SUM(p.amount), 0) as due
         FROM students s
         JOIN classes c ON s.class_id = c.id
@@ -135,72 +115,46 @@ export async function GET(req: NextRequest) {
         ${enrollmentJoin}
         WHERE s.status = 'Actif' AND c.total_fee > 0
         GROUP BY s.id
-        HAVING c.total_fee - COALESCE(SUM(p.amount), 0) > 0
       )
-    `) as { total: number }[];
+    `) as any;
 
+    // Exam stats
     const [examStats] = db.all(sql`
       SELECT
-        COALESCE(AVG(CASE WHEN g.is_absent = 0 THEN g.score ELSE NULL END), 0) as avg_score,
+        COALESCE(AVG(CASE WHEN g.is_absent = 0 THEN g.score END), 0) as avg_score,
         COUNT(DISTINCT g.student_id) as graded_students,
         SUM(CASE WHEN g.score >= 10 AND g.is_absent = 0 THEN 1 ELSE 0 END) as passed
       FROM grades g
       JOIN evaluations e ON g.evaluation_id = e.id
       WHERE e.status = 'published' ${evalFilter}
-    `) as { avg_score: number; graded_students: number; passed: number }[];
+    `) as any;
 
     const passRate = examStats.graded_students > 0
       ? Math.round((examStats.passed / examStats.graded_students) * 100)
       : 0;
 
+    // Teacher count
     const [teacherCount] = db.all(sql`
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active
       FROM teachers
-    `) as { total: number; active: number }[];
+    `) as any;
 
-    const [unpaidCount] = db.all(sql`
-      SELECT COUNT(*) as count FROM (
-        SELECT s.id
-        FROM students s
-        JOIN classes c ON s.class_id = c.id
-        LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
-        ${enrollmentJoin}
-        WHERE s.status = 'Actif' AND c.total_fee > 0
-        GROUP BY s.id
-        HAVING c.total_fee - COALESCE(SUM(p.amount), 0) > 0
-      )
-    `) as { count: number }[];
-
-    const [recentAbsences] = db.all(sql`
-      SELECT COUNT(*) as count
-      FROM attendance a
-      WHERE status = 'absent' AND date >= date('now', '-7 days') ${yearFilter}
-    `) as { count: number }[];
-
+    // Upcoming exams
     const [upcomingExams] = db.all(sql`
       SELECT COUNT(*) as count
       FROM exams
       WHERE date >= date('now') AND date <= date('now', '+7 days')
-    `) as { count: number }[];
-
-    const [growth] = db.all(sql`
-      SELECT
-        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif' AND s.registration_date < ${firstOfMonth}) as prev_month,
-        (SELECT COUNT(*) FROM students s ${enrollmentJoin} WHERE s.status = 'Actif') as current
-    `) as { prev_month: number; current: number }[];
-    const studentGrowth = growth.prev_month > 0
-      ? Math.round(((growth.current - growth.prev_month) / growth.prev_month) * 100 * 10) / 10
-      : 0;
+    `) as any;
 
     return NextResponse.json({
       ok: true,
       data: {
         students: {
-          total: studentCount.active,
+          total: studentStats.active,
           growth: studentGrowth,
-          newThisMonth: studentCount.new_this_month,
+          newThisMonth: studentStats.new_this_month,
           byClass: studentsByClass.map(c => ({
             name: c.name,
             count: c.count,
@@ -214,10 +168,10 @@ export async function GET(req: NextRequest) {
           byClass: attendanceByClassData,
         },
         financial: {
-          totalRevenue: revenue.total,
+          totalRevenue: payRow.total_revenue,
           growth: revenueGrowth,
-          monthlyAverage: monthlyAverage.avg,
-          outstandingPayments: outstanding.total,
+          monthlyAverage: payRow.monthly_avg,
+          outstandingPayments: finData.outstanding_total,
         },
         exams: {
           passRate,
@@ -228,9 +182,9 @@ export async function GET(req: NextRequest) {
           active: teacherCount.active,
         },
         alerts: {
-          unpaidStudents: unpaidCount.count,
-          unpaidAmount: outstanding.total,
-          recentAbsences: recentAbsences.count,
+          unpaidStudents: finData.unpaid_count,
+          unpaidAmount: finData.outstanding_total,
+          recentAbsences: absRow.recent_absences,
           upcomingExams: upcomingExams.count,
         },
       },

@@ -1,10 +1,7 @@
-"use client"
-
 import { AppLayout } from "@/components/app-layout"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ArrowUp } from "lucide-react"
+import { ScrollToTop } from "@/components/scroll-to-top"
 
 const sections = [
   { id: "tableau-de-bord", title: "Tableau de bord" },
@@ -386,12 +383,7 @@ export default function AidePage() {
         </Section>
       </div>
 
-      <div className="flex justify-center pt-4">
-        <Button variant="outline" size="sm" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <ArrowUp className="h-4 w-4 mr-2" />
-          Retour en haut
-        </Button>
-      </div>
+      <ScrollToTop />
     </AppLayout>
   )
 }
