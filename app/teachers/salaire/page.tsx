@@ -36,7 +36,7 @@ export default function SalairesPage() {
   const [selectedSalary, setSelectedSalary] = useState<any>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
 
-  const [month, year] = selectedMonth.split("-").map(Number)
+  const [year, month] = selectedMonth.split("-").map(Number)
 
   const payrollMap = useMemo(() => {
     const map: Record<string, PayrollRecord> = {}
