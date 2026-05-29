@@ -27,3 +27,6 @@ yarn-error.log*
 next-env.d.ts
 
 # database
+/ekima_db/data.db
+/ekima_db/data.db-shm
+/ekima_db/data.db-wal
