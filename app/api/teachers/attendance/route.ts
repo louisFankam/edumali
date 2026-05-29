@@ -14,10 +14,7 @@ export async function GET(request: Request) {
 
     if (date) {
       const data = await getTeacherAttendanceByDate(date);
-      let result = data;
-      if (from) result = result.filter(a => a.date >= from);
-      if (to) result = result.filter(a => a.date <= to);
-      return NextResponse.json({ ok: true, data: result });
+      return NextResponse.json({ ok: true, data });
     }
 
     const data = await getTeacherAttendance(teacherId, from, to);

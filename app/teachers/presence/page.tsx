@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
@@ -27,10 +27,22 @@ import { useTeachers, useTeacherAttendance } from "@/hooks/use-teachers"
 import { useAcademicYears } from "@/hooks/use-settings"
 
 export default function TeacherAttendancePage() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const { teachers, isLoading: teachersLoading } = useTeachers()
   const { currentYear } = useAcademicYears()
+  const dateInitialized = useRef(false)
+
+  useEffect(() => {
+    if (!currentYear || dateInitialized.current) return;
+    const start = new Date(currentYear.startDate);
+    const end = new Date(currentYear.endDate);
+    const today = new Date();
+    if (today < start || today > end) {
+      setSelectedDate(start);
+    }
+    dateInitialized.current = true;
+  }, [currentYear]);
 
   const dateStr = format(selectedDate, "yyyy-MM-dd")
   const { records: attendanceRecords, isLoading: attendanceLoading, refetch: reloadAttendance, saveAttendance } = useTeacherAttendance({
@@ -65,14 +77,21 @@ export default function TeacherAttendancePage() {
     setTeachersAttendance(prev => prev.map(t => ({ ...t, status: "present" })))
   }
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   const handleSaveAttendance = async () => {
-    const records = teachersAttendance.map(t => ({
-      teacher_id: t.teacherId,
-      date: dateStr,
-      status: t.status,
-    }))
-    await saveAttendance(records)
-    setShowSaveDialog(false)
+    setSaveError(null)
+    try {
+      const records = teachersAttendance.map(t => ({
+        teacher_id: t.teacherId,
+        date: dateStr,
+        status: t.status,
+      }))
+      await saveAttendance(records)
+      setShowSaveDialog(false)
+    } catch (e) {
+      setSaveError(String(e))
+    }
   }
 
   const getTeacherInfo = (teacherId: string) => {
@@ -255,7 +274,7 @@ export default function TeacherAttendancePage() {
             </TabsContent>
           </Tabs>
 
-          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <Dialog open={showSaveDialog} onOpenChange={(v) => { setShowSaveDialog(v); if (!v) setSaveError(null) }}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Confirmer la sauvegarde</DialogTitle>
@@ -263,6 +282,11 @@ export default function TeacherAttendancePage() {
                   Sauvegarder les présences pour le {format(selectedDate, "dd MMMM yyyy", { locale: fr })} ?
                 </DialogDescription>
               </DialogHeader>
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-md text-sm">
+                  {saveError}
+                </div>
+              )}
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Annuler</Button>
                 <Button onClick={handleSaveAttendance}>Confirmer</Button>

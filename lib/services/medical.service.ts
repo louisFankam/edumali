@@ -22,6 +22,7 @@ export async function saveMedicalInfo(studentId: string, input: Partial<{
   bloodType: string; allergies: string; medicalConditions: string; medications: string;
   doctorName: string; doctorPhone: string; emergencyContact: string; emergencyPhone: string; vaccinationStatus: string;
 }>) {
-  const row = await upsertMedical(Number(studentId), input);
+  const { id: _, studentId: __, ...clean } = input as any;
+  const row = await upsertMedical(Number(studentId), clean);
   return { id: String(row.id), studentId: String(row.studentId) };
 }

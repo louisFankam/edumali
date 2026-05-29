@@ -85,12 +85,21 @@ export default function StudentPaymentsPage() {
     return cls?.totalFee ?? 0
   }, [selectedStudent, classes])
 
+  const discountAmount = useMemo(() => {
+    if (!selectedStudent || !selectedStudent.discountType) return 0
+    if (selectedStudent.discountType === "percentage") return classFee * selectedStudent.discountValue / 100
+    if (selectedStudent.discountType === "fixed") return selectedStudent.discountValue
+    return 0
+  }, [selectedStudent, classFee])
+
+  const netFee = classFee - discountAmount
+
   const totalPaid = useMemo(() => {
     if (!payments.length) return 0
     return payments.reduce((sum, p) => sum + p.amount, 0)
   }, [payments])
 
-  const remaining = classFee - totalPaid
+  const remaining = netFee - totalPaid
 
   useEffect(() => { setPage(1) }, [classFilter, searchTerm])
   useEffect(() => { setUnpaidPage(1) }, [unpaidClassFilter])
@@ -98,8 +107,8 @@ export default function StudentPaymentsPage() {
   const handleAddPayment = async () => {
     if (!selectedStudent || !paymentAmount) return
     const amount = Number(paymentAmount)
-    if (totalPaid + amount > classFee) {
-      toast.error(`Le total payé (${(totalPaid + amount).toLocaleString()} FCFA) dépasserait les frais de classe (${classFee.toLocaleString()} FCFA)`)
+    if (totalPaid + amount > netFee) {
+      toast.error(`Le total payé (${(totalPaid + amount).toLocaleString()} FCFA) dépasserait le montant dû (${netFee.toLocaleString()} FCFA)`)
       return
     }
     try {
@@ -210,8 +219,12 @@ export default function StudentPaymentsPage() {
 </PageHeader>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard title="Total Frais" value={`${classFee.toLocaleString()} FCFA`} icon={DollarSign} color="text-foreground" />
+        <div className="grid gap-4 md:grid-cols-4">
+          <StatCard title="Frais de base" value={`${classFee.toLocaleString()} FCFA`} icon={DollarSign} color="text-foreground" />
+          {discountAmount > 0 && (
+            <StatCard title="Réduction" value={`-${discountAmount.toLocaleString()} FCFA`} icon={DollarSign} color="text-orange-500" />
+          )}
+          <StatCard title="Net à payer" value={`${netFee.toLocaleString()} FCFA`} icon={DollarSign} color="text-foreground" />
           <StatCard title="Déjà Payé" value={`${totalPaid.toLocaleString()} FCFA`} icon={CheckCircle} color="text-green-600" />
           <StatCard title="Reste à Payer" value={`${remaining.toLocaleString()} FCFA`} icon={Clock} color={`${remaining > 0 ? "text-red-600" : "text-green-600"}`} />
         </div>
@@ -410,9 +423,17 @@ export default function StudentPaymentsPage() {
                           </div>
                           <Badge variant="secondary">{s.className}</Badge>
                         </div>
-                        <div className="mt-4 text-sm flex justify-between">
-                          <span className="text-muted-foreground">Frais:</span>
-                          <span className="font-bold">{(() => { const c = classes.find(cl => cl.id === s.classId); return c?.totalFee ? `${c.totalFee.toLocaleString()} FCFA` : "---"; })()}</span>
+                        <div className="mt-2 text-sm space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Frais:</span>
+                            <span>{(() => { const c = classes.find(cl => cl.id === s.classId); return c?.totalFee ? `${c.totalFee.toLocaleString()} FCFA` : "---"; })()}</span>
+                          </div>
+                          {s.discountType && s.discountValue && (
+                            <div className="flex justify-between text-orange-600">
+                              <span>Réduction:</span>
+                              <span>-{s.discountType === "percentage" ? `${s.discountValue}%` : `${s.discountValue.toLocaleString()} FCFA`}</span>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

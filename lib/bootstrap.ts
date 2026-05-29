@@ -98,10 +98,17 @@ async function ensureAuthSchema(db: any) {
       class_id integer NOT NULL REFERENCES classes(id),
       registration_date text NOT NULL,
       status text NOT NULL DEFAULT 'Actif' CHECK(status IN ('Actif', 'Inactif')),
+      discount_type text,
+      discount_value real,
+      discount_reason text,
       created_at integer,
       updated_at integer
     )
   `);
+
+  try { await db.run(sql`ALTER TABLE students ADD COLUMN discount_type text`); } catch {}
+  try { await db.run(sql`ALTER TABLE students ADD COLUMN discount_value real`); } catch {}
+  try { await db.run(sql`ALTER TABLE students ADD COLUMN discount_reason text`); } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS school_info (

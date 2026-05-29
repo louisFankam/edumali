@@ -28,12 +28,6 @@ export interface DashboardData {
     total: number
     active: number
   }
-  alerts: {
-    unpaidStudents: number
-    unpaidAmount: number
-    recentAbsences: number
-    upcomingExams: number
-  }
 }
 
 export function useDashboard(filters?: { from?: string; to?: string; academicYearId?: string }) {

@@ -30,6 +30,7 @@ const navigation: NavigationItem[] = [
     icon: GraduationCap,
     children: [
       { name: "Liste", href: "/students", icon: Users },
+      { name: "Importer", href: "/students/import", icon: Database },
       { name: "Réinscription", href: "/students/reinscription", icon: RotateCcw },
       { name: "Présence", href: "/students/presence", icon: CalendarCheck },
       { name: "Paiements", href: "/students/paiements", icon: CreditCard },

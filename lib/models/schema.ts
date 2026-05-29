@@ -37,6 +37,9 @@ export const students = sqliteTable("students", {
   classId: integer("class_id").notNull().references(() => classes.id),
   registrationDate: text("registration_date").notNull(),
   status: text("status", { enum: ["Actif", "Inactif"] }).notNull().default("Actif"),
+  discountType: text("discount_type", { enum: ["percentage", "fixed"] }),
+  discountValue: real("discount_value"),
+  discountReason: text("discount_reason"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

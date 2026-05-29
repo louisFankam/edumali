@@ -120,7 +120,10 @@ export async function getUnpaidStudents(filters?: { classId?: string; academicYe
     className: r.class_name,
     totalFee: r.total_fee,
     totalPaid: r.total_paid,
-    remaining: r.total_fee - r.total_paid,
+    discountType: r.discount_type,
+    discountValue: r.discount_value,
+    netFee: r.net_fee,
+    remaining: r.net_fee - r.total_paid,
   }));
   return { data, total: result.total };
 }

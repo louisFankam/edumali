@@ -35,7 +35,7 @@ import { toast } from "sonner"
 export default function StudentProfilePage() {
   const params = useParams()
   const id = params?.id
-  const { student, isLoading } = useStudent(id)
+  const { student, isLoading, refetch: refetchStudent } = useStudent(id)
   const { currentYear } = useAcademicYears()
   const { enrollments } = useEnrollments(
     id && currentYear ? { studentId: id, academicYearId: currentYear.id } : undefined
@@ -77,18 +77,27 @@ export default function StudentProfilePage() {
     return cls?.totalFee ?? 0
   }, [student, classes])
 
+  const discountAmount = useMemo(() => {
+    if (!student || !student.discountType) return 0
+    if (student.discountType === "percentage") return classFee * student.discountValue / 100
+    if (student.discountType === "fixed") return student.discountValue
+    return 0
+  }, [student, classFee])
+
+  const netFee = classFee - discountAmount
+
   const totalPaid = useMemo(() => {
     if (!payments.length) return 0
     return payments.reduce((s, p) => s + p.amount, 0)
   }, [payments])
 
-  const remaining = classFee - totalPaid
+  const remaining = netFee - totalPaid
 
   const handleAddPayment = async () => {
     if (!student || !payAmount) return
     const amount = Number(payAmount)
-    if (totalPaid + amount > classFee) {
-      toast.error(`Le total payé (${(totalPaid + amount).toLocaleString()} FCFA) dépasserait les frais de classe (${classFee.toLocaleString()} FCFA)`)
+    if (totalPaid + amount > netFee) {
+      toast.error(`Le total payé (${(totalPaid + amount).toLocaleString()} FCFA) dépasserait le montant dû (${netFee.toLocaleString()} FCFA)`)
       return
     }
     try {
@@ -125,7 +134,12 @@ export default function StudentProfilePage() {
   }
 
   const handleSaveMedical = async () => {
-    await saveMedical(medForm)
+    const result = await saveMedical(medForm)
+    if (!result.ok) {
+      toast.error(result.message || "Erreur lors de la sauvegarde des informations médicales")
+      return
+    }
+    toast.success("Informations médicales mises à jour")
     setShowMedDialog(false)
   }
 
@@ -145,7 +159,12 @@ export default function StudentProfilePage() {
   }
 
   const handleSaveFamily = async () => {
-    await saveFamily(famForm)
+    const result = await saveFamily(famForm)
+    if (!result.ok) {
+      toast.error(result.message || "Erreur lors de la sauvegarde des informations familiales")
+      return
+    }
+    toast.success("Informations familiales mises à jour")
     setShowFamDialog(false)
   }
 
@@ -162,11 +181,17 @@ export default function StudentProfilePage() {
   }
 
   const handleSaveAcad = async () => {
+    let result
     if (editAcadId) {
-      await updateAcademic(editAcadId, acadForm)
+      result = await updateAcademic(editAcadId, acadForm)
     } else {
-      await addAcademic(acadForm)
+      result = await addAcademic(acadForm)
     }
+    if (!result.ok) {
+      toast.error(result.message || "Erreur lors de la sauvegarde")
+      return
+    }
+    toast.success("Historique scolaire mis à jour")
     setShowAcadDialog(false)
   }
 
@@ -369,10 +394,20 @@ export default function StudentProfilePage() {
         </TabsContent>
 
         <TabsContent value="financial" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Total Frais</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Frais de base</CardTitle></CardHeader>
               <CardContent><div className="text-2xl font-bold">{classFee.toLocaleString()} FCFA</div></CardContent>
+            </Card>
+            {discountAmount > 0 && (
+              <Card>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Réduction</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold text-orange-500">-{discountAmount.toLocaleString()} FCFA</div></CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Net à payer</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold">{netFee.toLocaleString()} FCFA</div></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Déjà Payé</CardTitle></CardHeader>
@@ -460,10 +495,9 @@ export default function StudentProfilePage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Groupe sanguin</Label>
-                <Select value={medForm.bloodType} onValueChange={v => setMedForm(f => ({ ...f, bloodType: v }))}>
+                <Select value={medForm.bloodType || undefined} onValueChange={v => setMedForm(f => ({ ...f, bloodType: v }))}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Non renseigné</SelectItem>
                     <SelectItem value="A+">A+</SelectItem>
                     <SelectItem value="A-">A-</SelectItem>
                     <SelectItem value="B+">B+</SelectItem>
@@ -476,10 +510,9 @@ export default function StudentProfilePage() {
                 </Select>
               </div>
               <div><Label>Statut vaccination</Label>
-                <Select value={medForm.vaccinationStatus} onValueChange={v => setMedForm(f => ({ ...f, vaccinationStatus: v }))}>
+                <Select value={medForm.vaccinationStatus || undefined} onValueChange={v => setMedForm(f => ({ ...f, vaccinationStatus: v }))}>
                   <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Non renseigné</SelectItem>
                     <SelectItem value="À jour">À jour</SelectItem>
                     <SelectItem value="En cours">En cours</SelectItem>
                     <SelectItem value="Non vacciné">Non vacciné</SelectItem>
@@ -554,7 +587,7 @@ export default function StudentProfilePage() {
         </DialogContent>
       </Dialog>
 
-      <EditStudentProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} student={{ ...student, fullName }} />
+      <EditStudentProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} student={{ ...student, fullName }} onEdit={refetchStudent} />
     </AppLayout>
   )
 }

@@ -118,7 +118,12 @@ export async function findUnpaidStudents(filters?: { classId?: number; academicY
       LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
       WHERE ${conditions}
       GROUP BY s.id
-      HAVING COALESCE(SUM(p.amount), 0) < c.total_fee
+      HAVING COALESCE(SUM(p.amount), 0) <
+        CASE
+          WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
+          WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
+          ELSE c.total_fee
+        END
     )
   `) as { total: number } | undefined;
   const total = countResult?.total ?? 0;
@@ -132,17 +137,28 @@ export async function findUnpaidStudents(filters?: { classId?: number; academicY
   const rows = db.all(sql`
     SELECT s.id, s.first_name, s.last_name, s.class_id,
            c.name as class_name, c.total_fee,
-           COALESCE(SUM(p.amount), 0) as total_paid
+           s.discount_type, s.discount_value,
+           COALESCE(SUM(p.amount), 0) as total_paid,
+           CASE
+             WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
+             WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
+             ELSE c.total_fee
+           END as net_fee
     FROM students s
     ${joinClause}
     JOIN classes c ON s.class_id = c.id
     LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
     WHERE ${conditions}
     GROUP BY s.id
-    HAVING COALESCE(SUM(p.amount), 0) < c.total_fee
+    HAVING COALESCE(SUM(p.amount), 0) <
+      CASE
+        WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
+        WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
+        ELSE c.total_fee
+      END
     ORDER BY s.last_name, s.first_name
     ${limitOffset}
-  `) as { id: number; first_name: string; last_name: string; class_id: number; class_name: string; total_fee: number; total_paid: number }[];
+  `) as { id: number; first_name: string; last_name: string; class_id: number; class_name: string; total_fee: number; total_paid: number; discount_type: string | null; discount_value: number | null; net_fee: number }[];
 
   return { data: rows, total };
 }

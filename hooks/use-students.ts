@@ -100,21 +100,25 @@ export function useStudent(id: string | undefined) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!id) { setIsLoading(false); return }
     setIsLoading(true)
     setError(null)
-    window.fetch(`/api/students/${id}`, { cache: "no-store" })
-      .then(r => r.json())
-      .then(json => {
-        if (!json.ok) throw new Error(json.message)
-        setStudent(json.data)
-      })
-      .catch(e => setError(String(e)))
-      .finally(() => setIsLoading(false))
+    try {
+      const res = await window.fetch(`/api/students/${id}`, { cache: "no-store" })
+      const json = await res.json()
+      if (!json.ok) throw new Error(json.message)
+      setStudent(json.data)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setIsLoading(false)
+    }
   }, [id])
 
-  return { student, isLoading, error }
+  useEffect(() => { load() }, [load])
+
+  return { student, isLoading, error, refetch: load }
 }
 
 export function useStudentStats(academicYearId?: string) {

@@ -1,31 +1,27 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { AppLayout } from "@/components/app-layout"
 import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { 
   GraduationCap,
-  Users,
   FileText,
   Clock,
   TrendingUp,
   DollarSign,
   ArrowUpRight,
-  ArrowDownRight,
   Eye,
-  Download,
   RefreshCw
 } from "lucide-react"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 
 import Link from "next/link"
 
-import { AlertsSection } from "@/components/alerts/alerts-section"
 import { useDashboard } from "@/hooks/use-dashboard"
 
 const currencyFormatter = new Intl.NumberFormat('fr-FR', {
@@ -48,34 +44,6 @@ export default function DashboardPage() {
   const handleRefresh = () => refetch()
 
   const formatCurrency = (amount: number) => currencyFormatter.format(amount)
-
-  const alerts = useMemo(() => {
-    if (!data) return []
-    return [
-      ...(data.alerts.unpaidStudents > 0 ? [{
-        type: "payment" as const,
-        title: "Paiements en retard",
-        urgency: "high" as const,
-        description: `${data.alerts.unpaidStudents} élève${data.alerts.unpaidStudents > 1 ? "s" : ""} ${data.alerts.unpaidStudents > 1 ? "ont" : "a"} des frais impayés`,
-        amount: data.alerts.unpaidAmount,
-        link: "/finances",
-      }] : []),
-      ...(data.alerts.recentAbsences > 0 ? [{
-        type: "attendance" as const,
-        title: "Absences récentes",
-        urgency: (data.alerts.recentAbsences >= 5 ? "high" : "medium") as "high" | "medium",
-        description: `${data.alerts.recentAbsences} absence${data.alerts.recentAbsences > 1 ? "s" : ""} non justifiée${data.alerts.recentAbsences > 1 ? "s" : ""} cette semaine`,
-        link: "/students/presence",
-      }] : []),
-      ...(data.alerts.upcomingExams > 0 ? [{
-        type: "exam" as const,
-        title: "Examens à venir",
-        urgency: "medium" as const,
-        description: `${data.alerts.upcomingExams} examen${data.alerts.upcomingExams > 1 ? "s" : ""} prévu${data.alerts.upcomingExams > 1 ? "s" : ""} dans les 7 jours`,
-        link: "/planning/examens",
-      }] : []),
-    ]
-  }, [data?.alerts])
 
   if (isLoading) {
     return (
@@ -239,7 +207,22 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <AlertsSection alerts={alerts} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Taux de présence par classe</CardTitle>
+                <CardDescription>Moyenne des présences par classe</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={data.attendance.byClass} barCategoryGap="20%">
+                    <XAxis dataKey="class" tick={{ fontSize: 12 }} />
+                    <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip formatter={(v: number) => [`${v}%`, "Taux de présence"]} />
+                    <Bar dataKey="rate" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
 
           <Card>

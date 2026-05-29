@@ -45,8 +45,8 @@ export function useFeeTypes() {
     setIsLoading(true)
     setError(null)
     try {
-      const json = await cachedFetch<any>("/api/fees")
-      if (json.ok) setFeeTypes(json.data)
+      const data = await cachedFetch<any>("/api/fees")
+      setFeeTypes(data)
     } catch (e) {
       console.error("useFeeTypes.load", e)
       setError(String(e))
@@ -104,9 +104,10 @@ export function usePayments(filters?: { studentId?: string; from?: string; to?: 
       if (filters?.to) params.set("to", filters.to)
       if (filters?.page) params.set("page", String(filters.page))
       if (filters?.limit) params.set("limit", String(filters.limit))
-      const json = await cachedFetch<any>(`/api/payments?${params.toString()}`)
+      const data = await cachedFetch<any[]>(`/api/payments?${params.toString()}`)
       if (id !== requestId.current) return
-      if (json.ok) { setPayments(json.data); setTotal(json.pagination?.total ?? 0) }
+      setPayments(data)
+      setTotal(data.length)
     } catch (e) {
       console.error("usePayments.load", e)
       setError(String(e))
@@ -157,8 +158,8 @@ export function usePaymentStats() {
       const params = new URLSearchParams({ stats: "true" })
       if (from) params.set("from", from)
       if (to) params.set("to", to)
-      const json = await cachedFetch<any>(`/api/payments?${params.toString()}`)
-      if (json.ok) setStats(json.data)
+      const data = await cachedFetch<any>(`/api/payments?${params.toString()}`)
+      setStats(data)
     } catch (e) {
       console.error("usePaymentStats.load", e)
       setError(String(e))

@@ -45,9 +45,13 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
     address: "",
     enrollmentDate: new Date(),
     status: "Actif",
+    discountType: "",
+    discountValue: "",
+    discountReason: "",
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showDiscount, setShowDiscount] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,6 +70,9 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
           address: formData.address,
           classId: selectedClass?.id ?? "",
           status: formData.status,
+          discountType: formData.discountType || null,
+          discountValue: formData.discountValue ? Number(formData.discountValue) : null,
+          discountReason: formData.discountReason || null,
         })
         setFormData({
           firstName: "",
@@ -80,6 +87,9 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
           address: "",
           enrollmentDate: new Date(),
           status: "Actif",
+          discountType: "",
+          discountValue: "",
+          discountReason: "",
         })
         onClose()
       } catch (error) {
@@ -326,6 +336,50 @@ export function AddStudentModal({ isOpen, onClose, onAdd, classes }: AddStudentM
                 disabled={isSubmitting}
               />
             </div>
+          </div>
+
+          {/* Réduction */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-center">Réduction / Bourse</h3>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowDiscount(!showDiscount)}>
+                {showDiscount ? "Retirer" : "Ajouter une réduction"}
+              </Button>
+            </div>
+            {showDiscount && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Type de réduction</Label>
+                    <Select value={formData.discountType} onValueChange={(v) => handleInputChange("discountType", v)}>
+                      <SelectTrigger><SelectValue placeholder="Sélectionner le type" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Pourcentage (%)</SelectItem>
+                        <SelectItem value="fixed">Montant fixe (FCFA)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valeur</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={formData.discountValue}
+                      onChange={(e) => handleInputChange("discountValue", e.target.value)}
+                      placeholder={formData.discountType === "percentage" ? "Ex: 25" : "Ex: 50000"}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Motif</Label>
+                  <Input
+                    value={formData.discountReason}
+                    onChange={(e) => handleInputChange("discountReason", e.target.value)}
+                    placeholder="Ex: Réduction fratrie, Bourse mérite, Cas social..."
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">

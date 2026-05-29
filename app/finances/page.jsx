@@ -791,7 +791,10 @@ export default function FinancesPage() {
           {selectedStudent && (() => {
             const s = selectedStudent; const cls = classes.find(c => c.id === s.classId)
             const totalFee = cls?.totalFee ?? 0; const paid = paymentsByStudent[s.id] || 0
-            const remaining = Math.max(0, totalFee - paid)
+            const discountAmt = s.discountType === "percentage" ? totalFee * s.discountValue / 100
+                              : s.discountType === "fixed" ? (s.discountValue ?? 0) : 0
+            const netFee = Math.max(0, totalFee - discountAmt)
+            const remaining = Math.max(0, netFee - paid)
             const sp = payments.filter(p => p.studentId === s.id)
             return (
               <div className="space-y-6">
@@ -800,7 +803,7 @@ export default function FinancesPage() {
                   <Card><CardHeader><CardTitle>Élève</CardTitle></CardHeader><CardContent className="text-sm"><p><span className="text-muted-foreground">Nom:</span> {s.firstName} {s.lastName}</p><p><span className="text-muted-foreground">Classe:</span> {s.className}</p></CardContent></Card>
                   <Card><CardHeader><CardTitle>Parent</CardTitle></CardHeader><CardContent className="text-sm"><p><span className="text-muted-foreground">Nom:</span> {s.parentName}</p><p><span className="text-muted-foreground">Tél:</span> {s.parentPhone}</p></CardContent></Card>
                 </div>
-                <Card><CardHeader><CardTitle>Résumé</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="flex justify-between"><span>Total des frais</span><span className="font-bold">{fmt(totalFee)}</span></div><div className="flex justify-between"><span>Payé</span><span className="font-bold text-green-600">{fmt(paid)}</span></div><hr /><div className="flex justify-between text-xl"><span className="font-bold">Solde</span><span className={`font-bold ${remaining > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(remaining)}</span></div></div></CardContent></Card>
+                <Card><CardHeader><CardTitle>Résumé</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="flex justify-between"><span>Frais de base</span><span className="font-bold">{fmt(totalFee)}</span></div>{discountAmt > 0 && <div className="flex justify-between"><span>Réduction</span><span className="font-bold text-orange-500">-{fmt(discountAmt)}</span></div>}<div className="flex justify-between"><span>Net à payer</span><span className="font-bold">{fmt(netFee)}</span></div><div className="flex justify-between"><span>Payé</span><span className="font-bold text-green-600">{fmt(paid)}</span></div><hr /><div className="flex justify-between text-xl"><span className="font-bold">Solde</span><span className={`font-bold ${remaining > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(remaining)}</span></div></div></CardContent></Card>
                 {sp.length > 0 && (
                   <Card><CardHeader><CardTitle>Historique</CardTitle></CardHeader><CardContent className="p-0"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Montant</TableHead><TableHead>Mode</TableHead></TableRow></TableHeader><TableBody>{sp.map(p => <TableRow key={p.id}><TableCell>{p.date}</TableCell><TableCell className="font-semibold text-green-600">{fmt(p.amount)}</TableCell><TableCell>{p.method}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
                 )}

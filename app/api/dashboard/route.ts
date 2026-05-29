@@ -21,7 +21,28 @@ export async function GET(req: NextRequest) {
 
     const dateFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
     const yearFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
-    const evalFilter = from ? sql`AND e.date >= ${from} AND e.date <= ${to}` : sql``;
+    const evalFilter = from && to ? sql`AND e.date >= ${from} AND e.date <= ${to}` : sql``;
+
+    // Get academic year date range for filtering attendance/payments by date
+    let yearStart: string | null = null;
+    let yearEnd: string | null = null;
+    if (academicYearId) {
+      const yr = db.get(sql`SELECT start_date, end_date FROM academic_years WHERE id = ${academicYearId}`) as { start_date: string; end_date: string } | undefined;
+      if (yr) { yearStart = yr.start_date; yearEnd = yr.end_date; }
+    }
+
+    const attendanceYearFilter = yearStart && yearEnd
+      ? sql`AND a.date >= ${yearStart} AND a.date <= ${yearEnd}`
+      : sql``;
+    const paymentYearFilter = yearStart && yearEnd
+      ? sql`AND p.date >= ${yearStart} AND p.date <= ${yearEnd}`
+      : sql``;
+    const evaluationYearFilter = academicYearId
+      ? sql`AND e.academic_year_id = ${academicYearId}`
+      : sql``;
+    const attendanceClassJoinFilter = yearStart && yearEnd
+      ? sql`AND a.date >= ${yearStart} AND a.date <= ${yearEnd}`
+      : sql``;
 
     const enrollmentJoin = academicYearId
       ? sql`JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${academicYearId}`
@@ -56,13 +77,13 @@ export async function GET(req: NextRequest) {
     // Combined attendance: overall + this week + last week + by class + recent absences
     const absRows = db.all(sql`
       SELECT
-        (SELECT COUNT(*) FROM attendance a WHERE 1=1 ${dateFilter}) as att_total,
-        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE 1=1 ${dateFilter}) as att_present,
-        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter}) as week_total,
-        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter}) as week_present,
-        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter}) as last_week_total,
-        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter}) as last_week_present,
-        (SELECT COUNT(*) FROM attendance a WHERE status = 'absent' AND date >= date('now','-7 days') ${yearFilter}) as recent_absences
+        (SELECT COUNT(*) FROM attendance a WHERE 1=1 ${dateFilter} ${attendanceYearFilter}) as att_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE 1=1 ${dateFilter} ${attendanceYearFilter}) as att_present,
+        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as week_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as week_present,
+        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as last_week_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as last_week_present,
+        (SELECT COUNT(*) FROM attendance a WHERE status = 'absent' AND date >= date('now','-7 days') ${yearFilter} ${attendanceYearFilter}) as recent_absences
     `) as any;
 
     const absRow = absRows[0];
@@ -77,7 +98,7 @@ export async function GET(req: NextRequest) {
         COUNT(a.id) as total,
         SUM(CASE WHEN a.status IN ('présent','congé') THEN 1 ELSE 0 END) as present
       FROM classes c
-      LEFT JOIN attendance a ON a.class_id = c.id
+      LEFT JOIN attendance a ON a.class_id = c.id ${attendanceClassJoinFilter}
       WHERE c.status = 'active' ${dateFilter}
       GROUP BY c.id
       ORDER BY c.name
@@ -91,10 +112,10 @@ export async function GET(req: NextRequest) {
     // Combined payment stats: revenue, this month, last month, monthly avg, outstanding, unpaid count
     const payRows = db.all(sql`
       SELECT
-        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'payé'), 0) as total_revenue,
-        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'payé' AND date >= ${firstOfMonth}), 0) as this_month,
-        COALESCE((SELECT SUM(amount) FROM payments WHERE status = 'payé' AND date >= ${firstOfPrevMonth} AND date <= ${lastMonthEnd}), 0) as last_month,
-        COALESCE((SELECT AVG(monthly) FROM (SELECT SUM(amount) as monthly FROM payments WHERE status = 'payé' GROUP BY substr(date, 1, 7))), 0) as monthly_avg
+        COALESCE((SELECT SUM(amount) FROM payments p WHERE p.status = 'payé' ${paymentYearFilter}), 0) as total_revenue,
+        COALESCE((SELECT SUM(amount) FROM payments p WHERE p.status = 'payé' AND p.date >= ${firstOfMonth} ${paymentYearFilter}), 0) as this_month,
+        COALESCE((SELECT SUM(amount) FROM payments p WHERE p.status = 'payé' AND p.date >= ${firstOfPrevMonth} AND p.date <= ${lastMonthEnd} ${paymentYearFilter}), 0) as last_month,
+        COALESCE((SELECT AVG(monthly) FROM (SELECT SUM(amount) as monthly FROM payments p WHERE p.status = 'payé' ${paymentYearFilter} GROUP BY substr(p.date, 1, 7))), 0) as monthly_avg
     `) as any;
 
     const payRow = payRows[0];
@@ -102,11 +123,10 @@ export async function GET(req: NextRequest) {
       ? Math.round(((payRow.this_month - payRow.last_month) / payRow.last_month) * 100 * 10) / 10
       : 0;
 
-    // Outstanding & unpaid — combined in a single query
+    // Outstanding payments — total unpaid amount for enrolled students
     const [finData] = db.all(sql`
       SELECT
-        COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total,
-        COUNT(CASE WHEN due > 0 THEN 1 END) as unpaid_count
+        COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total
       FROM (
         SELECT c.total_fee - COALESCE(SUM(p.amount), 0) as due
         FROM students s
@@ -126,7 +146,7 @@ export async function GET(req: NextRequest) {
         SUM(CASE WHEN g.score >= 10 AND g.is_absent = 0 THEN 1 ELSE 0 END) as passed
       FROM grades g
       JOIN evaluations e ON g.evaluation_id = e.id
-      WHERE e.status = 'published' ${evalFilter}
+      WHERE e.status = 'published' ${evalFilter} ${evaluationYearFilter}
     `) as any;
 
     const passRate = examStats.graded_students > 0
@@ -139,13 +159,6 @@ export async function GET(req: NextRequest) {
         COUNT(*) as total,
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active
       FROM teachers
-    `) as any;
-
-    // Upcoming exams
-    const [upcomingExams] = db.all(sql`
-      SELECT COUNT(*) as count
-      FROM exams
-      WHERE date >= date('now') AND date <= date('now', '+7 days')
     `) as any;
 
     return NextResponse.json({
@@ -180,12 +193,6 @@ export async function GET(req: NextRequest) {
         teachers: {
           total: teacherCount.total,
           active: teacherCount.active,
-        },
-        alerts: {
-          unpaidStudents: finData.unpaid_count,
-          unpaidAmount: finData.outstanding_total,
-          recentAbsences: absRow.recent_absences,
-          upcomingExams: upcomingExams.count,
         },
       },
     });

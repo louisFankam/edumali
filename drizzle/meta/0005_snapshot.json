@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "bd128844-6b78-471b-8ae8-7738044ad845",
-  "prevId": "26bc7846-d232-4b5a-9001-c4b2b009d8a5",
+  "id": "d84f0978-193b-45b6-a713-27fe5481f685",
+  "prevId": "bd128844-6b78-471b-8ae8-7738044ad845",
   "tables": {
     "academic_histories": {
       "name": "academic_histories",
@@ -351,13 +351,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": 1
-        },
-        "teacher_id": {
-          "name": "teacher_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {
@@ -390,19 +383,6 @@
           "tableTo": "subjects",
           "columnsFrom": [
             "subject_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "class_subjects_teacher_id_teachers_id_fk": {
-          "name": "class_subjects_teacher_id_teachers_id_fk",
-          "tableFrom": "class_subjects",
-          "tableTo": "teachers",
-          "columnsFrom": [
-            "teacher_id"
           ],
           "columnsTo": [
             "id"
@@ -2033,6 +2013,27 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'Actif'"
+        },
+        "discount_type": {
+          "name": "discount_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "discount_value": {
+          "name": "discount_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "discount_reason": {
+          "name": "discount_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

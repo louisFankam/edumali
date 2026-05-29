@@ -23,6 +23,7 @@ export async function saveFamilyInfo(studentId: string, input: Partial<{
   motherName: string; motherPhone: string; motherProfession: string;
   guardianName: string; guardianRelation: string; guardianPhone: string;
 }>) {
-  const row = await upsertFamily(Number(studentId), input);
+  const { id: _, studentId: __, ...clean } = input as any;
+  const row = await upsertFamily(Number(studentId), clean);
   return { id: String(row.id), studentId: String(row.studentId) };
 }

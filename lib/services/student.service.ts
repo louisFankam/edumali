@@ -29,6 +29,9 @@ function mapStudent(s: any) {
     className: s.class?.name ?? "",
     registrationDate: s.registrationDate,
     status: s.status,
+    discountType: s.discountType ?? null,
+    discountValue: s.discountValue ?? null,
+    discountReason: s.discountReason ?? null,
   };
 }
 
@@ -76,6 +79,9 @@ export async function addStudent(input: {
   address?: string;
   classId: string;
   status?: string;
+  discountType?: string | null;
+  discountValue?: number | null;
+  discountReason?: string | null;
 }) {
   const data: NewStudent = {
     firstName: input.firstName,
@@ -90,6 +96,9 @@ export async function addStudent(input: {
     classId: Number(input.classId),
     registrationDate: new Date().toISOString().split("T")[0],
     status: (input.status as "Actif" | "Inactif") ?? "Actif",
+    discountType: input.discountType as "percentage" | "fixed" | null ?? null,
+    discountValue: input.discountValue ?? null,
+    discountReason: input.discountReason ?? null,
   };
   const created = await createStudent(data);
 
@@ -120,6 +129,9 @@ export async function editStudent(id: string, input: Partial<{
   address: string;
   classId: string;
   status: string;
+  discountType: string | null;
+  discountValue: number | null;
+  discountReason: string | null;
 }>) {
   const data: any = {};
   if (input.firstName !== undefined) data.firstName = input.firstName;
@@ -133,12 +145,20 @@ export async function editStudent(id: string, input: Partial<{
   if (input.address !== undefined) data.address = input.address;
   if (input.classId !== undefined) data.classId = Number(input.classId);
   if (input.status !== undefined) data.status = input.status;
+  if (input.discountType !== undefined) data.discountType = input.discountType;
+  if (input.discountValue !== undefined) data.discountValue = input.discountValue;
+  if (input.discountReason !== undefined) data.discountReason = input.discountReason;
   const updated = await updateStudent(Number(id), data);
   return mapStudent(updated);
 }
 
 export async function removeStudent(id: string) {
   const studentId = Number(id);
+
+  const existing = await getStudentById(studentId);
+  if (!existing) {
+    throw new Error("Élève introuvable");
+  }
 
   const payments = await findAllPayments({ studentId });
   if (payments.length > 0) {
