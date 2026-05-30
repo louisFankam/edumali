@@ -16,8 +16,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
-.env*
+# env files (sauf .env qui est versionné pour le déploiement offline)
+.env.*
+!.env.example
 
 # vercel
 .vercel

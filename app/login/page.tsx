@@ -225,8 +225,8 @@ export default function LoginPage() {
                 Identifiants par défaut :
               </h3>
               <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Email :</strong> admin@ekima.ml</p>
-                <p><strong>Mot de passe :</strong> admin12345</p>
+                <p><strong>Nom d'utilisateur :</strong> admin</p>
+                <p><strong>Mot de passe :</strong> admin</p>
               </div>
             </div>
 

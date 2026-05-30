@@ -576,7 +576,7 @@ export async function initializeApp() {
   console.log("[EduMali] Connexion base de donnees SQLite: SUCCESS");
   await ensureAuthSchema(db);
 
-  const adminEmail = process.env.ADMIN_EMAIL ?? process.env.ADMIN_USERNAME ?? "admin";
+  const adminEmail = process.env.ADMIN_USERNAME ?? "admin";
   const adminPassword = process.env.ADMIN_PASSWORD ?? "admin";
   const passwordHash = await hashPassword(adminPassword);
   const usersCount = await countUsers();
