@@ -12,10 +12,8 @@ Application de gestion scolaire conçue pour les établissements primaires et se
 
 ### Installation
 
-1. Clonez le repository
-
 ```bash
-git clone https://github.com/your-repo/edumali.git
+git clone https://github.com/louisFankam/edumali.git
 cd edumali
 ```
 
@@ -25,19 +23,10 @@ cd edumali
 pnpm install
 ```
 
-3. Générez et appliquez les migrations de base de données
+3. Démarrez l'application
 
 ```bash
-pnpm db:generate
-pnpm db:migrate
-```
-
-Ces commandes créent automatiquement toutes les tables nécessaires et initialisent les données par défaut.
-
-4. Démarrez l'application
-
-```bash
-pnpm dev
+pnpm build && pnpm start
 ```
 
 L'application sera accessible à http://localhost:3000
@@ -46,25 +35,23 @@ L'application sera accessible à http://localhost:3000
 
 Lors de la première exécution, un utilisateur administrateur est créé automatiquement :
 
-- Email: admin
+- Utilisateur: admin
 - Mot de passe: admin
 
 Vous pouvez modifier ces identifiants via les variables d'environnement (voir section Configuration ci-dessous).
 
 ### Configuration
 
-Créez un fichier `.env.local` à la racine du projet :
+Créez un fichier `.env` à la racine du projet (ou utilisez celui fourni par défaut) :
 
 ```
+SESSION_SECRET=votreCleSessionSecurisee64CaracteresHex
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=votreMotDePasseSecurise
-SCHOOL_NAME=Nom de votre Etablissement
-ACADEMIC_YEAR_ID=1
-SESSION_SECRET=votreCleSessionSecurisee32CaracteresMinimum
+ADMIN_PASSWORD=admin
 ```
 
-Variables obligatoires pour la production :
-- SESSION_SECRET: minimum 32 caractères pour la sécurité des sessions
+**Variables obligatoires :**
+- `SESSION_SECRET` : 64 caractères hexadécimaux (généré automatiquement dans le `.env` fourni)
 
 ## Scripts disponibles
 
