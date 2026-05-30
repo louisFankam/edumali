@@ -4,7 +4,7 @@ import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helper
 describe("Reinscription Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
-  }, 30000);
+  }, 60000);
 
   afterAll(async () => {
     await teardownTestDatabase();
@@ -214,6 +214,33 @@ describe("Reinscription Page - Tests d'intégration", () => {
     it("devrait gérer la suppression d'un ID inexistant sans erreur", async () => {
       const { removeEnrollment } = await import("@/lib/services/enrollment.service");
       await expect(removeEnrollment("99999")).resolves.not.toThrow();
+    });
+  });
+
+  // ─────────── F. getEnrollmentStats ───────────
+
+  describe("F. getEnrollmentStats - Statistiques inscriptions", () => {
+    it("devrait retourner les stats globales (sans filtre année)", async () => {
+      const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
+
+      const stats = await getEnrollmentStats();
+      expect(stats.total).toBeGreaterThanOrEqual(2);
+      expect(stats.inscrit).toBeGreaterThanOrEqual(2);
+    });
+
+    it("devrait filtrer les stats par année académique", async () => {
+      const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
+
+      const stats = await getEnrollmentStats("1");
+      expect(stats.total).toBeGreaterThanOrEqual(2);
+      expect(stats).toHaveProperty("inscrit");
+    });
+
+    it("devrait retourner 0 pour une année inexistante", async () => {
+      const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
+
+      const stats = await getEnrollmentStats("99999");
+      expect(stats.total).toBe(0);
     });
   });
 

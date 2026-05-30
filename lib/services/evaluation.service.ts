@@ -3,6 +3,7 @@ import {
   updateEvaluation, deleteEvaluation, EvaluationFilters,
 } from "@/lib/repositories/evaluation.repository";
 import { deleteGrade } from "@/lib/repositories/grade.repository";
+import { checkPeriodClosed } from "@/lib/services/period.service";
 
 function mapEvaluation(row: any) {
   return {
@@ -37,6 +38,9 @@ export async function addEvaluation(input: {
   name: string; type: string; classId: number; subjectId: number;
   trimester: number; academicYearId: number; date: string;
 }) {
+  if (await checkPeriodClosed(input.date)) {
+    throw new Error("Impossible d'ajouter une évaluation : la période est clôturée");
+  }
   const row = await createEvaluation(input);
   return { id: String(row.id) };
 }
@@ -45,10 +49,23 @@ export async function editEvaluation(id: string, input: Partial<{
   name: string; type: string; classId: number; subjectId: number;
   trimester: number; date: string; status: string;
 }>) {
+  if (input.date && await checkPeriodClosed(input.date)) {
+    throw new Error("Impossible de modifier une évaluation : la période est clôturée");
+  }
+  if (!input.date) {
+    const existing = await findEvaluationById(Number(id));
+    if (existing && await checkPeriodClosed(existing.date)) {
+      throw new Error("Impossible de modifier une évaluation : la période est clôturée");
+    }
+  }
   await updateEvaluation(Number(id), input);
   return { id };
 }
 
 export async function removeEvaluation(id: string) {
+  const existing = await findEvaluationById(Number(id));
+  if (existing && await checkPeriodClosed(existing.date)) {
+    throw new Error("Impossible de supprimer une évaluation : la période est clôturée");
+  }
   await deleteEvaluation(Number(id));
 }

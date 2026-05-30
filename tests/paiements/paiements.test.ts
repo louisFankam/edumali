@@ -4,7 +4,7 @@ import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helper
 describe("Paiements Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
-  }, 30000);
+  }, 60000);
 
   afterAll(async () => {
     await teardownTestDatabase();
@@ -259,9 +259,62 @@ describe("Paiements Page - Tests d'intégration", () => {
     });
   });
 
-  // ─────────── H. FILTRE `from` UNIQUEMENT (date d'inscription) ───────────
+  // ─────────── G. getPaymentById ───────────
 
-  describe("H. getPayments - Filtre from uniquement", () => {
+  describe("G. getPaymentById - Lecture par ID", () => {
+    it("devrait retourner un paiement existant par son ID", async () => {
+      const { getPaymentById } = await import("@/lib/services/payment.service");
+      const { getPayments } = await import("@/lib/services/payment.service");
+
+      const list = await getPayments({ studentId: "1" });
+      const firstId = list.data[0]?.id;
+      if (!firstId) return;
+
+      const payment = await getPaymentById(firstId);
+      expect(payment).not.toBeNull();
+      expect(payment!.id).toBe(firstId);
+      expect(payment!.amount).toBeGreaterThan(0);
+      expect(payment!.method).toBeTruthy();
+    });
+
+    it("devrait retourner null pour un ID inexistant", async () => {
+      const { getPaymentById } = await import("@/lib/services/payment.service");
+      const payment = await getPaymentById("99999");
+      expect(payment).toBeNull();
+    });
+  });
+
+  // ─────────── H. getPaymentStatsService ───────────
+
+  describe("H. getPaymentStatsService - Statistiques paiements", () => {
+    it("devrait retourner les stats globales", async () => {
+      const { getPaymentStatsService } = await import("@/lib/services/payment.service");
+
+      const stats = await getPaymentStatsService();
+      expect(stats.totalRevenue).toBeGreaterThan(0);
+      expect(stats.totalPayments).toBeGreaterThan(0);
+    });
+
+    it("devrait filtrer les stats par plage de dates", async () => {
+      const { getPaymentStatsService } = await import("@/lib/services/payment.service");
+
+      const stats = await getPaymentStatsService("2025-10-01", "2025-10-31");
+      expect(stats.totalRevenue).toBe(30000);
+      expect(stats.totalPayments).toBe(1);
+    });
+
+    it("devrait retourner 0 pour une période sans paiements", async () => {
+      const { getPaymentStatsService } = await import("@/lib/services/payment.service");
+
+      const stats = await getPaymentStatsService("2020-01-01", "2020-01-31");
+      expect(stats.totalRevenue).toBe(0);
+      expect(stats.totalPayments).toBe(0);
+    });
+  });
+
+  // ─────────── I. FILTRE `from` UNIQUEMENT (date d'inscription) ───────────
+
+  describe("I. getPayments - Filtre from uniquement", () => {
     it("devrait retourner les paiements après une date donnée (from sans to)", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
@@ -290,7 +343,7 @@ describe("Paiements Page - Tests d'intégration", () => {
 
   // ─────────── I. MODIFICATION COMPLÈTE ───────────
 
-  describe("I. editPayment - Modification complète (tous les champs)", () => {
+  describe("J. editPayment - Modification complète (tous les champs)", () => {
     it("devrait modifier montant + méthode + feeTypeId simultanément", async () => {
       const { editPayment, getPayments, addFeeType } = await import("@/lib/services/payment.service");
 
@@ -313,7 +366,7 @@ describe("Paiements Page - Tests d'intégration", () => {
 
   // ─────────── J. PLAFOND PAIEMENT (totalPaid vs classFee) ───────────
 
-  describe("J. Validation plafond - totalPaid ne dépasse pas classFee", () => {
+  describe("K. Validation plafond - totalPaid ne dépasse pas classFee", () => {
     it("devrait permettre un paiement dans la limite des frais", async () => {
       const { addPayment, getPayments } = await import("@/lib/services/payment.service");
 

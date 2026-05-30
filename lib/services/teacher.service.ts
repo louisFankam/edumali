@@ -1,10 +1,11 @@
 import {
   findAllTeachers, findTeacherById, createTeacher, updateTeacher, deleteTeacher, countTeachers, setTeacherSubjects,
   findTeacherAttendance, findTeacherAttendanceByDate, upsertTeacherAttendance,
-  findAllPayroll, createPayroll, deletePayrollRecord,
+  findAllPayroll, createPayroll, updatePayrollRecord, deletePayrollRecord,
   type NewTeacher,
 } from "@/lib/repositories/teacher.repository";
 import { findAllSubjects } from "@/lib/repositories/subject.repository";
+import { checkPeriodClosed } from "@/lib/services/period.service";
 
 function mapTeacher(t: any) {
   if (!t) return null;
@@ -212,6 +213,10 @@ export async function addPayroll(input: {
   teacher_id: string; month: number; year: number;
   amount: number; bonus?: number; deductions?: number; paid_at?: string; notes?: string;
 }) {
+  const dateStr = `${input.year}-${String(input.month).padStart(2, "0")}-01`;
+  if (await checkPeriodClosed(dateStr)) {
+    throw new Error("Impossible d'ajouter une paie : la période est clôturée");
+  }
   const created = await createPayroll({
     teacherId: Number(input.teacher_id),
     month: input.month,
@@ -234,6 +239,14 @@ export async function updatePayroll(id: string, input: any) {
   if (input.notes !== undefined) data.notes = input.notes;
   if (input.month !== undefined) data.month = input.month;
   if (input.year !== undefined) data.year = input.year;
+  const month = input.month;
+  const year = input.year;
+  if (month && year) {
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-01`;
+    if (await checkPeriodClosed(dateStr)) {
+      throw new Error("Impossible de modifier une paie : la période est clôturée");
+    }
+  }
   await updatePayrollRecord(Number(id), data);
 }
 

@@ -22,6 +22,7 @@ export interface StudentBulletin {
   subjects: SubjectBulletin[];
   generalAverage: number | null;
   rank: number | null;
+  totalStudents: number;
   mention: string;
   totalActiveCoeffs: number;
   weightedSum: number;
@@ -170,6 +171,7 @@ export async function computeClassBulletin(classId: number, trimester: number, a
       subjects: subjectsData,
       generalAverage,
       rank: null,
+      totalStudents: 0,
       mention,
       totalActiveCoeffs: totalCoeffs,
       weightedSum,
@@ -179,7 +181,8 @@ export async function computeClassBulletin(classId: number, trimester: number, a
 
   const ranked = bulletins.filter(b => b.generalAverage !== null);
   ranked.sort((a, b) => b.generalAverage! - a.generalAverage!);
-  ranked.forEach((b, i) => { b.rank = i + 1; });
+  const totalRanked = ranked.length;
+  ranked.forEach((b, i) => { b.rank = i + 1; b.totalStudents = totalRanked; });
 
   return {
     className: classRow[0].name,

@@ -8,10 +8,14 @@ import {
   type NewStudent,
 } from "@/lib/repositories/student.repository";
 import { findAllClasses, findClassById, createClass, updateClass, deleteClass } from "@/lib/repositories/class.repository";
-import { createEnrollment } from "@/lib/repositories/enrollment.repository";
+import { findAllEnrollments, createEnrollment, updateEnrollment } from "@/lib/repositories/enrollment.repository";
 import { findCurrentAcademicYear } from "@/lib/repositories/academic-year.repository";
 import { findAllPayments } from "@/lib/repositories/payment.repository";
 import { findAttendanceByStudent } from "@/lib/repositories/attendance.repository";
+import { findGradesByEvaluation } from "@/lib/repositories/grade.repository";
+import { db } from "@/lib/db";
+import { medicalInfos, familyInfos, academicHistories, evaluations, schedules, classSubjects, attendance, grades, students as studentsTable, enrollments as enrollmentsTable } from "@/lib/models/schema";
+import { eq, and, inArray } from "drizzle-orm";
 
 function mapStudent(s: any) {
   if (!s) return null;
@@ -149,13 +153,33 @@ export async function editStudent(id: string, input: Partial<{
   if (input.discountValue !== undefined) data.discountValue = input.discountValue;
   if (input.discountReason !== undefined) data.discountReason = input.discountReason;
   const updated = await updateStudent(Number(id), data);
+
+  // If classId changed, update or create enrollment for current academic year
+  if (input.classId !== undefined) {
+    const currentYear = await findCurrentAcademicYear();
+    if (currentYear) {
+      const existing = await findAllEnrollments({ studentId: Number(id), academicYearId: currentYear.id });
+      if (existing.length > 0) {
+        await updateEnrollment(existing[0].id, { classId: Number(input.classId) });
+      } else {
+        await createEnrollment({
+          studentId: Number(id),
+          classId: Number(input.classId),
+          academicYearId: currentYear.id,
+          enrollmentDate: new Date().toISOString().split("T")[0],
+          status: "inscrit",
+        });
+      }
+    }
+  }
+
   return mapStudent(updated);
 }
 
 export async function removeStudent(id: string) {
   const studentId = Number(id);
 
-  const existing = await getStudentById(studentId);
+  const existing = await getStudentById(id);
   if (!existing) {
     throw new Error("Élève introuvable");
   }
@@ -165,9 +189,35 @@ export async function removeStudent(id: string) {
     throw new Error("Impossible de supprimer cet élève : il a des paiements enregistrés");
   }
 
-  const attendance = await findAttendanceByStudent(studentId);
-  if (attendance.length > 0) {
+  const att = await findAttendanceByStudent(studentId);
+  if (att && att.length > 0) {
     throw new Error("Impossible de supprimer cet élève : il a des présences enregistrées");
+  }
+
+  // Check other related tables before deletion
+  const enrolls = await findAllEnrollments({ studentId });
+  if (enrolls.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a des inscriptions");
+  }
+
+  const gr = db.select({ id: grades.id }).from(grades).where(eq(grades.studentId, studentId)).all();
+  if (gr.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a des notes");
+  }
+
+  const med = db.select({ id: medicalInfos.id }).from(medicalInfos).where(eq(medicalInfos.studentId, studentId)).all();
+  if (med.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a des informations médicales");
+  }
+
+  const fam = db.select({ id: familyInfos.id }).from(familyInfos).where(eq(familyInfos.studentId, studentId)).all();
+  if (fam.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a des informations familiales");
+  }
+
+  const hist = db.select({ id: academicHistories.id }).from(academicHistories).where(eq(academicHistories.studentId, studentId)).all();
+  if (hist.length > 0) {
+    throw new Error("Impossible de supprimer cet élève : il a un historique scolaire");
   }
 
   await deleteStudent(studentId);
@@ -213,5 +263,27 @@ export async function editClass(id: string, input: {
 }
 
 export async function removeClass(id: string) {
-  await deleteClass(Number(id));
+  const classId = Number(id);
+
+  const studentsInClass = db.select({ id: studentsTable.id }).from(studentsTable).where(eq(studentsTable.classId, classId)).all();
+  if (studentsInClass.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle contient des élèves");
+  }
+
+  const evalsInClass = db.select({ id: evaluations.id }).from(evaluations).where(eq(evaluations.classId, classId)).all();
+  if (evalsInClass.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle a des évaluations");
+  }
+
+  const scheds = db.select({ id: schedules.id }).from(schedules).where(eq(schedules.classId, classId)).all();
+  if (scheds.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle a des emplois du temps");
+  }
+
+  const enrolls = db.select({ id: enrollmentsTable.id }).from(enrollmentsTable).where(eq(enrollmentsTable.classId, classId)).all();
+  if (enrolls.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle a des inscriptions");
+  }
+
+  await deleteClass(classId);
 }

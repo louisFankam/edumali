@@ -181,6 +181,56 @@ describe("Payroll - Tests d'intégration", () => {
     expect(records.length).toBeGreaterThan(0);
   });
 
+  // ─── updatePayroll ───
+
+  it("devrait modifier un salaire via updatePayroll", async () => {
+    const { updatePayroll, getPayroll } = await import("@/lib/services/teacher.service");
+    const { db } = await import("@/lib/db");
+
+    const [teacher] = db.all(sql`SELECT id FROM teachers LIMIT 1`) as { id: number }[];
+
+    const { addPayroll } = await import("@/lib/services/teacher.service");
+    const created = await addPayroll({
+      teacher_id: String(teacher.id),
+      month: 7, year: 2026, amount: 160000,
+      bonus: 0, deductions: 0,
+      paid_at: "2026-07-15T12:00:00.000Z",
+      notes: "Salaire juillet",
+    });
+
+    await updatePayroll(created.id, { amount: 180000, bonus: 10000, deductions: 5000 });
+
+    const records = await getPayroll({ teacherId: String(teacher.id) });
+    const updated = records.find(r => r.id === created.id);
+    expect(updated).toBeDefined();
+    expect(updated!.amount).toBe(180000);
+    expect(updated!.bonus).toBe(10000);
+    expect(updated!.deductions).toBe(5000);
+  });
+
+  // ─── removePayroll ───
+
+  it("devrait supprimer un salaire via removePayroll", async () => {
+    const { removePayroll, getPayroll } = await import("@/lib/services/teacher.service");
+    const { db } = await import("@/lib/db");
+
+    const [teacher] = db.all(sql`SELECT id FROM teachers LIMIT 1`) as { id: number }[];
+
+    const { addPayroll } = await import("@/lib/services/teacher.service");
+    const created = await addPayroll({
+      teacher_id: String(teacher.id),
+      month: 8, year: 2026, amount: 140000,
+      bonus: 0, deductions: 0,
+      paid_at: "2026-08-15T12:00:00.000Z",
+    });
+
+    await removePayroll(created.id);
+
+    const records = await getPayroll({ teacherId: String(teacher.id) });
+    const found = records.find(r => r.id === created.id);
+    expect(found).toBeUndefined();
+  });
+
   it("devrait créer un salaire via l'API POST et le récupérer via GET", async () => {
     const { db } = await import("@/lib/db");
 
@@ -216,5 +266,21 @@ describe("Payroll - Tests d'intégration", () => {
     expect(found!.deductions).toBe(2000);
     expect(found!.month).toBe(6);
     expect(found!.year).toBe(2026);
+  });
+
+  it("devrait bloquer l'ajout d'une paie si la période est clôturée", async () => {
+    const { closePeriod } = await import("@/lib/services/period.service");
+    const { addPayroll } = await import("@/lib/services/teacher.service");
+    const { db } = await import("@/lib/db");
+    const [teacher] = db.all(sql`SELECT id FROM teachers LIMIT 1`) as { id: number }[];
+
+    await closePeriod(7, 2026);
+
+    await expect(addPayroll({
+      teacher_id: String(teacher.id),
+      month: 7, year: 2026,
+      amount: 100000,
+      paid_at: "2026-07-15T12:00:00.000Z",
+    })).rejects.toThrow("période est clôturée");
   });
 });

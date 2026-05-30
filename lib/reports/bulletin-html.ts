@@ -13,6 +13,7 @@ export interface StudentBulletinData {
   subjects: SubjectBulletinRow[]
   generalAverage: number | null
   rank: number | null
+  totalStudents: number
   mention: string
   totalActiveCoeffs: number
 }
@@ -143,7 +144,7 @@ export function buildBulletinHTML(
         <td class="lbl">Classe</td>
         <td class="val">${escHtml(className)}</td>
         <td class="lbl">Rang</td>
-        <td class="val">${escHtml(String(student.rank || "—"))}</td>
+        <td class="val">${student.rank ? `${student.rank}/${student.totalStudents}` : "—"}</td>
       </tr>
     </table>
     <table class="notes">

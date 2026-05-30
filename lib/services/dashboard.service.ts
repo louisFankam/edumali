@@ -29,7 +29,8 @@ export async function getDashboardData(from?: string, to?: string) {
   const monthlyPayroll = db.all(sql`
     SELECT printf('%04d-%02d', year, month) as month, SUM(amount + COALESCE(bonus, 0) - COALESCE(deductions, 0)) as total
     FROM payroll
-    WHERE paid_at >= ${dateFrom} AND paid_at <= ${dateTo}
+    WHERE (year > ${Number(dateFrom.substring(0, 4))} OR (year = ${Number(dateFrom.substring(0, 4))} AND month >= ${Number(dateFrom.substring(5, 7))}))
+      AND (year < ${Number(dateTo.substring(0, 4))} OR (year = ${Number(dateTo.substring(0, 4))} AND month <= ${Number(dateTo.substring(5, 7))}))
     GROUP BY printf('%04d-%02d', year, month)
     ORDER BY month ASC
   `) as { month: string; total: number }[];
@@ -57,7 +58,8 @@ export async function getDashboardData(from?: string, to?: string) {
   const [payrollTotal] = db.all(sql`
     SELECT COALESCE(SUM(amount + COALESCE(bonus, 0) - COALESCE(deductions, 0)), 0) as total, COUNT(*) as count
     FROM payroll
-    WHERE paid_at >= ${dateFrom} AND paid_at <= ${dateTo}
+    WHERE (year > ${Number(dateFrom.substring(0, 4))} OR (year = ${Number(dateFrom.substring(0, 4))} AND month >= ${Number(dateFrom.substring(5, 7))}))
+      AND (year < ${Number(dateTo.substring(0, 4))} OR (year = ${Number(dateTo.substring(0, 4))} AND month <= ${Number(dateTo.substring(5, 7))}))
   `) as { total: number; count: number }[];
 
   const months = [];

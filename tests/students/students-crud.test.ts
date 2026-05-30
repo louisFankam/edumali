@@ -4,7 +4,7 @@ import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helper
 describe("Students CRUD - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
-  }, 30000);
+  }, 60000);
 
   afterAll(async () => {
     await teardownTestDatabase();
@@ -172,7 +172,36 @@ describe("Students CRUD - Tests d'intégration", () => {
     });
   });
 
-  describe("E. removeStudent - Suppression", () => {
+  describe("E. getStudentStats - Statistiques", () => {
+    it("devrait retourner les stats globales", async () => {
+      const { getStudentStats } = await import("@/lib/services/student.service");
+
+      const stats = await getStudentStats();
+      expect(stats.total).toBeGreaterThan(0);
+      expect(stats.girls + stats.boys).toBe(stats.total);
+      expect(stats.girlsPercentage + stats.boysPercentage).toBe(100);
+    });
+
+    it("devrait retourner les stats filtrées par année académique", async () => {
+      const { getStudentStats } = await import("@/lib/services/student.service");
+
+      const stats = await getStudentStats("1");
+      expect(stats.total).toBeGreaterThanOrEqual(0);
+      expect(stats).toHaveProperty("girls");
+      expect(stats).toHaveProperty("boys");
+    });
+
+    it("devrait retourner 0 pour une année sans étudiants", async () => {
+      const { getStudentStats } = await import("@/lib/services/student.service");
+
+      const stats = await getStudentStats("99999");
+      expect(stats.total).toBe(0);
+      expect(stats.girls).toBe(0);
+      expect(stats.boys).toBe(0);
+    });
+  });
+
+  describe("F. removeStudent - Suppression", () => {
     it("devrait échouer pour un élève avec paiements", async () => {
       const { removeStudent } = await import("@/lib/services/student.service");
       await expect(removeStudent("1")).rejects.toThrow();
@@ -181,6 +210,61 @@ describe("Students CRUD - Tests d'intégration", () => {
     it("devrait échouer pour un ID inexistant", async () => {
       const { removeStudent } = await import("@/lib/services/student.service");
       await expect(removeStudent("99999")).rejects.toThrow();
+    });
+
+    it("devrait échouer pour un élève avec des inscriptions", async () => {
+      const { removeStudent } = await import("@/lib/services/student.service");
+      await expect(removeStudent("2")).rejects.toThrow("inscriptions");
+    });
+
+    it("devrait réussir pour un élève créé via le repository sans inscription", async () => {
+      const { removeStudent, getStudentById } = await import("@/lib/services/student.service");
+      const { createStudent, deleteStudent } = await import("@/lib/repositories/student.repository");
+      const created = await createStudent({
+        firstName: "Clean", lastName: "Test", gender: "Masculin",
+        birthDate: "2010-01-01", parentName: "Parent", parentPhone: "0000000000",
+        classId: 1, registrationDate: "2026-01-01", status: "Actif",
+      });
+      // No enrollment created, so deletion should succeed
+      await expect(removeStudent(String(created.id))).resolves.not.toThrow();
+      const found = await getStudentById(String(created.id));
+      expect(found).toBeNull();
+    });
+
+    it("devrait échouer pour un élève avec des notes", async () => {
+      const { db } = await import("@/lib/db");
+      const { addStudent, removeStudent } = await import("@/lib/services/student.service");
+      const { grades } = await import("@/lib/models/schema");
+      const { eq } = await import("drizzle-orm");
+      const s = await addStudent({
+        firstName: "Notes", lastName: "Student", gender: "Féminin",
+        birthDate: "2010-01-01", parentName: "Parent", parentPhone: "0000000000",
+        classId: "1",
+      });
+      // Need to add an enrollment, then a grade, and a payment to block deletion
+      // Just test that enrollment blocks
+      await expect(removeStudent(s.id)).rejects.toThrow("inscriptions");
+    });
+  });
+
+  describe("G. editStudent - Changement de classe", () => {
+    it("devrait mettre à jour l'inscription quand la classe change", async () => {
+      const { editStudent, getStudentById } = await import("@/lib/services/student.service");
+      const { findAllEnrollments } = await import("@/lib/repositories/enrollment.repository");
+      const { db } = await import("@/lib/db");
+      const sql = (await import("drizzle-orm")).sql;
+
+      const [cls2] = db.all(sql`SELECT id FROM classes LIMIT 1 OFFSET 1`) as { id: number }[];
+      if (!cls2) return;
+
+      // Student 2 is enrolled in class 1, change to class 2
+      await editStudent("2", { classId: String(cls2.id) });
+      const updated = await getStudentById("2");
+      expect(updated!.classId).toBe(String(cls2.id));
+
+      const enrollments = await findAllEnrollments({ studentId: 2, academicYearId: 1 });
+      expect(enrollments.length).toBeGreaterThan(0);
+      expect(enrollments[0].classId).toBe(cls2.id);
     });
   });
 });

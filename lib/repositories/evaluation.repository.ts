@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { evaluations, classes, subjects, academicYears } from "@/lib/models/schema";
+import { evaluations, classes, subjects, academicYears, grades } from "@/lib/models/schema";
 import { eq, desc, and, count, sql } from "drizzle-orm";
 
 export interface EvaluationFilters {
@@ -67,6 +67,7 @@ export async function updateEvaluation(id: number, input: Partial<{
 }
 
 export async function deleteEvaluation(id: number) {
+  await db.delete(grades).where(eq(grades.evaluationId, id));
   await db.delete(evaluations).where(eq(evaluations.id, id));
 }
 
