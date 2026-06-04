@@ -13,6 +13,7 @@ export interface SubjectBulletin {
   devoirAverage: number | null;
   finalAverage: number | null;
   absent: boolean;
+  appreciation: string;
 }
 
 export interface StudentBulletin {
@@ -121,6 +122,7 @@ export async function computeClassBulletin(classId: number, trimester: number, a
           devoirAverage: null,
           finalAverage: null,
           absent: true,
+          appreciation: "Absent",
         });
         continue;
       }
@@ -134,6 +136,11 @@ export async function computeClassBulletin(classId: number, trimester: number, a
         devoirAverage: devoirAvg !== null ? Math.round(devoirAvg * 100) / 100 : null,
         finalAverage: Math.round(finalAvg * 100) / 100,
         absent: false,
+        appreciation: finalAvg >= 16 ? "Très bien"
+          : finalAvg >= 14 ? "Bien"
+          : finalAvg >= 12 ? "Assez bien"
+          : finalAvg >= 10 ? "Passable"
+          : "Insuffisant",
       });
     }
 

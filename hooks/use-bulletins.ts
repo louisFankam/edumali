@@ -11,6 +11,7 @@ export interface SubjectBulletin {
   devoirAverage: number | null
   finalAverage: number | null
   absent: boolean
+  appreciation: string
 }
 
 export interface StudentBulletin {

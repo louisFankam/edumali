@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useSchoolInfo } from '@/hooks/use-school-info'
-import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle } from "lucide-react"
+import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle, IdCard } from "lucide-react"
 
 interface NavigationItem {
   name: string
@@ -34,6 +34,7 @@ const navigation: NavigationItem[] = [
       { name: "Réinscription", href: "/students/reinscription", icon: RotateCcw },
       { name: "Présence", href: "/students/presence", icon: CalendarCheck },
       { name: "Paiements", href: "/students/paiements", icon: CreditCard },
+      { name: "Cartes d'identité", href: "/students/id-cards", icon: IdCard },
     ],
   },
   {

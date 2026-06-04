@@ -12,6 +12,8 @@ Application de gestion scolaire conçue pour les établissements primaires et se
 
 ### Installation
 
+1. Clonez le repository
+
 ```bash
 git clone https://github.com/louisFankam/edumali.git
 cd edumali

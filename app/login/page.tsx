@@ -219,17 +219,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* Informations de connexion */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-900 mb-2">
-                Identifiants par défaut :
-              </h3>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Nom d'utilisateur :</strong> admin</p>
-                <p><strong>Mot de passe :</strong> admin</p>
-              </div>
-            </div>
-
             {/* Liens utiles */}
             <div className="text-center space-y-2">
               <Button

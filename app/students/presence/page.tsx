@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle, Loader2, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
+import { CalendarIcon, UserCheck, UserX, Clock, AlertCircle, Loader2, ArrowLeft, ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -45,6 +45,7 @@ export default function AttendancePage() {
   const [historyTo, setHistoryTo] = useState<Date>(new Date())
   const [selectedHistoryStudent, setSelectedHistoryStudent] = useState<string | null>(null)
   const [historyPage, setHistoryPage] = useState(1)
+  const [isSaving, setIsSaving] = useState(false)
   const HISTORY_PAGE_SIZE = 10
 
   const dateStr = format(selectedDate, "yyyy-MM-dd")
@@ -94,15 +95,20 @@ export default function AttendancePage() {
   }
 
   const handleSave = async () => {
-    const statusMap: Record<string, string> = { present: "présent", absent: "absent", late: "retard", congé: "congé" }
-    const records = filteredStudents.map(s => ({
-      studentId: Number(s.id),
-      classId: Number(selectedClassId),
-      date: dateStr,
-      status: statusMap[attendance[s.id]] || "présent",
-    }))
-    const res = await saveAttendance(records)
-    if (res.ok) alert("Présences sauvegardées")
+    setIsSaving(true)
+    try {
+      const statusMap: Record<string, string> = { present: "présent", absent: "absent", late: "retard", congé: "congé" }
+      const records = filteredStudents.map(s => ({
+        studentId: Number(s.id),
+        classId: Number(selectedClassId),
+        date: dateStr,
+        status: statusMap[attendance[s.id]] || "présent",
+      }))
+      const res = await saveAttendance(records)
+      if (res.ok) alert("Présences sauvegardées")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const stats = useMemo(() => {
@@ -111,7 +117,8 @@ export default function AttendancePage() {
     const present = statuses.filter(s => s === "present").length
     const absent = statuses.filter(s => s === "absent").length
     const late = statuses.filter(s => s === "late").length
-    return { total, present, absent, late }
+    const congé = statuses.filter(s => s === "congé").length
+    return { total, present, absent, late, congé }
   }, [filteredStudents, attendance])
 
   if (classesLoading) {
@@ -166,7 +173,8 @@ export default function AttendancePage() {
                     <Button onClick={handleMarkAllPresent} variant="outline" className="bg-transparent" disabled={!selectedClassId}>
                       Tous présents
                     </Button>
-                    <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700" disabled={!selectedClassId}>
+                    <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700" disabled={!selectedClassId || isSaving}>
+                      {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                       Sauvegarder
                     </Button>
                   </div>
@@ -179,11 +187,12 @@ export default function AttendancePage() {
                 <Card><CardContent className="p-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></CardContent></Card>
               ) : (
                 <>
-                  <div className="grid gap-4 md:grid-cols-4">
+                  <div className="grid gap-4 md:grid-cols-5">
                     <StatCard title="Total" value={stats.total} icon={CalendarIcon} color="text-foreground" />
                     <StatCard title="Présents" value={stats.present} icon={UserCheck} color="text-green-600" />
                     <StatCard title="Absents" value={stats.absent} icon={UserX} color="text-red-600" />
                     <StatCard title="Retards" value={stats.late} icon={Clock} color="text-yellow-600" />
+                    <StatCard title="Congés" value={stats.congé} icon={CalendarCheck} color="text-blue-600" />
                   </div>
 
                   <Card>
@@ -212,7 +221,7 @@ export default function AttendancePage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end space-x-1">
-                                  {["present", "late", "absent"].map((status) => (
+                                  {["present", "late", "absent", "congé"].map((status) => (
                                     <Button
                                       key={status}
                                       variant={(attendance[s.id] || "present") === status ? "default" : "outline"}
@@ -413,7 +422,7 @@ function StudentDetailView({ student, onBack }: { student: any; onBack: () => vo
                 {student.details.map((d: any, i: number) => (
                   <TableRow key={i}>
                     <TableCell>{format(new Date(d.date), "dd MMMM yyyy", { locale: fr })}</TableCell>
-                    <TableCell><StatusBadge status={d.status === "présent" ? "present" : d.status === "absent" ? "absent" : d.status === "retard" ? "late" : "present"} /></TableCell>
+                    <TableCell><StatusBadge status={d.status === "présent" ? "present" : d.status === "absent" ? "absent" : d.status === "retard" ? "late" : d.status === "congé" ? "congé" : "present"} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -438,8 +447,8 @@ function StatCard({ title, value, icon: Icon, color }: any) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const labels: any = { present: "Présent", absent: "Absent", late: "Retard" }
-  const variants: any = { present: "default", absent: "destructive", late: "secondary" }
+  const labels: any = { present: "Présent", absent: "Absent", late: "Retard", congé: "Congé" }
+  const variants: any = { present: "default", absent: "destructive", late: "secondary", congé: "outline" }
   return <Badge variant={variants[status]}>{labels[status]}</Badge>
 }
 
@@ -448,6 +457,7 @@ function getStatusIcon(status: string) {
     case "present": return <UserCheck className="h-3 w-3" />
     case "absent": return <UserX className="h-3 w-3" />
     case "late": return <Clock className="h-3 w-3" />
+    case "congé": return <CalendarCheck className="h-3 w-3" />
     default: return <AlertCircle className="h-3 w-3" />
   }
 }
@@ -457,6 +467,7 @@ function getStatusColor(status: string) {
     case "present": return "bg-green-600 hover:bg-green-700"
     case "late": return "bg-yellow-600 hover:bg-yellow-700 text-white"
     case "absent": return "bg-red-600 hover:bg-red-700"
+    case "congé": return "bg-blue-600 hover:bg-blue-700 text-white"
     default: return ""
   }
 }

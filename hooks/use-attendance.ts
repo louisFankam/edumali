@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 
 export interface AttendanceRecord {
   id: string
@@ -16,8 +16,10 @@ export interface AttendanceRecord {
 export function useAttendanceByDateClass() {
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const requestId = useRef(0)
 
   const load = useCallback(async (date: string, classId?: string, from?: string, to?: string) => {
+    const id = ++requestId.current
     setIsLoading(true)
     try {
       const params = new URLSearchParams({ date })
@@ -26,9 +28,10 @@ export function useAttendanceByDateClass() {
       if (to) params.set("to", to)
       const res = await window.fetch(`/api/attendance?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
+      if (id !== requestId.current) return
       if (json.ok) setRecords(json.data)
     } finally {
-      setIsLoading(false)
+      if (id === requestId.current) setIsLoading(false)
     }
   }, [])
 
@@ -47,8 +50,10 @@ export function useAttendanceByDateClass() {
 export function useAttendanceStats() {
   const [stats, setStats] = useState<{ total: number; présent: number; absent: number; retard: number; congé: number; rate: number } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const requestId = useRef(0)
 
   const load = useCallback(async (opts?: { studentId?: string; classId?: string; from?: string; to?: string }) => {
+    const id = ++requestId.current
     setIsLoading(true)
     try {
       const params = new URLSearchParams({ stats: "true" })
@@ -58,9 +63,10 @@ export function useAttendanceStats() {
       if (opts?.to) params.set("to", opts.to)
       const res = await window.fetch(`/api/attendance?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
+      if (id !== requestId.current) return
       if (json.ok) setStats(json.data)
     } finally {
-      setIsLoading(false)
+      if (id === requestId.current) setIsLoading(false)
     }
   }, [])
 

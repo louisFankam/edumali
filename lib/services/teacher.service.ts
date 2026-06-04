@@ -154,8 +154,8 @@ export async function getTeacherStats() {
 }
 
 export async function getTeacherAttendance(teacherId?: string, from?: string, to?: string) {
-  const rows = await findTeacherAttendance(teacherId ? Number(teacherId) : undefined);
-  let filtered = rows.map(a => ({
+  const rows = await findTeacherAttendance(teacherId ? Number(teacherId) : undefined, from, to);
+  return rows.map(a => ({
     id: String(a.id),
     teacher_id: String(a.teacherId),
     date: a.date,
@@ -163,9 +163,6 @@ export async function getTeacherAttendance(teacherId?: string, from?: string, to
     justification: a.justification ?? "",
     teacher: a.teacher ? mapTeacher(a.teacher) : null,
   }));
-  if (from) filtered = filtered.filter(a => a.date >= from);
-  if (to) filtered = filtered.filter(a => a.date <= to);
-  return filtered;
 }
 
 export async function getTeacherAttendanceByDate(date: string) {

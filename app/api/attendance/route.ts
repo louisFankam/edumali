@@ -19,17 +19,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, data });
     }
 
+    if (date) {
+      const data = await getAttendanceByDateAndClass(date, classId ?? undefined);
+      let result = data;
+      if (from) result = result.filter(a => a.date >= from);
+      if (to) result = result.filter(a => a.date <= to);
+      return NextResponse.json({ ok: true, data: result });
+    }
+
     if (from && to) {
       const data = await getAttendanceByRange(from, to, classId ?? undefined);
       return NextResponse.json({ ok: true, data });
     }
 
-    if (!date) return NextResponse.json({ ok: false, message: "Paramètre 'date' requis" }, { status: 400 });
-    const data = await getAttendanceByDateAndClass(date, classId ?? undefined);
-    let result = data;
-    if (from) result = result.filter(a => a.date >= from);
-    if (to) result = result.filter(a => a.date <= to);
-    return NextResponse.json({ ok: true, data: result });
+    return NextResponse.json({ ok: false, message: "Paramètre 'date' ou plage 'from/to' requis" }, { status: 400 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
   }

@@ -5,6 +5,7 @@ export interface SubjectBulletinRow {
   trimestrielleScore: number | null
   finalAverage: number | null
   absent: boolean
+  appreciation: string
 }
 
 export interface StudentBulletinData {
@@ -164,7 +165,7 @@ export function buildBulletinHTML(
             <td class="col-n">${s.absent ? "—" : fmt(s.devoirAverage)}</td>
             <td class="col-n">${s.absent ? "—" : fmt(s.trimestrielleScore)}</td>
             <td class="col-n nf">${s.absent ? "—" : fmt(s.finalAverage)}</td>
-            <td class="col-a">${s.absent ? "Absent" : ""}</td>
+            <td class="col-a">${escHtml(s.appreciation)}</td>
           </tr>
         `).join("")}
       </tbody>

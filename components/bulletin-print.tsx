@@ -9,6 +9,7 @@ interface SubjectRow {
   trimestrielleScore: number | null
   finalAverage: number | null
   absent: boolean
+  appreciation: string
 }
 
 interface PrintStudent {
@@ -109,7 +110,7 @@ function Bulletin({ student, className, trimester, schoolName, schoolAddress, sc
               <td className="col-note">{s.absent ? "—" : fmt(s.devoirAverage)}</td>
               <td className="col-note">{s.absent ? "—" : fmt(s.trimestrielleScore)}</td>
               <td className="col-note note-finale">{s.absent ? "—" : fmt(s.finalAverage)}</td>
-              <td className="col-app">{s.absent ? "Absent" : ""}</td>
+              <td className="col-app">{s.appreciation}</td>
             </tr>
           ))}
         </tbody>

@@ -1,4 +1,4 @@
-import { eq, like, or, and } from "drizzle-orm";
+import { eq, like, or, and, sql, gte, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { teachers, teacherSubjects, teacherAttendance, payroll } from "@/lib/models/schema";
 
@@ -97,9 +97,11 @@ export async function setTeacherSubjects(teacherId: number, subjectIds: number[]
   }
 }
 
-export async function findTeacherAttendance(teacherId?: number) {
+export async function findTeacherAttendance(teacherId?: number, from?: string, to?: string) {
   const conditions = [];
   if (teacherId) conditions.push(eq(teacherAttendance.teacherId, teacherId));
+  if (from) conditions.push(gte(teacherAttendance.date, from));
+  if (to) conditions.push(lte(teacherAttendance.date, to));
   return db.query.teacherAttendance.findMany({
     where: conditions.length > 0 ? and(...conditions) : undefined,
     with: { teacher: true },
@@ -115,15 +117,13 @@ export async function findTeacherAttendanceByDate(date: string) {
 }
 
 export async function upsertTeacherAttendance(records: { teacherId: number; date: string; status: string; justification?: string }[]) {
-  for (const r of records) {
-    await db
-      .insert(teacherAttendance)
-      .values({ teacherId: r.teacherId, date: r.date, status: r.status as any, justification: r.justification })
-      .onConflictDoUpdate({
-        target: [teacherAttendance.teacherId, teacherAttendance.date],
-        set: { status: r.status as any, justification: r.justification },
-      });
-  }
+  return db
+    .insert(teacherAttendance)
+    .values(records.map(r => ({ teacherId: r.teacherId, date: r.date, status: r.status as any, justification: r.justification })))
+    .onConflictDoUpdate({
+      target: [teacherAttendance.teacherId, teacherAttendance.date],
+      set: { status: sql`excluded.status`, justification: sql`excluded.justification`, updatedAt: new Date() },
+    });
 }
 
 export async function findAllPayroll(filters?: { teacherId?: number; month?: number; year?: number }) {
