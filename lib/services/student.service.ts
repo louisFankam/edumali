@@ -14,7 +14,7 @@ import { findAllPayments } from "@/lib/repositories/payment.repository";
 import { findAttendanceByStudent } from "@/lib/repositories/attendance.repository";
 import { findGradesByEvaluation } from "@/lib/repositories/grade.repository";
 import { db } from "@/lib/db";
-import { medicalInfos, familyInfos, academicHistories, evaluations, schedules, classSubjects, attendance, grades, students as studentsTable, enrollments as enrollmentsTable } from "@/lib/models/schema";
+import { medicalInfos, familyInfos, academicHistories, evaluations, schedules, exams, classSubjects, attendance, grades, students as studentsTable, enrollments as enrollmentsTable } from "@/lib/models/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
 function mapStudent(s: any) {
@@ -283,6 +283,21 @@ export async function removeClass(id: string) {
   const enrolls = db.select({ id: enrollmentsTable.id }).from(enrollmentsTable).where(eq(enrollmentsTable.classId, classId)).all();
   if (enrolls.length > 0) {
     throw new Error("Impossible de supprimer cette classe : elle a des inscriptions");
+  }
+
+  const subjAssigns = db.select({ id: classSubjects.id }).from(classSubjects).where(eq(classSubjects.classId, classId)).all();
+  if (subjAssigns.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle a des matières assignées");
+  }
+
+  const attRows = db.select({ id: attendance.id }).from(attendance).where(eq(attendance.classId, classId)).all();
+  if (attRows.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle a des présences enregistrées");
+  }
+
+  const examRows = db.select({ id: exams.id }).from(exams).where(eq(exams.classId, classId)).all();
+  if (examRows.length > 0) {
+    throw new Error("Impossible de supprimer cette classe : elle a des examens");
   }
 
   await deleteClass(classId);

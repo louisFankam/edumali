@@ -1,10 +1,19 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
-import { sql } from "drizzle-orm";
+import { seedClass, seedStudent, seedSubject, seedAcademicYear, seedEnrollment } from "../helpers/seed";
+
+let classId: string
+let subjectId: string
+let academicYearId: string
 
 describe("Settings - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId = await seedClass({ name: "6e A", level: 1, capacity: 40 })
+    subjectId = await seedSubject({ name: "Mathématiques", coefficient: 4 })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    const { saveSchoolInfo } = await import("@/lib/services/settings.service");
+    await saveSchoolInfo({ name: "École Test" });
   }, 30000);
 
   afterAll(async () => {
@@ -35,7 +44,7 @@ describe("Settings - Tests d'intégration", () => {
 
   it("devrait modifier une classe", async () => {
     const { editClass } = await import("@/lib/services/student.service");
-    const updated = await editClass("1", { name: "6e A Modifiée", totalFee: 75000 });
+    const updated = await editClass(classId, { name: "6e A Modifiée", totalFee: 75000 });
     expect(updated.name).toBe("6e A Modifiée");
     expect(updated.totalFee).toBe(75000);
   });
@@ -51,8 +60,10 @@ describe("Settings - Tests d'intégration", () => {
   });
 
   it("devrait bloquer la suppression d'une classe avec des élèves", async () => {
+    const cid = await seedClass({ name: "Classe Avec Élèves" })
+    await seedStudent(cid)
     const { removeClass } = await import("@/lib/services/student.service");
-    await expect(removeClass("1")).rejects.toThrow("contient des élèves");
+    await expect(removeClass(cid)).rejects.toThrow("contient des élèves");
   });
 
   // ─── Subjects ───
@@ -79,8 +90,8 @@ describe("Settings - Tests d'intégration", () => {
 
   it("devrait modifier une matière", async () => {
     const { editSubject, fetchSubject } = await import("@/lib/services/settings.service");
-    await editSubject("1", { name: "Mathématiques (Avancé)", coefficient: 5 });
-    const updated = await fetchSubject("1");
+    await editSubject(subjectId, { name: "Mathématiques (Avancé)", coefficient: 5 });
+    const updated = await fetchSubject(subjectId);
     expect(updated.name).toBe("Mathématiques (Avancé)");
     expect(updated.coefficient).toBe(5);
   });
@@ -168,9 +179,9 @@ describe("Settings - Tests d'intégration", () => {
 
   it("devrait modifier une année scolaire", async () => {
     const { editAcademicYear, fetchAcademicYear } = await import("@/lib/services/settings.service");
-    await editAcademicYear("1", { name: "2025-2026 Modifié" });
-    const updated = await fetchAcademicYear("1");
-    expect(updated.name).toBe("2025-2026 Modifié");
+    await editAcademicYear(academicYearId, { name: "2024-2025 Modifié" });
+    const updated = await fetchAcademicYear(academicYearId);
+    expect(updated.name).toBe("2024-2025 Modifié");
   });
 
   it("devrait supprimer une année scolaire", async () => {
@@ -204,4 +215,62 @@ describe("Settings - Tests d'intégration", () => {
     const updated = await fetchSchoolInfo();
     expect(updated!.name).toBe("École Test Modifiée");
   });
+
+  // ─── Fix: level / color / delete guards / subject status ───
+
+  it("devrait sauvegarder le niveau comme un entier", async () => {
+    const { addClass, getClasses } = await import("@/lib/services/student.service");
+    await addClass({ name: "Classe Niveau", level: 2 })
+    const all = await getClasses()
+    const c = all.find((c: any) => c.name === "Classe Niveau")
+    expect(c).toBeDefined()
+    expect(c.level).toBe(2)
+  })
+
+  it("devrait sauvegarder la couleur comme un hex", async () => {
+    const { addClass, getClasses } = await import("@/lib/services/student.service");
+    await addClass({ name: "Classe Couleur", color: "#22c55e" })
+    const all = await getClasses()
+    const c = all.find((c: any) => c.name === "Classe Couleur")
+    expect(c).toBeDefined()
+    expect(c.color).toBe("#22c55e")
+  })
+
+  it("devrait bloquer la suppression d'une classe avec des matières assignées", async () => {
+    const cid = await seedClass({ name: "Classe Matières" })
+    const sid = await seedSubject({ name: "Matière Bloquante" })
+    const { db } = await import("@/lib/db")
+    const sql = (await import("drizzle-orm")).sql
+    db.run(sql`INSERT INTO class_subjects (class_id, subject_id, coefficient) VALUES (${Number(cid)}, ${Number(sid)}, 1)`)
+
+    const { removeClass } = await import("@/lib/services/student.service");
+    await expect(removeClass(cid)).rejects.toThrow("matières assignées")
+  })
+
+  it("devrait bloquer la suppression d'une classe avec des présences", async () => {
+    const cid = await seedClass({ name: "Classe Présences" })
+    const { db } = await import("@/lib/db")
+    const sql = (await import("drizzle-orm")).sql
+    db.run(sql`PRAGMA foreign_keys = OFF`)
+    const rows = db.all(sql`INSERT INTO attendance (student_id, class_id, date, status) VALUES (99999, ${Number(cid)}, '2025-01-15', 'présent') RETURNING id`)
+    db.run(sql`PRAGMA foreign_keys = ON`)
+
+    const { removeClass } = await import("@/lib/services/student.service");
+    await expect(removeClass(cid)).rejects.toThrow("présences enregistrées")
+  })
+
+  it("devrait créer une matière avec le statut inactif si la checkbox est décochée", async () => {
+    const { addSubject, fetchSubjects } = await import("@/lib/services/settings.service")
+    const created = await addSubject({
+      name: "Matière Inactive",
+      code: "MI",
+      coefficient: 2,
+      status: "Inactif",
+    })
+    expect(created.status).toBe("Inactif")
+
+    const reloaded = await fetchSubjects()
+    const found = reloaded.find((s: any) => s.id === created.id)
+    expect(found!.status).toBe("Inactif")
+  })
 });

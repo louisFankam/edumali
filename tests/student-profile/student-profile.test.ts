@@ -1,9 +1,29 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helpers/setup";
+import { seedClass, seedStudent, seedAcademicYear, seedEnrollment } from "../helpers/seed";
+
+let classId1: string
+let classId2: string
+let studentId1: string
+let studentId2: string
+let academicYearId: string
 
 describe("Student Profile Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 0 })
+    classId2 = await seedClass({ name: "2ème Année", totalFee: 0 })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    studentId1 = await seedStudent(classId1, {
+      firstName: "Amadou", lastName: "Diallo",
+      gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456",
+    })
+    studentId2 = await seedStudent(classId1, {
+      firstName: "Fatoumata", lastName: "Traoré",
+      gender: "Féminin", parentName: "Oumar Traoré", parentPhone: "66123456",
+    })
+    await seedEnrollment(studentId1, classId1, academicYearId)
+    await seedEnrollment(studentId2, classId1, academicYearId)
   }, 30000);
 
   afterAll(async () => {
@@ -23,10 +43,10 @@ describe("Student Profile Page - Tests d'intégration", () => {
   describe("1. Général - Affichage étudiant", () => {
     it("devrait récupérer un étudiant existant par son ID", async () => {
       const { getStudentById } = await import("@/lib/services/student.service");
-      const student = await getStudentById("1");
+      const student = await getStudentById(studentId1);
 
       expect(student).not.toBeNull();
-      expect(student.id).toBe("1");
+      expect(student.id).toBe(studentId1);
       expect(student.firstName).toBeTruthy();
       expect(student.lastName).toBeTruthy();
       expect(student.className).toBeTruthy();
@@ -53,7 +73,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
   describe("2. Général - Modification étudiant (PUT /api/students/:id)", () => {
     it("devrait mettre à jour les champs d'un étudiant", async () => {
       const { editStudent } = await import("@/lib/services/student.service");
-      const updated = await editStudent("1", {
+      const updated = await editStudent(studentId1, {
         firstName: "AmadouTest",
         lastName: "DialloTest",
         nationality: "Malienne",
@@ -65,28 +85,28 @@ describe("Student Profile Page - Tests d'intégration", () => {
 
       // Vérifier persistance en re-lisant
       const { getStudentById } = await import("@/lib/services/student.service");
-      const reloaded = await getStudentById("1");
+      const reloaded = await getStudentById(studentId1);
       expect(reloaded.firstName).toBe("AmadouTest");
       expect(reloaded.lastName).toBe("DialloTest");
     });
 
     it("devrait mettre à jour le statut d'un étudiant", async () => {
       const { editStudent } = await import("@/lib/services/student.service");
-      const updated = await editStudent("1", { status: "Inactif" });
+      const updated = await editStudent(studentId1, { status: "Inactif" });
       expect(updated.status).toBe("Inactif");
 
       // Remettre Actif pour les autres tests
-      await editStudent("1", { status: "Actif" });
+      await editStudent(studentId1, { status: "Actif" });
     });
 
     it("devrait mettre à jour la classe d'un étudiant", async () => {
       const { editStudent } = await import("@/lib/services/student.service");
-      const updated = await editStudent("1", { classId: "2" });
-      expect(updated.classId).toBe("2");
+      const updated = await editStudent(studentId1, { classId: classId2 });
+      expect(updated.classId).toBe(classId2);
       expect(updated.className).toBe("2ème Année");
 
       // Remettre dans la classe 1
-      await editStudent("1", { classId: "1" });
+      await editStudent(studentId1, { classId: classId1 });
     });
 
     it("devrait retourner null pour un étudiant inexistant en modification", async () => {
@@ -101,7 +121,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
   describe("3. Médical - Sauvegarde et affichage", () => {
     it("devrait retourner null si aucun info médicale n'existe", async () => {
       const { getMedicalInfo } = await import("@/lib/services/medical.service");
-      const data = await getMedicalInfo("1");
+      const data = await getMedicalInfo(studentId1);
       expect(data).toBeNull();
     });
 
@@ -118,14 +138,14 @@ describe("Student Profile Page - Tests d'intégration", () => {
         emergencyPhone: "76123456",
         vaccinationStatus: "À jour",
       };
-      const result = await saveMedicalInfo("1", input);
+      const result = await saveMedicalInfo(studentId1, input);
       expect(result.id).toBeTruthy();
-      expect(result.studentId).toBe("1");
+      expect(result.studentId).toBe(studentId1);
     });
 
     it("devrait lire les infos médicales créées", async () => {
       const { getMedicalInfo } = await import("@/lib/services/medical.service");
-      const data = await getMedicalInfo("1");
+      const data = await getMedicalInfo(studentId1);
 
       expect(data).not.toBeNull();
       expect(data.bloodType).toBe("A+");
@@ -142,9 +162,9 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait mettre à jour les infos médicales (UPSERT = UPDATE)", async () => {
       const { saveMedicalInfo, getMedicalInfo } = await import("@/lib/services/medical.service");
 
-      await saveMedicalInfo("1", { bloodType: "O+", allergies: "Aucune" });
+      await saveMedicalInfo(studentId1, { bloodType: "O+", allergies: "Aucune" });
 
-      const data = await getMedicalInfo("1");
+      const data = await getMedicalInfo(studentId1);
       expect(data.bloodType).toBe("O+");
       expect(data.allergies).toBe("Aucune");
       // Les champs non modifiés doivent rester
@@ -155,13 +175,13 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait accepter des champs vides en médical", async () => {
       const { saveMedicalInfo, getMedicalInfo } = await import("@/lib/services/medical.service");
 
-      await saveMedicalInfo("1", {
+      await saveMedicalInfo(studentId1, {
         bloodType: "", allergies: "", medicalConditions: "",
         medications: "", doctorName: "", doctorPhone: "",
         emergencyContact: "", emergencyPhone: "", vaccinationStatus: "",
       });
 
-      const data = await getMedicalInfo("1");
+      const data = await getMedicalInfo(studentId1);
       expect(data.bloodType).toBe("");
       expect(data.allergies).toBe("");
     });
@@ -173,13 +193,13 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait retourner null si aucune info familiale n'existe", async () => {
       const { getFamilyInfo } = await import("@/lib/services/family.service");
       // Student 2 n'a pas d'infos familiales
-      const data = await getFamilyInfo("2");
+      const data = await getFamilyInfo(studentId2);
       expect(data).toBeNull();
     });
 
     it("devrait créer des infos familiales (INSERT)", async () => {
       const { saveFamilyInfo } = await import("@/lib/services/family.service");
-      const result = await saveFamilyInfo("1", {
+      const result = await saveFamilyInfo(studentId1, {
         fatherName: "Moussa Diallo",
         fatherPhone: "70123456",
         fatherProfession: "Enseignant",
@@ -191,12 +211,12 @@ describe("Student Profile Page - Tests d'intégration", () => {
         guardianPhone: "",
       });
       expect(result.id).toBeTruthy();
-      expect(result.studentId).toBe("1");
+      expect(result.studentId).toBe(studentId1);
     });
 
     it("devrait lire les infos familiales créées", async () => {
       const { getFamilyInfo } = await import("@/lib/services/family.service");
-      const data = await getFamilyInfo("1");
+      const data = await getFamilyInfo(studentId1);
 
       expect(data).not.toBeNull();
       expect(data.fatherName).toBe("Moussa Diallo");
@@ -210,9 +230,9 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait mettre à jour les infos familiales (UPSERT = UPDATE)", async () => {
       const { saveFamilyInfo, getFamilyInfo } = await import("@/lib/services/family.service");
 
-      await saveFamilyInfo("1", { fatherName: "Moussa Mis à jour", fatherPhone: "71234567" });
+      await saveFamilyInfo(studentId1, { fatherName: "Moussa Mis à jour", fatherPhone: "71234567" });
 
-      const data = await getFamilyInfo("1");
+      const data = await getFamilyInfo(studentId1);
       expect(data.fatherName).toBe("Moussa Mis à jour");
       expect(data.fatherPhone).toBe("71234567");
       expect(data.motherName).toBe("Aminata Diallo"); // Inchangé
@@ -221,7 +241,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait créer des infos familiales pour un autre étudiant", async () => {
       const { saveFamilyInfo, getFamilyInfo } = await import("@/lib/services/family.service");
 
-      await saveFamilyInfo("2", {
+      await saveFamilyInfo(studentId2, {
         fatherName: "Oumar Traoré",
         fatherPhone: "66123456",
         fatherProfession: "Commerçant",
@@ -233,11 +253,11 @@ describe("Student Profile Page - Tests d'intégration", () => {
         guardianPhone: "",
       });
 
-      const data = await getFamilyInfo("2");
+      const data = await getFamilyInfo(studentId2);
       expect(data.fatherName).toBe("Oumar Traoré");
 
       // Vérifier que student 1 n'a pas été affecté
-      const data1 = await getFamilyInfo("1");
+      const data1 = await getFamilyInfo(studentId1);
       expect(data1.fatherName).toBe("Moussa Mis à jour");
     });
   });
@@ -247,13 +267,13 @@ describe("Student Profile Page - Tests d'intégration", () => {
   describe("5. Académique - CR complet", () => {
     it("devrait retourner une liste vide si aucun historique", async () => {
       const { getAcademicHistories } = await import("@/lib/services/academic-history.service");
-      const records = await getAcademicHistories("1");
+      const records = await getAcademicHistories(studentId1);
       expect(records).toEqual([]);
     });
 
     it("devrait ajouter un historique scolaire", async () => {
       const { addAcademicHistory } = await import("@/lib/services/academic-history.service");
-      const created = await addAcademicHistory("1", {
+      const created = await addAcademicHistory(studentId1, {
         schoolName: "École Primaire de Bamako",
         className: "CM2",
         academicYear: "2023-2024",
@@ -269,7 +289,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
 
     it("devrait ajouter un deuxième historique", async () => {
       const { addAcademicHistory } = await import("@/lib/services/academic-history.service");
-      const created = await addAcademicHistory("2", {
+      const created = await addAcademicHistory(studentId2, {
         schoolName: "École de Kalaban",
         className: "CE2",
         academicYear: "2021-2022",
@@ -282,7 +302,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
 
     it("devrait lister tous les historiques d'un étudiant", async () => {
       const { getAcademicHistories } = await import("@/lib/services/academic-history.service");
-      const records = await getAcademicHistories("1");
+      const records = await getAcademicHistories(studentId1);
 
       expect(records.length).toBe(1);
       expect(records[0].schoolName).toBe("École Primaire de Bamako");
@@ -290,7 +310,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
 
     it("devrait ajouter un historique avec schoolName vide (validation côté route uniquement)", async () => {
       const { addAcademicHistory, removeAcademicHistory } = await import("@/lib/services/academic-history.service");
-      const created = await addAcademicHistory("1", { schoolName: "" });
+      const created = await addAcademicHistory(studentId1, { schoolName: "" });
       expect(created.schoolName).toBe("");
       await removeAcademicHistory(created.id);
     });
@@ -298,7 +318,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait modifier un historique scolaire", async () => {
       const { getAcademicHistories, editAcademicHistory } = await import("@/lib/services/academic-history.service");
 
-      const records = await getAcademicHistories("1");
+      const records = await getAcademicHistories(studentId1);
       const id = records[0].id;
 
       const updated = await editAcademicHistory(id, {
@@ -310,7 +330,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
       expect(updated.className).toBe("6ème");
 
       // Vérifier persistance
-      const reloaded = await getAcademicHistories("1");
+      const reloaded = await getAcademicHistories(studentId1);
       expect(reloaded[0].schoolName).toBe("École Primaire de Bamako (modifiée)");
     });
 
@@ -319,7 +339,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
 
       // Ajouter puis supprimer
       const { addAcademicHistory } = await import("@/lib/services/academic-history.service");
-      const created = await addAcademicHistory("1", {
+      const created = await addAcademicHistory(studentId1, {
         schoolName: "Temporaire",
         className: "CP",
         academicYear: "2020-2021",
@@ -327,12 +347,12 @@ describe("Student Profile Page - Tests d'intégration", () => {
         remarks: "À supprimer",
       });
 
-      let records = await getAcademicHistories("1");
+      let records = await getAcademicHistories(studentId1);
       const countBefore = records.length;
 
       await removeAcademicHistory(created.id);
 
-      records = await getAcademicHistories("1");
+      records = await getAcademicHistories(studentId1);
       expect(records.length).toBe(countBefore - 1);
       expect(records.find(r => r.id === created.id)).toBeUndefined();
     });
@@ -343,7 +363,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
   describe("6. Financier - Paiements", () => {
     it("devrait retourner une liste vide si aucun paiement", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
     });
@@ -351,7 +371,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait créer un paiement", async () => {
       const { addPayment } = await import("@/lib/services/payment.service");
       const payment = await addPayment({
-        studentId: 1,
+        studentId: Number(studentId1),
         amount: 50000,
         method: "espèces",
         date: "2024-10-15",
@@ -368,7 +388,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait créer un paiement avec mobile money", async () => {
       const { addPayment } = await import("@/lib/services/payment.service");
       const payment = await addPayment({
-        studentId: 1,
+        studentId: Number(studentId1),
         amount: 25000,
         method: "mobile_money",
         date: "2024-11-01",
@@ -386,7 +406,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
       // La DB seed ne crée pas de fee_types, donc la liste peut être vide
 
       const payment = await addPayment({
-        studentId: 1,
+        studentId: Number(studentId1),
         amount: 10000,
         method: "virement",
         date: "2024-12-01",
@@ -399,13 +419,13 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait lister les paiements filtrés par étudiant", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       expect(result.data.length).toBeGreaterThanOrEqual(3);
       expect(result.total).toBeGreaterThanOrEqual(3);
 
-      // Tous les paiements doivent appartenir à l'étudiant 1
+      // Tous les paiements doivent appartenir à l'étudiant
       result.data.forEach(p => {
-        expect(p.studentId).toBe("1");
+        expect(p.studentId).toBe(studentId1);
       });
     });
 
@@ -413,7 +433,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
       const result = await getPayments({
-        studentId: "1",
+        studentId: studentId1,
         from: "2024-10-01",
         to: "2024-10-31",
       });
@@ -425,7 +445,7 @@ describe("Student Profile Page - Tests d'intégration", () => {
     it("devrait retourner le résumé des paiements d'un étudiant", async () => {
       const { getStudentPaymentSummaryService } = await import("@/lib/services/payment.service");
 
-      const summary = await getStudentPaymentSummaryService("1");
+      const summary = await getStudentPaymentSummaryService(studentId1);
       // 50000 + 25000 + 10000 = 85000
       expect(summary.totalPaid).toBe(85000);
     });
@@ -452,13 +472,13 @@ describe("Student Profile Page - Tests d'intégration", () => {
   describe("7. Financier - Résumé (Total Frais / Payé / Restant)", () => {
     it("devrait calculer correctement le total payé", async () => {
       const { getStudentPaymentSummaryService } = await import("@/lib/services/payment.service");
-      const summary = await getStudentPaymentSummaryService("1");
+      const summary = await getStudentPaymentSummaryService(studentId1);
       expect(summary.totalPaid).toBe(85000);
     });
 
     it("devrait donner la classe avec son totalFee", async () => {
       const { getStudentById } = await import("@/lib/services/student.service");
-      const student = await getStudentById("1");
+      const student = await getStudentById(studentId1);
 
       // Récupérer les classes
       const { getClasses } = await import("@/lib/services/student.service");

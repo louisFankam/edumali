@@ -1,10 +1,26 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
+import { seedTeacher, seedSubject } from "../helpers/seed";
 import { sql } from "drizzle-orm";
+
+let teacherId1: string
+let teacherId2: string
+let subjectId: string
 
 describe("Teachers - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    teacherId1 = await seedTeacher({
+      firstName: "Mamadou", lastName: "Koné",
+      email: "mamadou.kone@ecole.ml", gender: "Masculin",
+      salary: 200000, contrat: "mensuel", status: "active",
+    })
+    teacherId2 = await seedTeacher({
+      firstName: "Aminata", lastName: "Diallo",
+      email: "aminata.diallo@ecole.ml", gender: "Féminin",
+      salary: 180000, contrat: "mensuel", status: "active",
+    })
+    subjectId = await seedSubject({ name: "Mathématiques", coefficient: 4 })
   }, 60000);
 
   afterAll(async () => {
@@ -26,7 +42,7 @@ describe("Teachers - Tests d'intégration", () => {
     const { getTeachers } = await import("@/lib/services/teacher.service");
     const { db } = await import("@/lib/db");
 
-    db.run(sql`UPDATE teachers SET status = 'inactive' WHERE id = 1`);
+    db.run(sql`UPDATE teachers SET status = 'inactive' WHERE id = ${Number(teacherId1)}`);
 
     const result = await getTeachers({ status: "inactive" });
     expect(result.data.every((t: any) => t.status === "inactive")).toBe(true);
@@ -49,9 +65,9 @@ describe("Teachers - Tests d'intégration", () => {
   it("devrait récupérer un enseignant par son ID", async () => {
     const { getTeacherById } = await import("@/lib/services/teacher.service");
 
-    const teacher = await getTeacherById("1");
+    const teacher = await getTeacherById(teacherId1);
     expect(teacher).not.toBeNull();
-    expect(teacher!.id).toBe("1");
+    expect(teacher!.id).toBe(teacherId1);
     expect(teacher!.first_name).toBeTruthy();
     expect(teacher!.last_name).toBeTruthy();
     expect(teacher!.email).toBeTruthy();
@@ -115,7 +131,7 @@ describe("Teachers - Tests d'intégration", () => {
   it("devrait modifier un enseignant", async () => {
     const { editTeacher } = await import("@/lib/services/teacher.service");
 
-    const updated = await editTeacher("1", {
+    const updated = await editTeacher(teacherId1, {
       first_name: "MamadouModifié",
       salary: 300000,
       status: "on_leave",
@@ -132,11 +148,11 @@ describe("Teachers - Tests d'intégration", () => {
 
     const subjects = db.all(sql`SELECT id FROM subjects`) as { id: number }[];
 
-    await editTeacher("1", {
+    await editTeacher(teacherId1, {
       speciality: subjects.map(s => String(s.id)),
     });
 
-    const updated = await getTeacherById("1");
+    const updated = await getTeacherById(teacherId1);
     expect(updated!.speciality_names.length).toBe(subjects.length);
   });
 
@@ -177,7 +193,7 @@ describe("Teachers - Tests d'intégration", () => {
   it("devrait récupérer les présences d'un enseignant par teacherId", async () => {
     const { getTeacherAttendance } = await import("@/lib/services/teacher.service");
 
-    const records = await getTeacherAttendance("1");
+    const records = await getTeacherAttendance(teacherId1);
     expect(Array.isArray(records)).toBe(true);
   });
 
@@ -185,10 +201,10 @@ describe("Teachers - Tests d'intégration", () => {
     const { getTeacherAttendance, saveTeacherAttendance } = await import("@/lib/services/teacher.service");
 
     await saveTeacherAttendance([
-      { teacher_id: "1", date: "2026-05-15", status: "present" },
+      { teacher_id: teacherId1, date: "2026-05-15", status: "present" },
     ]);
 
-    const records = await getTeacherAttendance("1", "2026-05-01", "2026-05-31");
+    const records = await getTeacherAttendance(teacherId1, "2026-05-01", "2026-05-31");
     expect(records.length).toBeGreaterThanOrEqual(1);
     expect(records[0].status).toBe("present");
   });

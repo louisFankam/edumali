@@ -1,279 +1,100 @@
-# Ekima - Système de Gestion Scolaire
+# Ekima — Système de Gestion Scolaire
 
-Application de gestion scolaire conçue pour les établissements primaires et secondaires en Afrique de l'Ouest.
+Application de gestion scolaire pour les établissements primaires et secondaires en Afrique de l'Ouest.
 
-## Démarrage Rapide
+Stack : Next.js 15, Tailwind CSS v4, shadcn/ui, Drizzle ORM + SQLite.
+
+## Démarrage rapide
 
 ### Prérequis
 
-- Node.js 18+ (recommandé: Node.js 22 LTS)
-- pnpm 8+ (gestionnaire de paquets)
-- Git
+- Node.js 18+ (recommandé : 22 LTS)
+- pnpm 8+
 
 ### Installation
-
-1. Clonez le repository
 
 ```bash
 git clone https://github.com/louisFankam/edumali.git
 cd edumali
-```
-
-2. Installez les dépendances
-
-```bash
 pnpm install
-```
-
-3. Démarrez l'application
-
-```bash
 pnpm build && pnpm start
 ```
 
-L'application sera accessible à http://localhost:3000
+L'application est accessible sur http://localhost:3000
+
+**Aucune commande supplémentaire n'est nécessaire.**  
+La base de données SQLite (`ekima_db/data.db`) est créée automatiquement au premier démarrage, avec toutes les tables et un compte administrateur.
 
 ### Identifiants par défaut
 
-Lors de la première exécution, un utilisateur administrateur est créé automatiquement :
+- Utilisateur : `admin`
+- Mot de passe : `admin`
 
-- Utilisateur: admin
-- Mot de passe: admin
+Modifiables via les variables d'environnement (voir `Configuration`).
 
-Vous pouvez modifier ces identifiants via les variables d'environnement (voir section Configuration ci-dessous).
+### Développement
 
-### Configuration
+```bash
+pnpm dev
+```
 
-Créez un fichier `.env` à la racine du projet (ou utilisez celui fourni par défaut) :
+## Configuration
+
+Créez un fichier `.env` à la racine :
 
 ```
-SESSION_SECRET=votreCleSessionSecurisee64CaracteresHex
+SESSION_SECRET=<64 caractères hexadécimaux>
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
 ```
 
-**Variables obligatoires :**
-- `SESSION_SECRET` : 64 caractères hexadécimaux (généré automatiquement dans le `.env` fourni)
+`SESSION_SECRET` est obligatoire. Un `.env` par défaut est fourni avec le projet.
 
-## Scripts disponibles
+## Scripts
 
-```bash
-pnpm dev              # Démarrer le serveur de développement
-pnpm build            # Générer la version optimisée de production
-pnpm start            # Démarrer l'application en production
-pnpm db:generate      # Générer les fichiers de migration Drizzle
-pnpm db:migrate       # Appliquer les migrations à la base de données
-pnpm db:studio        # Ouvrir l'interface visuelle Drizzle Studio pour inspecter la base de données
+| Commande | Usage |
+|---|---|
+| `pnpm dev` | Serveur de développement (Turbo) |
+| `pnpm build` | Build production |
+| `pnpm start` | Lancement production |
+| `pnpm test` | Tests (vitest) |
+| `pnpm db:generate` | Générer une migration Drizzle |
+| `pnpm db:migrate` | Appliquer les migrations |
+| `pnpm db:studio` | Interface Drizzle Studio |
+
+### Quand utiliser `db:generate` / `db:migrate` ?
+
+**Jamais pour lancer l'application.** L'app crée et gère son schéma toute seule au premier démarrage.
+
+Ces commandes servent uniquement quand tu **modifies le schéma** (`lib/models/schema.ts`) :
+
+```
+1. Modifier schema.ts
+2. Mettre à jour aussi lib/bootstrap.ts (CREATE TABLE / ALTER TABLE)
+3. pnpm db:generate   → crée le fichier de migration dans drizzle/
+4. pnpm db:migrate    → applique la migration à ta base de dev
+5. Committer le tout
 ```
 
-## Structure de la Base de Données
+## Structure du projet
 
-La base de données SQLite contient 22 tables principales :
-
-### Authentification et Utilisateurs
-- users: Comptes utilisateurs avec identifiants et mots de passe hashés
-- user_preferences: Préférences utilisateur (thème, couleurs, paramètres)
-
-### Établissement et Structure
-- school_info: Informations de l'école (nom, adresse, directeur, logo)
-- academic_years: Années scolaires avec dates de début et fin
-- classes: Classes avec capacités et affectation d'enseignant
-- subjects: Matières enseignées avec coefficients
-
-### Gestion des Élèves
-- students: Données personnelles et de contact des élèves
-- enrollments: Inscriptions des élèves par classe et année
-- medicalInfos: Informations médicales (type sanguin, allergies, vaccins)
-- familyInfos: Coordonnées des parents et tuteurs
-- academicHistories: Parcours scolaire antérieur
-
-### Gestion des Enseignants
-- teachers: Données des enseignants (contrat, salaire, status)
-- teacherSubjects: Attribution des matières aux enseignants
-- teacherAttendance: Présences des enseignants
-- payroll: Historique de paie et salaires
-
-### Évaluations et Notes
-- evaluations: Examens et devoirs par classe et matière
-- grades: Notes des élèves avec gestion des absences
-
-### Suivi de Présence
-- attendance: Présences et absences des élèves
-
-### Finances
-- feeTypes: Types de frais scolaires
-- payments: Paiements effectués par les élèves
-- expenses: Dépenses de fonctionnement (eau, électricité, fournitures)
-- closedPeriods: Mois clôturés (lecture seule pour les modifications)
-
-### Administration
-- auditLog: Journal des modifications (create, update, delete)
-- schedules: Emploi du temps
-- exams: Calendrier des examens
-- classSubjects: Attribution des matières par classe
-
-## Données de Démonstration
-
-Lors de la première exécution, l'application crée automatiquement :
-- 6 matières d'enseignement
-- 6 classes (1ère à 6ème année)
-- 2 élèves de démonstration
-- 2 enseignants de démonstration
-- L'année académique courante
-- Une école de démonstration
-
-Ces données permettent de tester rapidement l'application sans configuration supplémentaire.
-
-## État actuel du backend (audit rapide)
-
-### Ce qui est déjà bien
-- Base SQLite branchée via Drizzle dans `lib/db.ts`.
-- Schéma Drizzle centralisé dans `lib/models/schema.ts`.
-- `drizzle.config.ts` présent et correctement orienté vers SQLite.
-- TypeScript strict activé.
-
-### Statut après implémentation
-- Auth implémentée côté serveur (`app/api/auth/*`) avec validation Zod.
-- Session par cookie `httpOnly` signé (HMAC SHA-256).
-- Séparation en couches active: `controller -> service -> repository -> models`.
-- Migration versionnée créée dans `drizzle/` et appliquée sur SQLite.
-- Seed automatique de l’utilisateur unique au démarrage si la table `users` est vide.
-
-## Architecture backend recommandée (en gardant `models` et `controller`)
-
-Tu veux garder les noms `models` et `controller`: très bien. On structure autour de ça.
-
-### Arborescence cible
-
-```txt
-app/
-  (auth)/
-  api/
-  ...
+```
+app/                   Pages Next.js (App Router)
+  api/                 Route handlers (backend)
+components/            Composants React partagés
+hooks/                 Hooks custom (auth, préférences, etc.)
 lib/
-  db.ts
-  models/
-    schema.ts
-    user.model.ts
-    ...
-  controller/
-    auth.controller.ts
-    student.controller.ts
-    ...
-  services/
-    auth.service.ts
-    student.service.ts
-    ...
-  repositories/
-    user.repository.ts
-    student.repository.ts
-    ...
-  validations/
-    auth.schema.ts
-    student.schema.ts
-    ...
-  guards/
-    auth.guard.ts
-    role.guard.ts
-  auth/
-    session.ts
-    password.ts
-drizzle/
-  0000_init.sql
-  meta/
+  bootstrap.ts         Initialisation : création des tables + admin
+  db.ts                Connexion SQLite (better-sqlite3 + Drizzle)
+  models/schema.ts     Schéma Drizzle (26 tables)
+  services/            Logique métier
+  repositories/        Accès DB
+  auth/                Session, hash, etc.
+  guards/              Contrôle d'accès
+drizzle/               Migrations versionnées (développement uniquement)
+tests/                 Tests d'intégration (vitest)
 ```
 
-### Rôles des couches
-- `models/`: définition des tables Drizzle + types inférés.
-- `repositories/`: accès DB pur (requêtes Drizzle).
-- `services/`: logique métier, orchestration, transactions.
-- `controller/`: point d’entrée backend (Server Actions / Route Handlers), validation + authz + appel service.
-- `validations/`: schémas Zod pour toutes les entrées externes.
-- `guards/`: contrôle d’accès (session + rôles).
+## Licence
 
-### Flux recommandé
-`Client Component` -> `Server Action` (ou `app/api/.../route.ts`) -> `controller` -> `service` -> `repository` -> `models` -> SQLite
-
-## Sécurité backend à appliquer maintenant
-
-- Validation Zod systématique dans chaque `controller`.
-- Contrôle de session/role avant chaque mutation.
-- Hash de mot de passe (`argon2` recommandé) + comparaison côté serveur uniquement.
-- Cookies `httpOnly`, `secure`, `sameSite=lax|strict`.
-- Zéro secret côté client (`NEXT_PUBLIC_*` uniquement pour valeurs publiques).
-- Requêtes Drizzle paramétrées uniquement (éviter SQL brut concaténé).
-
-## Migration SQLite avec Drizzle (quand tu modifies un model)
-
-## 1) Modifier le schéma
-- Éditer `lib/models/schema.ts` (ajout/suppression/rename de colonne/table).
-
-## 2) Générer une migration SQL versionnée
-
-```bash
-pnpm drizzle-kit generate
-```
-
-Effet:
-- Crée des fichiers dans `drizzle/` (SQL + metadata).
-- Ces fichiers doivent être commités dans Git.
-
-## 3) Appliquer la migration à SQLite
-
-```bash
-pnpm drizzle-kit migrate
-```
-
-Effet:
-- Exécute les migrations SQL sur `ekima_db/data.db`.
-- Met à jour la structure réelle de la base.
-
-## 4) Vérifier
-
-```bash
-pnpm drizzle-kit studio
-```
-
-Tu vérifies les tables/colonnes et les données après migration.
-
-## Important: `generate + migrate` vs `push`
-
-- `generate + migrate` (recommandé): historique versionné, reproductible, propre pour équipe/prod.
-- `push` (à éviter en prod): applique directement les changements sans historique SQL propre.
-
-## Cas concret: modification d’un model
-
-Exemple: tu ajoutes `role` dans `users`.
-
-1. Modifier `lib/models/schema.ts`.
-2. `pnpm drizzle-kit generate` -> nouveau fichier SQL créé.
-3. `pnpm drizzle-kit migrate` -> SQLite est alignée.
-4. Adapter `validations/`, `controller/`, `services/` pour utiliser le nouveau champ.
-
-## Conseils pratiques pour éviter les erreurs de migration
-
-- Toujours faire un backup de `ekima_db/data.db` avant une migration sensible.
-- Ne jamais éditer manuellement une migration déjà appliquée.
-- Créer une nouvelle migration corrective si nécessaire.
-- En CI/CD: exécuter `drizzle-kit migrate` au déploiement backend.
-
-## Commandes utiles à ajouter dans `package.json`
-
-```json
-{
-  "scripts": {
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
-  }
-}
-```
-
-## Conclusion architecture
-
-Ta base est bonne pour démarrer, mais le backend n’est pas encore “production-ready”.  
-Priorité immédiate:
-1. Implémenter auth réelle côté serveur (remplacer le mock de `use-auth`).
-2. Mettre en place `validations` Zod effectives.
-3. Introduire `services` + `repositories` tout en gardant `models` et `controller`.
-4. Démarrer le versioning des migrations Drizzle (`drizzle/`).
+Projet privé — Tous droits réservés.

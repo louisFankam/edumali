@@ -1,10 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
+import { seedClass, seedSubject } from "../helpers/seed";
 import { sql } from "drizzle-orm";
+
+let classId: string
+let subjectId1: string
+let subjectId2: string
 
 describe("Class-Subjects - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId = await seedClass({ name: "6e A", level: 1, capacity: 40 })
+    subjectId1 = await seedSubject({ name: "Mathématiques", coefficient: 4 })
+    subjectId2 = await seedSubject({ name: "Français", coefficient: 3 })
   }, 30000);
 
   afterAll(async () => {

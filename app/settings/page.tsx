@@ -128,11 +128,11 @@ function ClassModal({
 }) {
   const [formData, setFormData] = useState({
   name: classData?.name || "",
-  level: classData?.level || "Primaire",
+  level: classData?.level || "1",
   capacity: classData?.capacity || 30,
   total_fee: classData?.total_fee || 50000,
   teacher_id: classData?.teacher_id || "",
-  color: classData?.color || "bg-blue-100 text-blue-700",
+  color: classData?.color || "#3b82f6",
   academic_year: classData?.academic_year || selectedAcademicYear?.id || "", // Utilisez academic_year ici
   status: classData?.status === "inactive" ? "inactive" : "active"
 })
@@ -201,9 +201,9 @@ function ClassModal({
                   <SelectValue placeholder="Sélectionner le niveau" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Primaire">Primaire</SelectItem>
-                  <SelectItem value="Collège">Collège</SelectItem>
-                  <SelectItem value="Lycée">Lycée</SelectItem>
+                  <SelectItem value="1">Primaire</SelectItem>
+                  <SelectItem value="2">Collège</SelectItem>
+                  <SelectItem value="3">Lycée</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -290,11 +290,11 @@ function ClassModal({
                   <SelectValue placeholder="Sélectionner une couleur" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bg-blue-100 text-blue-700">Bleu</SelectItem>
-                  <SelectItem value="bg-green-100 text-green-700">Vert</SelectItem>
-                  <SelectItem value="bg-yellow-100 text-yellow-700">Jaune</SelectItem>
-                  <SelectItem value="bg-red-100 text-red-700">Rouge</SelectItem>
-                  <SelectItem value="bg-purple-100 text-purple-700">Violet</SelectItem>
+                  <SelectItem value="#3b82f6">Bleu</SelectItem>
+                  <SelectItem value="#22c55e">Vert</SelectItem>
+                  <SelectItem value="#eab308">Jaune</SelectItem>
+                  <SelectItem value="#ef4444">Rouge</SelectItem>
+                  <SelectItem value="#a855f7">Violet</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -349,7 +349,7 @@ function SubjectModal({
     code: subjectData?.code || "",
     hours_per_week: subjectData?.hours_per_week || 3,
     coefficient: subjectData?.coefficient || 1,
-    color: subjectData?.color || "bg-blue-100 text-blue-700",
+    color: subjectData?.color || "#3b82f6",
     description: subjectData?.description || "",
     status: subjectData?.status === "inactive" ? "inactive" : "active"
   })
@@ -460,11 +460,11 @@ function SubjectModal({
                 <SelectValue placeholder="Sélectionner une couleur" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bg-blue-100 text-blue-700">Bleu</SelectItem>
-                <SelectItem value="bg-green-100 text-green-700">Vert</SelectItem>
-                <SelectItem value="bg-yellow-100 text-yellow-700">Jaune</SelectItem>
-                <SelectItem value="bg-red-100 text-red-700">Rouge</SelectItem>
-                <SelectItem value="bg-purple-100 text-purple-700">Violet</SelectItem>
+                <SelectItem value="#3b82f6">Bleu</SelectItem>
+                <SelectItem value="#22c55e">Vert</SelectItem>
+                <SelectItem value="#eab308">Jaune</SelectItem>
+                <SelectItem value="#ef4444">Rouge</SelectItem>
+                <SelectItem value="#a855f7">Violet</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1002,7 +1002,7 @@ export default function SettingsPage() {
           hoursPerWeek: subjectData.hours_per_week,
           description: subjectData.description,
           color: subjectData.color,
-          status: "Actif",
+          status: subjectData.status === "active" ? "Actif" : "Inactif",
         })
       }
     } catch (e) {

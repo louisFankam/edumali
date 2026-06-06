@@ -1,10 +1,24 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
+import { seedTeacher } from "../helpers/seed";
 import { sql } from "drizzle-orm";
+
+let teacherId1: string
+let teacherId2: string
 
 describe("Payroll - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    teacherId1 = await seedTeacher({
+      firstName: "Mamadou", lastName: "Koné",
+      email: "mamadou.kone@ecole.ml", gender: "Masculin",
+      salary: 200000, contrat: "mensuel", status: "active",
+    })
+    teacherId2 = await seedTeacher({
+      firstName: "Aminata", lastName: "Diallo",
+      email: "aminata.diallo@ecole.ml", gender: "Féminin",
+      salary: 180000, contrat: "mensuel", status: "active",
+    })
   }, 30000);
 
   afterAll(async () => {
@@ -13,14 +27,9 @@ describe("Payroll - Tests d'intégration", () => {
 
   it("devrait créer un salaire avec month/year corrects via addPayroll", async () => {
     const { addPayroll } = await import("@/lib/services/teacher.service");
-    const { db } = await import("@/lib/db");
-
-    const [teacher] = db.all(sql`
-      SELECT id FROM teachers LIMIT 1
-    `) as { id: number }[];
 
     const result = await addPayroll({
-      teacher_id: String(teacher.id),
+      teacher_id: teacherId1,
       month: 5,
       year: 2026,
       amount: 150000,
@@ -34,19 +43,14 @@ describe("Payroll - Tests d'intégration", () => {
     expect(result.month).toBe(5);
     expect(result.year).toBe(2026);
     expect(result.amount).toBe(150000);
-    expect(result.teacher_id).toBe(String(teacher.id));
+    expect(result.teacher_id).toBe(teacherId1);
   });
 
   it("devrait récupérer les salaires d'un enseignant par teacherId", async () => {
     const { getPayroll, addPayroll } = await import("@/lib/services/teacher.service");
-    const { db } = await import("@/lib/db");
-
-    const [teacher] = db.all(sql`
-      SELECT id FROM teachers LIMIT 1
-    `) as { id: number }[];
 
     await addPayroll({
-      teacher_id: String(teacher.id),
+      teacher_id: teacherId1,
       month: 3,
       year: 2026,
       amount: 100000,
@@ -56,25 +60,20 @@ describe("Payroll - Tests d'intégration", () => {
       notes: "",
     });
 
-    const records = await getPayroll({ teacherId: String(teacher.id) });
+    const records = await getPayroll({ teacherId: teacherId1 });
     expect(records.length).toBeGreaterThanOrEqual(1);
     records.forEach(r => {
-      expect(r.teacher_id).toBe(String(teacher.id));
+      expect(r.teacher_id).toBe(teacherId1);
     });
   });
 
   it("devrait filtrer les salaires par plage de dates (from/to)", async () => {
     const { getPayroll, addPayroll } = await import("@/lib/services/teacher.service");
-    const { db } = await import("@/lib/db");
 
     // Utilise le 2e enseignant pour éviter les conflits UNIQUE
-    const [teacher] = db.all(sql`
-      SELECT id FROM teachers ORDER BY id DESC LIMIT 1
-    `) as { id: number }[];
-
     // Crée mai 2026
     await addPayroll({
-      teacher_id: String(teacher.id),
+      teacher_id: teacherId2,
       month: 5,
       year: 2026,
       amount: 200000,
@@ -86,7 +85,7 @@ describe("Payroll - Tests d'intégration", () => {
 
     // Crée mars 2026
     await addPayroll({
-      teacher_id: String(teacher.id),
+      teacher_id: teacherId2,
       month: 3,
       year: 2026,
       amount: 100000,
@@ -98,7 +97,7 @@ describe("Payroll - Tests d'intégration", () => {
 
     // Filtre pour n'avoir QUE mai 2026
     const records = await getPayroll({
-      teacherId: String(teacher.id),
+      teacherId: teacherId2,
       from: "2026-05-01",
       to: "2026-05-31",
     });

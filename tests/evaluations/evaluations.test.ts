@@ -1,10 +1,35 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
+import { seedClass, seedSubject, seedAcademicYear, seedStudent, seedEnrollment } from "../helpers/seed";
 import { sql } from "drizzle-orm";
+
+let classId: string
+let academicYearId: string
+let studentId1: string
+let studentId2: string
 
 describe("Évaluations & Notes - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId = await seedClass({ name: "6e A", level: 1, capacity: 40 })
+    // Seed subjects so modulo-based selections in tests return distinct subjects
+    await seedSubject({ name: "Mathématiques", coefficient: 4 })
+    await seedSubject({ name: "Français", coefficient: 3 })
+    await seedSubject({ name: "Anglais", coefficient: 2 })
+    await seedSubject({ name: "Histoire", coefficient: 2 })
+    await seedSubject({ name: "Géographie", coefficient: 2 })
+    await seedSubject({ name: "Sciences", coefficient: 3 })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    studentId1 = await seedStudent(classId, {
+      firstName: "Amadou", lastName: "Diallo",
+      gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456",
+    })
+    studentId2 = await seedStudent(classId, {
+      firstName: "Fatoumata", lastName: "Traoré",
+      gender: "Féminin", parentName: "Oumar Traoré", parentPhone: "66123456",
+    })
+    await seedEnrollment(studentId1, classId, academicYearId)
+    await seedEnrollment(studentId2, classId, academicYearId)
   }, 30000);
 
   afterAll(async () => {
@@ -237,8 +262,9 @@ describe("Évaluations & Notes - Tests d'intégration", () => {
     let subjects = db.all(sql`SELECT id FROM subjects`) as { id: number }[];
     const students = db.all(sql`SELECT id FROM students LIMIT 2`) as { id: number }[];
     // Find a subject not yet used with class 1, trimester 1, type 'devoir' to avoid unique constraint
-    const [used] = db.all(sql`SELECT subject_id FROM evaluations WHERE class_id = ${cls.id} AND trimester = 1 AND type = 'devoir' LIMIT 1`) as { subject_id: number }[];
-    const availSubjects = used ? subjects.filter(s => s.id !== used.subject_id) : subjects;
+    const usedRows = db.all(sql`SELECT DISTINCT subject_id FROM evaluations WHERE class_id = ${cls.id} AND trimester = 1 AND type = 'devoir'`) as { subject_id: number }[];
+    const usedIds = new Set(usedRows.map(r => r.subject_id))
+    const availSubjects = subjects.filter(s => !usedIds.has(s.id))
 
     const evalC = await addEvaluation({
       name: "Cascade delete test",
@@ -276,10 +302,15 @@ describe("Évaluations & Notes - Tests d'intégration", () => {
 
     await closePeriod(6, 2026);
 
+    // Pick a subject not yet used with trimester=1, type=devoir to avoid UNIQUE constraint
+    const usedRowsP = db.all(sql`SELECT DISTINCT subject_id FROM evaluations WHERE class_id = ${cls.id} AND trimester = 1 AND type = 'devoir'`) as { subject_id: number }[];
+    const usedIdsP = new Set(usedRowsP.map(r => r.subject_id))
+    const freeSubject = subjects.find(s => !usedIdsP.has(s.id))
+
     await expect(addEvaluation({
       name: "Période fermée",
       type: "devoir", classId: cls.id,
-      subjectId: subjects[0].id, trimester: 1,
+      subjectId: (freeSubject ?? subjects[0]).id, trimester: 1,
       academicYearId: year.id, date: "2026-06-15",
     })).rejects.toThrow("période est clôturée");
 
@@ -296,8 +327,9 @@ describe("Évaluations & Notes - Tests d'intégration", () => {
     const [year] = db.all(sql`SELECT id FROM academic_years WHERE is_current = 1 LIMIT 1`) as { id: number }[];
     const [cls] = db.all(sql`SELECT id FROM classes LIMIT 1`) as { id: number }[];
     const subjects = db.all(sql`SELECT id FROM subjects`) as { id: number }[];
-    const [used] = db.all(sql`SELECT subject_id FROM evaluations WHERE class_id = ${cls.id} AND trimester = 1 AND type = 'devoir' LIMIT 1`) as { subject_id: number }[];
-    const availSubjects = used ? subjects.filter(s => s.id !== used.subject_id) : subjects;
+    const usedRowsN = db.all(sql`SELECT DISTINCT subject_id FROM evaluations WHERE class_id = ${cls.id} AND trimester = 1 AND type = 'devoir'`) as { subject_id: number }[];
+    const usedIdsN = new Set(usedRowsN.map(r => r.subject_id))
+    const availSubjects = subjects.filter(s => !usedIdsN.has(s.id))
 
     // Create evaluation first, THEN close the period
     const evalC = await addEvaluation({
@@ -313,7 +345,7 @@ describe("Évaluations & Notes - Tests d'intégration", () => {
 
     // Now saving grades should fail
     await expect(saveGrades(evalC.id, [
-      { studentId: 1, score: 10 },
+      { studentId: Number(studentId1), score: 10 },
     ])).rejects.toThrow("période est clôturée");
 
     await openPeriod(6, 2026);

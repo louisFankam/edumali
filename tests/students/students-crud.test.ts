@@ -1,9 +1,29 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helpers/setup";
+import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
+import { seedClass, seedStudent, seedAcademicYear, seedEnrollment } from "../helpers/seed";
+
+let classId1: string
+let classId2: string
+let studentId1: string
+let studentId2: string
+let academicYearId: string
 
 describe("Students CRUD - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId1 = await seedClass({ name: "6e A" })
+    classId2 = await seedClass({ name: "6e B" })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    studentId1 = await seedStudent(classId1, {
+      firstName: "Amadou", lastName: "Diallo",
+      gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456",
+    })
+    studentId2 = await seedStudent(classId1, {
+      firstName: "Fatoumata", lastName: "Traoré",
+      gender: "Féminin", parentName: "Oumar Traoré", parentPhone: "66123456",
+    })
+    await seedEnrollment(studentId1, classId1, academicYearId)
+    await seedEnrollment(studentId2, classId1, academicYearId)
   }, 60000);
 
   afterAll(async () => {
@@ -11,7 +31,7 @@ describe("Students CRUD - Tests d'intégration", () => {
   });
 
   describe("A. getStudents - Liste", () => {
-    it("devrait retourner la liste des élèves (seed = 2)", async () => {
+    it("devrait retourner la liste des élèves", async () => {
       const { getStudents } = await import("@/lib/services/student.service");
       const result = await getStudents();
       expect(result.data.length).toBe(2);
@@ -20,9 +40,9 @@ describe("Students CRUD - Tests d'intégration", () => {
 
     it("devrait filtrer par classe", async () => {
       const { getStudents } = await import("@/lib/services/student.service");
-      const result = await getStudents({ classId: "1" });
+      const result = await getStudents({ classId: classId1 });
       expect(result.data.length).toBe(2);
-      result.data.forEach(s => expect(s.classId).toBe("1"));
+      result.data.forEach(s => expect(s.classId).toBe(classId1));
     });
 
     it("devrait filtrer par recherche (prénom)", async () => {
@@ -63,12 +83,12 @@ describe("Students CRUD - Tests d'intégration", () => {
         parentName: "Parent Test",
         parentPhone: "70000003",
         address: "Bamako",
-        classId: "1",
+        classId: classId1,
       });
       expect(s.id).toBeTruthy();
       expect(s.firstName).toBe("Test");
       expect(s.lastName).toBe("Élève");
-      expect(s.classId).toBe("1");
+      expect(s.classId).toBe(classId1);
       expect(s.status).toBe("Actif");
     });
 
@@ -81,7 +101,7 @@ describe("Students CRUD - Tests d'intégration", () => {
         birthDate: "2019-06-20",
         parentName: "Parent Bourse",
         parentPhone: "70000004",
-        classId: "1",
+        classId: classId1,
         discountType: "percentage",
         discountValue: 50,
         discountReason: "Bourse mérite",
@@ -105,7 +125,7 @@ describe("Students CRUD - Tests d'intégration", () => {
         birthDate: "2018-03-10",
         parentName: "Parent Fixe",
         parentPhone: "70000005",
-        classId: "1",
+        classId: classId1,
         discountType: "fixed",
         discountValue: 25000,
         discountReason: "Réduction fratrie",
@@ -118,9 +138,9 @@ describe("Students CRUD - Tests d'intégration", () => {
   describe("C. getStudentById - Lecture", () => {
     it("devrait retourner un élève existant", async () => {
       const { getStudentById } = await import("@/lib/services/student.service");
-      const s = await getStudentById("1");
+      const s = await getStudentById(studentId1);
       expect(s).not.toBeNull();
-      expect(s.id).toBe("1");
+      expect(s.id).toBe(studentId1);
       expect(s.firstName).toBeTruthy();
       expect(s.className).toBeTruthy();
     });
@@ -135,10 +155,10 @@ describe("Students CRUD - Tests d'intégration", () => {
   describe("D. editStudent - Modification", () => {
     it("devrait modifier le prénom", async () => {
       const { editStudent, getStudentById } = await import("@/lib/services/student.service");
-      await editStudent("1", { firstName: "AmadouModifié" });
-      const s = await getStudentById("1");
+      await editStudent(studentId1, { firstName: "AmadouModifié" });
+      const s = await getStudentById(studentId1);
       expect(s.firstName).toBe("AmadouModifié");
-      await editStudent("1", { firstName: "Amadou" });
+      await editStudent(studentId1, { firstName: "Amadou" });
     });
 
     it("devrait modifier la réduction", async () => {
@@ -185,7 +205,7 @@ describe("Students CRUD - Tests d'intégration", () => {
     it("devrait retourner les stats filtrées par année académique", async () => {
       const { getStudentStats } = await import("@/lib/services/student.service");
 
-      const stats = await getStudentStats("1");
+      const stats = await getStudentStats(academicYearId);
       expect(stats.total).toBeGreaterThanOrEqual(0);
       expect(stats).toHaveProperty("girls");
       expect(stats).toHaveProperty("boys");
@@ -202,9 +222,9 @@ describe("Students CRUD - Tests d'intégration", () => {
   });
 
   describe("F. removeStudent - Suppression", () => {
-    it("devrait échouer pour un élève avec paiements", async () => {
+    it("devrait échouer pour un élève avec inscriptions", async () => {
       const { removeStudent } = await import("@/lib/services/student.service");
-      await expect(removeStudent("1")).rejects.toThrow();
+      await expect(removeStudent(studentId1)).rejects.toThrow("inscriptions");
     });
 
     it("devrait échouer pour un ID inexistant", async () => {
@@ -212,18 +232,18 @@ describe("Students CRUD - Tests d'intégration", () => {
       await expect(removeStudent("99999")).rejects.toThrow();
     });
 
-    it("devrait échouer pour un élève avec des inscriptions", async () => {
+    it("devrait échouer pour un autre élève avec des inscriptions", async () => {
       const { removeStudent } = await import("@/lib/services/student.service");
-      await expect(removeStudent("2")).rejects.toThrow("inscriptions");
+      await expect(removeStudent(studentId2)).rejects.toThrow("inscriptions");
     });
 
     it("devrait réussir pour un élève créé via le repository sans inscription", async () => {
       const { removeStudent, getStudentById } = await import("@/lib/services/student.service");
-      const { createStudent, deleteStudent } = await import("@/lib/repositories/student.repository");
+      const { createStudent } = await import("@/lib/repositories/student.repository");
       const created = await createStudent({
         firstName: "Clean", lastName: "Test", gender: "Masculin",
         birthDate: "2010-01-01", parentName: "Parent", parentPhone: "0000000000",
-        classId: 1, registrationDate: "2026-01-01", status: "Actif",
+        classId: Number(classId1), registrationDate: "2026-01-01", status: "Actif",
       });
       // No enrollment created, so deletion should succeed
       await expect(removeStudent(String(created.id))).resolves.not.toThrow();
@@ -232,17 +252,13 @@ describe("Students CRUD - Tests d'intégration", () => {
     });
 
     it("devrait échouer pour un élève avec des notes", async () => {
-      const { db } = await import("@/lib/db");
       const { addStudent, removeStudent } = await import("@/lib/services/student.service");
-      const { grades } = await import("@/lib/models/schema");
-      const { eq } = await import("drizzle-orm");
       const s = await addStudent({
         firstName: "Notes", lastName: "Student", gender: "Féminin",
         birthDate: "2010-01-01", parentName: "Parent", parentPhone: "0000000000",
-        classId: "1",
+        classId: classId1,
       });
-      // Need to add an enrollment, then a grade, and a payment to block deletion
-      // Just test that enrollment blocks
+      // addStudent creates an enrollment automatically, so deletion should be blocked
       await expect(removeStudent(s.id)).rejects.toThrow("inscriptions");
     });
   });
@@ -254,17 +270,18 @@ describe("Students CRUD - Tests d'intégration", () => {
       const { db } = await import("@/lib/db");
       const sql = (await import("drizzle-orm")).sql;
 
-      const [cls2] = db.all(sql`SELECT id FROM classes LIMIT 1 OFFSET 1`) as { id: number }[];
-      if (!cls2) return;
+      const rows = db.all(sql`SELECT id FROM classes ORDER BY id LIMIT 1 OFFSET 1`) as { id: number }[];
+      const cls2Num = rows[0]?.id
+      if (!cls2Num) return;
 
       // Student 2 is enrolled in class 1, change to class 2
-      await editStudent("2", { classId: String(cls2.id) });
-      const updated = await getStudentById("2");
-      expect(updated!.classId).toBe(String(cls2.id));
+      await editStudent(studentId2, { classId: String(cls2Num) });
+      const updated = await getStudentById(studentId2);
+      expect(updated!.classId).toBe(String(cls2Num));
 
-      const enrollments = await findAllEnrollments({ studentId: 2, academicYearId: 1 });
+      const enrollments = await findAllEnrollments({ studentId: Number(studentId2), academicYearId: Number(academicYearId) });
       expect(enrollments.length).toBeGreaterThan(0);
-      expect(enrollments[0].classId).toBe(cls2.id);
+      expect(enrollments[0].classId).toBe(cls2Num);
     });
   });
 });

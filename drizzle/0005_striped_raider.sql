@@ -1,1 +1,0 @@
-ALTER TABLE `class_subjects` ADD `teacher_id` integer REFERENCES teachers(id);

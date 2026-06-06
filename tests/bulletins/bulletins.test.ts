@@ -1,10 +1,32 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
+import { seedClass, seedSubject, seedStudent, seedAcademicYear, seedEnrollment } from "../helpers/seed";
 import { sql } from "drizzle-orm";
+
+let classId: string
+let subjectId1: string
+let subjectId2: string
+let studentId1: string
+let studentId2: string
+let academicYearId: string
 
 describe("Bulletins - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId = await seedClass({ name: "6e A", level: 1, capacity: 40 })
+    subjectId1 = await seedSubject({ name: "Mathématiques", coefficient: 4 })
+    subjectId2 = await seedSubject({ name: "Français", coefficient: 3 })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    studentId1 = await seedStudent(classId, {
+      firstName: "Amadou", lastName: "Diallo",
+      gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456",
+    })
+    studentId2 = await seedStudent(classId, {
+      firstName: "Fatoumata", lastName: "Traoré",
+      gender: "Féminin", parentName: "Oumar Traoré", parentPhone: "66123456",
+    })
+    await seedEnrollment(studentId1, classId, academicYearId)
+    await seedEnrollment(studentId2, classId, academicYearId)
   }, 30000);
 
   afterAll(async () => {

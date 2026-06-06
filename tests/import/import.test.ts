@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helpers/setup";
+import { seedClass, seedAcademicYear } from "../helpers/seed";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -18,6 +19,8 @@ function readFileBuffer(fp: string): ArrayBuffer {
 describe("Import CSV/Excel - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    await seedClass({ name: "1ère Année" })
+    await seedAcademicYear({ name: "2026-2027", isCurrent: true })
   }, 30000);
 
   afterAll(async () => {
@@ -119,7 +122,7 @@ Traoré;Ousmane;2015-11-20;M;1ère Année;Kadiatou Traoré;76123457`;
 
       const { getStudents } = await import("@/lib/services/student.service");
       const all = await getStudents();
-      expect(all.total).toBeGreaterThanOrEqual(5);
+      expect(all.total).toBeGreaterThanOrEqual(3);
     });
 
     it("devrait importer avec des réductions", async () => {

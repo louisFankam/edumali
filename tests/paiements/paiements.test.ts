@@ -1,9 +1,21 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helpers/setup";
+import { seedClass, seedStudent, seedAcademicYear, seedEnrollment } from "../helpers/seed";
+
+let classId1: string
+let studentId1: string
+let studentId2: string
+let academicYearId: string
 
 describe("Paiements Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 0 })
+    studentId1 = await seedStudent(classId1, { firstName: "Amadou", lastName: "Diallo", gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456" })
+    studentId2 = await seedStudent(classId1, { firstName: "Fatoumata", lastName: "Traoré", gender: "Féminin", parentName: "Oumar Traoré", parentPhone: "66123456" })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    await seedEnrollment(studentId1, classId1, academicYearId)
+    await seedEnrollment(studentId2, classId1, academicYearId)
   }, 60000);
 
   afterAll(async () => {
@@ -15,7 +27,7 @@ describe("Paiements Page - Tests d'intégration", () => {
   describe("A. getPayments - Liste des paiements", () => {
     it("devrait retourner une liste vide pour un étudiant sans paiement", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
     });
@@ -23,17 +35,17 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait lister les paiements après création", async () => {
       const { addPayment, getPayments } = await import("@/lib/services/payment.service");
 
-      await addPayment({ studentId: 1, amount: 30000, method: "espèces", date: "2025-10-01" });
-      await addPayment({ studentId: 1, amount: 20000, method: "mobile_money", date: "2025-11-01" });
+      await addPayment({ studentId: Number(studentId1), amount: 30000, method: "espèces", date: "2025-10-01" });
+      await addPayment({ studentId: Number(studentId1), amount: 20000, method: "mobile_money", date: "2025-11-01" });
 
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       expect(result.data.length).toBe(2);
       expect(result.total).toBe(2);
     });
 
     it("devrait retourner les bons champs (amount, method, date, status)", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
 
       const p = result.data[0];
       expect(p.amount).toBeTypeOf("number");
@@ -45,17 +57,17 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait filtrer par plage de dates", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
-      const result = await getPayments({ studentId: "1", from: "2025-10-01", to: "2025-10-31" });
+      const result = await getPayments({ studentId: studentId1, from: "2025-10-01", to: "2025-10-31" });
       expect(result.data.length).toBe(1);
       expect(result.data[0].amount).toBe(30000);
 
-      const result2 = await getPayments({ studentId: "1", from: "2025-12-01", to: "2025-12-31" });
+      const result2 = await getPayments({ studentId: studentId1, from: "2025-12-01", to: "2025-12-31" });
       expect(result2.data.length).toBe(0);
     });
 
     it("devrait paginer les résultats", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
-      const result = await getPayments({ studentId: "1", page: 1, limit: 1 });
+      const result = await getPayments({ studentId: studentId1, page: 1, limit: 1 });
       expect(result.data.length).toBe(1);
       expect(result.total).toBe(2);
     });
@@ -68,7 +80,7 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { addPayment, getPayments } = await import("@/lib/services/payment.service");
 
       const payment = await addPayment({
-        studentId: 2, amount: 15000, method: "chèque", date: "2025-12-15",
+        studentId: Number(studentId2), amount: 15000, method: "chèque", date: "2025-12-15",
         feeTypeId: undefined,
       });
 
@@ -98,7 +110,7 @@ describe("Paiements Page - Tests d'intégration", () => {
 
     it("devrait récupérer l'ID d'un paiement existant", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       paymentId = result.data[0].id;
       expect(paymentId).toBeTruthy();
     });
@@ -107,7 +119,7 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { editPayment, getPayments } = await import("@/lib/services/payment.service");
       await editPayment(paymentId, { amount: 35000 });
 
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       const p = result.data.find(r => r.id === paymentId);
       expect(p?.amount).toBe(35000);
     });
@@ -116,7 +128,7 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { editPayment, getPayments } = await import("@/lib/services/payment.service");
       await editPayment(paymentId, { method: "virement" });
 
-      const result = await getPayments({ studentId: "1" });
+      const result = await getPayments({ studentId: studentId1 });
       const p = result.data.find(r => r.id === paymentId);
       expect(p?.method).toBe("virement");
     });
@@ -148,12 +160,12 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait créer puis supprimer un paiement", async () => {
       const { addPayment, removePayment, getPayments } = await import("@/lib/services/payment.service");
 
-      const created = await addPayment({ studentId: 2, amount: 5000, method: "espèces", date: "2025-12-20" });
+      const created = await addPayment({ studentId: Number(studentId2), amount: 5000, method: "espèces", date: "2025-12-20" });
       tempPaymentId = created.id;
 
       await removePayment(tempPaymentId);
 
-      const result = await getPayments({ studentId: "2" });
+      const result = await getPayments({ studentId: studentId2 });
       expect(result.data.find(p => p.id === tempPaymentId)).toBeUndefined();
     });
 
@@ -182,7 +194,7 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait calculer le total payé pour un étudiant", async () => {
       const { getStudentPaymentSummaryService } = await import("@/lib/services/payment.service");
       // Student 1 has: 30000 + 35000 (modifié) = 65000
-      const summary = await getStudentPaymentSummaryService("1");
+      const summary = await getStudentPaymentSummaryService(studentId1);
       expect(summary.totalPaid).toBe(65000);
     });
 
@@ -201,13 +213,13 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { classes } = await import("@/lib/models/schema");
       const { eq } = await import("drizzle-orm");
 
-      // Fixer totalFee pour la classe 1 à 50000
-      await db.update(classes).set({ totalFee: 50000 }).where(eq(classes.id, 1));
+      // Fixer totalFee pour la classe à 50000
+      await db.update(classes).set({ totalFee: 50000 }).where(eq(classes.id, Number(classId1)));
 
       // Student 1: 65000 payé > 50000 → pas impayé
       // Student 2: 15000 payé < 50000 → impayé (remaining = 35000)
       const { getUnpaidStudents } = await import("@/lib/services/payment.service");
-      const result = await getUnpaidStudents({ academicYearId: "1" });
+      const result = await getUnpaidStudents({ academicYearId });
 
       expect(result.data.length).toBe(1);
       expect(result.data[0].firstName).toBe("Fatoumata");
@@ -217,7 +229,7 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait filtrer les impayés par classe", async () => {
       const { getUnpaidStudents } = await import("@/lib/services/payment.service");
       // Student 1 et 2 sont en classe 1
-      const result = await getUnpaidStudents({ classId: "1", academicYearId: "1" });
+      const result = await getUnpaidStudents({ classId: classId1, academicYearId });
       expect(result.data.length).toBe(1);
     });
 
@@ -230,7 +242,7 @@ describe("Paiements Page - Tests d'intégration", () => {
 
     it("devrait retourner les champs attendus (totalFee, totalPaid, remaining)", async () => {
       const { getUnpaidStudents } = await import("@/lib/services/payment.service");
-      const result = await getUnpaidStudents({ academicYearId: "1" });
+      const result = await getUnpaidStudents({ academicYearId });
 
       const u = result.data[0];
       expect(u.totalFee).toBeTypeOf("number");
@@ -250,10 +262,10 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait retourner vide si tous les étudiants ont payé", async () => {
       // Payer pour student 2 (50000)
       const { addPayment } = await import("@/lib/services/payment.service");
-      await addPayment({ studentId: 2, amount: 35000, method: "espèces", date: "2025-12-25" });
+      await addPayment({ studentId: Number(studentId2), amount: 35000, method: "espèces", date: "2025-12-25" });
 
       const { getUnpaidStudents } = await import("@/lib/services/payment.service");
-      const result = await getUnpaidStudents({ academicYearId: "1" });
+      const result = await getUnpaidStudents({ academicYearId });
       expect(result.data.length).toBe(0);
       expect(result.total).toBe(0);
     });
@@ -266,7 +278,7 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { getPaymentById } = await import("@/lib/services/payment.service");
       const { getPayments } = await import("@/lib/services/payment.service");
 
-      const list = await getPayments({ studentId: "1" });
+      const list = await getPayments({ studentId: studentId1 });
       const firstId = list.data[0]?.id;
       if (!firstId) return;
 
@@ -318,7 +330,7 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait retourner les paiements après une date donnée (from sans to)", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
-      const result = await getPayments({ studentId: "1", from: "2025-10-01" });
+      const result = await getPayments({ studentId: studentId1, from: "2025-10-01" });
       expect(result.data.length).toBeGreaterThanOrEqual(2);
       result.data.forEach(p => {
         expect(p.date >= "2025-10-01").toBe(true);
@@ -328,7 +340,7 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait retourner vide si from est dans le futur", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
-      const result = await getPayments({ studentId: "1", from: "2099-01-01" });
+      const result = await getPayments({ studentId: studentId1, from: "2099-01-01" });
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
     });
@@ -336,7 +348,7 @@ describe("Paiements Page - Tests d'intégration", () => {
     it("devrait retourner tous les paiements si from est très ancien", async () => {
       const { getPayments } = await import("@/lib/services/payment.service");
 
-      const result = await getPayments({ studentId: "1", from: "2000-01-01" });
+      const result = await getPayments({ studentId: studentId1, from: "2000-01-01" });
       expect(result.data.length).toBeGreaterThanOrEqual(2);
     });
   });
@@ -348,15 +360,15 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { editPayment, getPayments, addFeeType } = await import("@/lib/services/payment.service");
 
       // Créer un type de frais
-      await addFeeType({ name: "Scolarité", amount: 50000, period: "annuel" });
+      const feeType = await addFeeType({ name: "Scolarité", amount: 50000, period: "annuel" });
 
       // Récupérer un paiement existant
-      const before = await getPayments({ studentId: "1" });
+      const before = await getPayments({ studentId: studentId1 });
       const p = before.data[0];
 
-      await editPayment(p.id, { amount: 40000, method: "virement", feeTypeId: 1 });
+      await editPayment(p.id, { amount: 40000, method: "virement", feeTypeId: Number(feeType.id) });
 
-      const after = await getPayments({ studentId: "1" });
+      const after = await getPayments({ studentId: studentId1 });
       const updated = after.data.find(r => r.id === p.id);
       expect(updated?.amount).toBe(40000);
       expect(updated?.method).toBe("virement");
@@ -372,7 +384,7 @@ describe("Paiements Page - Tests d'intégration", () => {
 
       // Student 1 n'a pas encore de classe avec totalFee défini
       // On ajoute un paiement de 10000
-      const p = await addPayment({ studentId: 1, amount: 10000, method: "espèces", date: "2025-12-01" });
+      const p = await addPayment({ studentId: Number(studentId1), amount: 10000, method: "espèces", date: "2025-12-01" });
       expect(p.amount).toBe(10000);
     });
 
@@ -380,7 +392,7 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { getStudentPaymentSummaryService } = await import("@/lib/services/payment.service");
 
       // Student 1 a cumulé des paiements dans les sections précédentes
-      const summary = await getStudentPaymentSummaryService("1");
+      const summary = await getStudentPaymentSummaryService(studentId1);
       expect(summary.totalPaid).toBeGreaterThan(0);
     });
 

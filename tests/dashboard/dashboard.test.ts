@@ -1,11 +1,29 @@
 // @vitest-environment node
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helpers/setup";
+import { seedClass, seedStudent, seedAcademicYear, seedEnrollment, seedTeacher, seedSubject } from "../helpers/seed";
 import { sql } from "drizzle-orm";
+
+let classId1: string
+let studentId1: string
+let academicYearId: string
+let teacherId1: string
 
 describe("Dashboard", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 50000 })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    studentId1 = await seedStudent(classId1, {
+      firstName: "Amadou", lastName: "Diallo",
+      gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456",
+    })
+    await seedEnrollment(studentId1, classId1, academicYearId)
+    teacherId1 = await seedTeacher({
+      firstName: "Mamadou", lastName: "Koné",
+      email: "mamadou.kone@ecole.ml", gender: "Masculin",
+    })
+    await seedSubject({ name: "Mathématiques", coefficient: 4 })
   }, 60000);
 
   afterAll(async () => {
@@ -19,7 +37,7 @@ describe("Dashboard", () => {
 
     // Créer des données de test
     db.run(sql`PRAGMA foreign_keys = OFF`);
-    db.run(sql`INSERT OR IGNORE INTO payments (student_id, amount, method, date, status) VALUES (1, 50000, 'espèces', '2026-05-15', 'payé')`);
+    db.run(sql`INSERT OR IGNORE INTO payments (student_id, amount, method, date, status) VALUES (${Number(studentId1)}, 50000, 'espèces', '2026-05-15', 'payé')`);
     db.run(sql`INSERT OR IGNORE INTO expenses (description, amount, category, date) VALUES ('Eau', 10000, 'eau', '2026-05-10')`);
     db.run(sql`PRAGMA foreign_keys = ON`);
 
@@ -70,13 +88,13 @@ describe("Dashboard", () => {
     // Présence dans l'année scolaire courante
     db.run(sql`
       INSERT OR IGNORE INTO attendance (student_id, class_id, date, status)
-      VALUES (1, 1, ${year.start_date}, 'présent')
+      VALUES (${Number(studentId1)}, ${Number(classId1)}, ${year.start_date}, 'présent')
     `);
 
     // Présence en dehors de l'année scolaire
     db.run(sql`
       INSERT OR IGNORE INTO attendance (student_id, class_id, date, status)
-      VALUES (1, 1, '2020-10-15', 'présent')
+      VALUES (${Number(studentId1)}, ${Number(classId1)}, '2020-10-15', 'présent')
     `);
 
     db.run(sql`PRAGMA foreign_keys = ON`);
@@ -102,13 +120,13 @@ describe("Dashboard", () => {
     // Paiement dans l'année scolaire
     db.run(sql`
       INSERT OR IGNORE INTO payments (student_id, amount, method, date, status)
-      VALUES (1, 50000, 'espèces', ${year.start_date}, 'payé')
+      VALUES (${Number(studentId1)}, 50000, 'espèces', ${year.start_date}, 'payé')
     `);
 
     // Paiement en dehors de l'année scolaire
     db.run(sql`
       INSERT OR IGNORE INTO payments (student_id, amount, method, date, status)
-      VALUES (1, 100000, 'espèces', '2020-05-01', 'payé')
+      VALUES (${Number(studentId1)}, 100000, 'espèces', '2020-05-01', 'payé')
     `);
 
     db.run(sql`PRAGMA foreign_keys = ON`);
@@ -126,9 +144,9 @@ describe("Dashboard", () => {
     const sqlFn = (await import("drizzle-orm")).sql;
 
     // Insert payroll for period 2026-03 but paid_at in 2026-05
-    db.run(sqlFn`INSERT OR IGNORE INTO payroll (teacher_id, month, year, amount, paid_at) VALUES (1, 3, 2026, 50000, '2026-05-15T10:00:00.000Z')`);
+    db.run(sqlFn`INSERT OR IGNORE INTO payroll (teacher_id, month, year, amount, paid_at) VALUES (${Number(teacherId1)}, 3, 2026, 50000, '2026-05-15T10:00:00.000Z')`);
     // Insert payroll for period 2026-05 paid_at in 2026-05
-    db.run(sqlFn`INSERT OR IGNORE INTO payroll (teacher_id, month, year, amount, paid_at) VALUES (1, 5, 2026, 60000, '2026-05-20T10:00:00.000Z')`);
+    db.run(sqlFn`INSERT OR IGNORE INTO payroll (teacher_id, month, year, amount, paid_at) VALUES (${Number(teacherId1)}, 5, 2026, 60000, '2026-05-20T10:00:00.000Z')`);
 
     const { getDashboardData } = await import("@/lib/services/dashboard.service");
 
@@ -182,7 +200,7 @@ describe("Dashboard", () => {
     if (evalCurrent) {
       db.run(sql`
         INSERT OR IGNORE INTO grades (evaluation_id, student_id, score)
-        VALUES (${evalCurrent.id}, 1, 15.0)
+        VALUES (${evalCurrent.id}, ${Number(studentId1)}, 15.0)
       `);
     }
 

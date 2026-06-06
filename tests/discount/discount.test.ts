@@ -1,9 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase, TEST_DB_PATH } from "../helpers/setup";
+import { seedClass, seedAcademicYear } from "../helpers/seed";
+
+let classId1: string
+let academicYearId: string
 
 describe("Discount/Réduction - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 0 })
+    academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
   }, 30000);
 
   afterAll(async () => {
@@ -20,7 +26,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2018-01-01",
         parentName: "Parent Pct",
         parentPhone: "70000100",
-        classId: "1",
+        classId: classId1,
         discountType: "percentage",
         discountValue: 25,
         discountReason: "Test 25%",
@@ -43,7 +49,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2017-05-15",
         parentName: "Parent Fixe",
         parentPhone: "70000101",
-        classId: "1",
+        classId: classId1,
         discountType: "fixed",
         discountValue: 30000,
         discountReason: "Fratrie",
@@ -61,7 +67,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2019-08-20",
         parentName: "Parent Normal",
         parentPhone: "70000102",
-        classId: "1",
+        classId: classId1,
       });
       expect(s.discountType).toBeNull();
       expect(s.discountValue).toBeNull();
@@ -79,7 +85,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2018-01-01",
         parentName: "Parent",
         parentPhone: "70000103",
-        classId: "1",
+        classId: classId1,
       });
 
       expect(s.discountType).toBeNull();
@@ -106,7 +112,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2018-06-01",
         parentName: "Parent",
         parentPhone: "70000104",
-        classId: "1",
+        classId: classId1,
         discountType: "percentage",
         discountValue: 50,
         discountReason: "Bourse",
@@ -132,7 +138,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
       const { classes } = await import("@/lib/models/schema");
       const { eq } = await import("drizzle-orm");
 
-      await db.update(classes).set({ totalFee: 100000 }).where(eq(classes.id, 1));
+      await db.update(classes).set({ totalFee: 100000 }).where(eq(classes.id, Number(classId1)));
 
       const s = await addStudent({
         firstName: "Unpaid",
@@ -141,7 +147,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2018-01-01",
         parentName: "Parent",
         parentPhone: "70000105",
-        classId: "1",
+        classId: classId1,
         discountType: "percentage",
         discountValue: 25,
         discountReason: "Test impayés",
@@ -149,7 +155,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
 
       await addPayment({ studentId: Number(s.id), amount: 50000, method: "espèces", date: "2025-10-01" });
 
-      const result = await getUnpaidStudents({ academicYearId: "1" });
+      const result = await getUnpaidStudents({ academicYearId });
       const found = result.data.find(u => u.id === s.id);
       expect(found).toBeTruthy();
       expect(found!.totalFee).toBe(100000);
@@ -167,7 +173,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
       const { classes } = await import("@/lib/models/schema");
       const { eq } = await import("drizzle-orm");
 
-      await db.update(classes).set({ totalFee: 100000 }).where(eq(classes.id, 1));
+      await db.update(classes).set({ totalFee: 100000 }).where(eq(classes.id, Number(classId1)));
 
       const s = await addStudent({
         firstName: "Unpaid",
@@ -176,7 +182,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2018-01-01",
         parentName: "Parent",
         parentPhone: "70000106",
-        classId: "1",
+        classId: classId1,
         discountType: "fixed",
         discountValue: 30000,
         discountReason: "Test fixe",
@@ -184,7 +190,7 @@ describe("Discount/Réduction - Tests d'intégration", () => {
 
       await addPayment({ studentId: Number(s.id), amount: 70000, method: "espèces", date: "2025-10-01" });
 
-      const result = await getUnpaidStudents({ academicYearId: "1" });
+      const result = await getUnpaidStudents({ academicYearId });
       const found = result.data.find(u => u.id === s.id);
       expect(found).toBeUndefined();
     });
@@ -200,10 +206,10 @@ describe("Discount/Réduction - Tests d'intégration", () => {
         birthDate: "2018-01-01",
         parentName: "Parent",
         parentPhone: "70000107",
-        classId: "1",
+        classId: classId1,
       });
 
-      const result = await getUnpaidStudents({ academicYearId: "1" });
+      const result = await getUnpaidStudents({ academicYearId });
       const found = result.data.find(u => u.id === s.id);
       expect(found).toBeTruthy();
       expect(found!.discountType).toBeNull();

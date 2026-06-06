@@ -74,16 +74,6 @@ async function ensureAuthSchema(db: any) {
   try { await db.run(sql`ALTER TABLE classes ADD COLUMN status text NOT NULL DEFAULT 'active'`); } catch {}
 
   await db.run(sql`
-    INSERT OR IGNORE INTO classes (id, name, level) VALUES
-      (1, '1ère Année', 1),
-      (2, '2ème Année', 2),
-      (3, '3ème Année', 3),
-      (4, '4ème Année', 4),
-      (5, '5ème Année', 5),
-      (6, '6ème Année', 6)
-  `);
-
-  await db.run(sql`
     CREATE TABLE IF NOT EXISTS students (
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       first_name text NOT NULL,
@@ -253,29 +243,6 @@ async function ensureAuthSchema(db: any) {
     )
   `);
   await db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS pay_teacher_month_year ON payroll (teacher_id, month, year)`);
-
-  // Seed teachers if empty
-  const teacherCountRow = db.get(sql`SELECT COUNT(*) as count FROM teachers`) as { count: number } | undefined;
-  if (teacherCountRow?.count === 0) {
-    const subjectsList = db.all(sql`SELECT id, name FROM subjects`) as { id: number; name: string }[];
-    const mathSubject = subjectsList.find(s => s.name === 'Mathématiques');
-    const frSubject = subjectsList.find(s => s.name === 'Français');
-
-    await db.run(sql`
-      INSERT INTO teachers (first_name, last_name, email, phone, address, gender, hire_date, salary, contrat, status)
-      VALUES
-        ('Fatoumata', 'Diarra', 'f.diarra@ekima.ml', '70000001', 'Bamako Coura', 'Féminin', '2020-09-01', 150000, 'mensuel', 'active'),
-        ('Moussa', 'Koné', 'm.kone@ekima.ml', '70000002', 'Kalaban Coro', 'Masculin', '2021-10-15', 140000, 'mensuel', 'active')
-    `);
-
-    if (mathSubject) {
-      await db.run(sql`INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (1, ${mathSubject.id})`);
-    }
-    if (frSubject) {
-      await db.run(sql`INSERT INTO teacher_subjects (teacher_id, subject_id) VALUES (2, ${frSubject.id})`);
-    }
-    console.log("[EduMali] 2 enseignants de démonstration créés");
-  }
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS medical_infos (
@@ -492,69 +459,6 @@ async function ensureAuthSchema(db: any) {
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_exams_date ON exams (date)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_evaluations_status ON evaluations (status)`);
   await db.run(sql`CREATE INDEX IF NOT EXISTS idx_grades_score ON grades (is_absent, score)`);
-
-  // Seed school_info if empty
-  const schoolRow = db.get(sql`SELECT COUNT(*) as count FROM school_info`) as { count: number } | undefined;
-  if (schoolRow?.count === 0) {
-    const schoolName = process.env.SCHOOL_NAME ?? "École de Démonstration";
-    await db.run(sql`INSERT INTO school_info (name) VALUES (${schoolName})`);
-    console.log(`[EduMali] École créée: ${schoolName}`);
-  }
-
-  // Seed current academic year if empty
-  const yearRow = db.get(sql`SELECT COUNT(*) as count FROM academic_years`) as { count: number } | undefined;
-  if (yearRow?.count === 0) {
-    const currentYear = new Date().getFullYear();
-    await db.run(sql`
-      INSERT INTO academic_years (name, start_date, end_date, is_current)
-      VALUES (${`${currentYear}-${currentYear + 1}`}, ${`${currentYear}-09-01`}, ${`${currentYear + 1}-08-31`}, 1)
-    `);
-    console.log(`[EduMali] Année scolaire créée: ${currentYear}-${currentYear + 1}`);
-  }
-
-  // Seed sample subjects if empty
-  const subjRow = db.get(sql`SELECT COUNT(*) as count FROM subjects`) as { count: number } | undefined;
-  if (subjRow?.count === 0) {
-    await db.run(sql`
-      INSERT INTO subjects (name, code, coefficient, hours_per_week, color) VALUES
-        ('Français', 'FR', 4, 6, '#ef4444'),
-        ('Mathématiques', 'MA', 4, 6, '#3b82f6'),
-        ('Sciences', 'SC', 3, 4, '#22c55e'),
-        ('Histoire-Géographie', 'HG', 2, 3, '#f59e0b'),
-        ('Anglais', 'AN', 2, 3, '#8b5cf6'),
-        ('Education Physique', 'EP', 1, 2, '#ec4899')
-    `);
-    console.log("[EduMali] 6 matières de démonstration créées");
-  }
-
-  const countRow = db.get(sql`SELECT COUNT(*) as count FROM students`) as { count: number } | undefined;
-  let studentCount = countRow?.count ?? 0;
-
-  if (studentCount === 0) {
-    await db.run(sql`
-      INSERT INTO students (first_name, last_name, gender, birth_date, nationality, parent_name, parent_phone, class_id, registration_date, status)
-      VALUES
-        ('Amadou', 'Diallo', 'Masculin', '2015-05-12', 'Malienne', 'Moussa Diallo', '70123456', 1, '2024-09-01', 'Actif'),
-        ('Fatoumata', 'Traoré', 'Féminin', '2015-08-22', 'Malienne', 'Oumar Traoré', '66123456', 1, '2024-09-05', 'Actif')
-    `);
-    console.log("[EduMali] 2 élèves de démonstration créés");
-    studentCount = 2;
-  }
-
-  // Ensure enrollments exist for all students
-  const enrollmentCountRow = db.get(sql`SELECT COUNT(*) as count FROM enrollments`) as { count: number } | undefined;
-  const enrollmentCount = enrollmentCountRow?.count ?? 0;
-  if (studentCount > 0 && enrollmentCount === 0) {
-    const currentYear = process.env.ACADEMIC_YEAR_ID ?? 1;
-    const studentsToEnroll = db.all(sql`SELECT id as sid, class_id as cid, registration_date as rdate FROM students`) as { sid: number; cid: number; rdate: string }[];
-    for (const s of studentsToEnroll) {
-      await db.run(sql`
-        INSERT INTO enrollments (student_id, class_id, academic_year_id, enrollment_date, status)
-        VALUES (${s.sid}, ${s.cid}, ${currentYear}, ${s.rdate}, 'inscrit')
-      `);
-    }
-    console.log(`[EduMali] ${studentsToEnroll.length} inscription(s) créée(s) pour les élèves existants`);
-  }
 }
 
 export function resetBootstrap() {
