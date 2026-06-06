@@ -8,8 +8,8 @@ Stack : Next.js 15, Tailwind CSS v4, shadcn/ui, Drizzle ORM + SQLite.
 
 ### Prérequis
 
-- Node.js 18+ (recommandé : 22 LTS)
-- pnpm 8+
+- Node.js **18.x, 20.x ou 22.x LTS** (Node 24 **non supporté** — dépendances natives incompatibles)
+- pnpm **8.15+** (installé via `corepack enable && corepack prepare pnpm@latest --activate`)
 
 ### Installation
 
