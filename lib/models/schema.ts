@@ -128,6 +128,7 @@ export const teachers = sqliteTable("teachers", {
   gender: text("gender", { enum: ["Masculin", "Féminin"] }).notNull(),
   hireDate: text("hire_date").notNull(),
   salary: real("salary").default(0),
+  hoursPerDay: integer("hours_per_day").default(4),
   contrat: text("contrat", { enum: ["horaire", "mensuel"] }).notNull().default("mensuel"),
   status: text("status", { enum: ["active", "inactive", "on_leave"] }).notNull().default("active"),
   photo: text("photo"),

@@ -12,6 +12,7 @@ export interface TeacherData {
   address: string
   hire_date: string
   salary: number
+  hours_per_day: number
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string

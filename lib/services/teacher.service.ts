@@ -21,6 +21,7 @@ function mapTeacher(t: any) {
     address: t.address ?? "",
     hire_date: t.hireDate,
     salary: t.salary ?? 0,
+    hours_per_day: t.hoursPerDay ?? 4,
     status: t.status,
     photo: t.photo ?? "",
     user_id: t.userId ? String(t.userId) : "",
@@ -78,6 +79,7 @@ export async function addTeacher(input: {
   first_name: string; last_name: string; email: string; phone?: string;
   address?: string; gender: string; hire_date: string; salary?: number;
   contrat: string; status?: string; photo?: string; speciality?: string[];
+  hours_per_day?: number;
 }) {
   const data: NewTeacher = {
     firstName: input.first_name,
@@ -88,6 +90,7 @@ export async function addTeacher(input: {
     gender: input.gender as "Masculin" | "Féminin",
     hireDate: input.hire_date,
     salary: input.salary ?? 0,
+    hoursPerDay: input.hours_per_day ?? 4,
     contrat: input.contrat as "horaire" | "mensuel",
     status: (input.status as "active" | "inactive" | "on_leave") ?? "active",
     photo: input.photo,
@@ -105,6 +108,7 @@ export async function editTeacher(id: string, input: Partial<{
   first_name: string; last_name: string; email: string; phone: string;
   address: string; gender: string; hire_date: string; salary: number;
   contrat: string; status: string; photo: string; speciality: string[];
+  hours_per_day: number;
 }>) {
   const data: any = {};
   if (input.first_name !== undefined) data.firstName = input.first_name;
@@ -115,6 +119,7 @@ export async function editTeacher(id: string, input: Partial<{
   if (input.gender !== undefined) data.gender = input.gender;
   if (input.hire_date !== undefined) data.hireDate = input.hire_date;
   if (input.salary !== undefined) data.salary = input.salary;
+  if (input.hours_per_day !== undefined) data.hoursPerDay = input.hours_per_day;
   if (input.contrat !== undefined) data.contrat = input.contrat;
   if (input.status !== undefined) data.status = input.status;
   if (input.photo !== undefined) data.photo = input.photo;
@@ -178,6 +183,12 @@ export async function getTeacherAttendanceByDate(date: string) {
 }
 
 export async function saveTeacherAttendance(records: { teacher_id: string; date: string; status: string; justification?: string }[]) {
+  const dates = [...new Set(records.map(r => r.date))];
+  for (const date of dates) {
+    if (await checkPeriodClosed(date)) {
+      throw new Error("Impossible de modifier les présences : la période est clôturée");
+    }
+  }
   await upsertTeacherAttendance(
     records.map(r => ({
       teacherId: Number(r.teacher_id),
@@ -186,6 +197,17 @@ export async function saveTeacherAttendance(records: { teacher_id: string; date:
       justification: r.justification,
     }))
   );
+}
+
+export async function getTeacherAttendanceStats(teacherId: string, year: number, month: number) {
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const toDate = new Date(year, month, 0);
+  const to = toDate.toISOString().slice(0, 10);
+  const rows = await findTeacherAttendance(Number(teacherId), from, to);
+  const presentDays = rows.filter(
+    r => r.status === "present" || r.status === "retard"
+  ).length;
+  return { presentDays, totalDays: rows.length };
 }
 
 export async function getPayroll(filters?: { teacherId?: string; month?: number; year?: number; from?: string; to?: string }) {

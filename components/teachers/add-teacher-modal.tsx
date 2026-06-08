@@ -35,6 +35,7 @@ interface TeacherFormData {
   address: string
   hire_date: string
   salary: number
+  hours_per_day: number
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string
@@ -59,6 +60,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
     address: "",
     hire_date: new Date().toISOString().split("T")[0],
     salary: 150000,
+    hours_per_day: 4,
     status: "active",
     photo: "",
     user_id: "system",
@@ -85,6 +87,7 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
         address: "",
         hire_date: new Date().toISOString().split("T")[0],
         salary: 150000,
+        hours_per_day: 4,
         status: "active",
         photo: "",
         user_id: "system",
@@ -233,7 +236,21 @@ export function AddTeacherModal({ isOpen, onClose, onAdd, subjects }: AddTeacher
                   <SelectItem value="Féminin">Féminin</SelectItem>
                 </SelectContent>
               </Select>
-            </div>            
+            </div>
+            {formData.contrat === "horaire" && (
+              <div className="space-y-2">
+                <Label htmlFor="hours_per_day">Heures par jour *</Label>
+                <Input
+                  id="hours_per_day"
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={formData.hours_per_day}
+                  onChange={(e) => setFormData(prev => ({ ...prev, hours_per_day: Number(e.target.value) }))}
+                  required
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

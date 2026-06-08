@@ -35,8 +35,46 @@ export default function SalairesPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [selectedSalary, setSelectedSalary] = useState<any>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [hoursInput, setHoursInput] = useState<Record<string, number>>({})
+  const [attendanceLoading, setAttendanceLoading] = useState(true)
 
   const [year, month] = selectedMonth.split("-").map(Number)
+
+  useEffect(() => {
+    if (teachers.length === 0) return
+    const from = `${year}-${String(month).padStart(2, "0")}-01`
+    const toDate = new Date(year, month, 0)
+    const to = toDate.toISOString().slice(0, 10)
+    setAttendanceLoading(true)
+    window.fetch(`/api/teachers/attendance?from=${from}&to=${to}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(json => {
+        if (!json.ok) return
+        const counts: Record<string, number> = {}
+        for (const rec of json.data) {
+          if (rec.status === "present" || rec.status === "retard") {
+            counts[rec.teacher_id] = (counts[rec.teacher_id] || 0) + 1
+          }
+        }
+        const hours: Record<string, number> = {}
+        for (const t of teachers) {
+          if (t.contrat === "horaire") {
+            const presentDays = counts[t.id] || 0
+            const hpd = (t as any).hours_per_day || 4
+            hours[t.id] = presentDays * hpd
+          }
+        }
+        setHoursInput(prev => {
+          const merged = { ...hours }
+          for (const k of Object.keys(prev)) {
+            if (prev[k] !== undefined) merged[k] = prev[k]
+          }
+          return merged
+        })
+        setAttendanceLoading(false)
+      })
+      .catch(() => setAttendanceLoading(false))
+  }, [year, month, teachers])
 
   const payrollMap = useMemo(() => {
     const map: Record<string, PayrollRecord> = {}
@@ -56,15 +94,16 @@ export default function SalairesPage() {
         type: t.status === "on_leave" ? "remplaçant" : "titulaire",
         contrat: t.contrat,
         salary: t.salary,
+        hours_per_day: (t as any).hours_per_day ?? 4,
         majoration: pr?.bonus ?? 0,
-        hours_worked: t.contrat === "horaire" ? 20 : undefined,
+        hours_worked: t.contrat === "horaire" ? (hoursInput[t.id] ?? 0) : undefined,
         speciality_names: t.speciality_names,
         gender: t.gender,
         paid: !!pr,
         payroll_id: pr?.id ?? null,
       }
     })
-  }, [teachers, payrollMap])
+  }, [teachers, payrollMap, hoursInput])
 
   const calculateSalary = (s: any) => {
     let base = 0
@@ -133,7 +172,7 @@ export default function SalairesPage() {
     URL.revokeObjectURL(url)
   }
 
-  const isLoading = teachersLoading || payrollLoading
+  const isLoading = teachersLoading || payrollLoading || attendanceLoading
 
   return (
     <AppLayout>
@@ -179,6 +218,8 @@ export default function SalairesPage() {
                 calculate={calculateSalary}
                 onMarkPaid={handleMarkPaid}
                 onUnmarkPaid={handleUnmarkPaid}
+                hoursInput={hoursInput}
+                onHoursChange={(id: string, value: number) => setHoursInput(prev => ({ ...prev, [id]: value }))}
               />
             </CardContent>
           </Card>
@@ -208,7 +249,7 @@ function StatCard({ title, value, icon: Icon }: any) {
   )
 }
 
-function TableLayout({ data, onView, calculate, onMarkPaid, onUnmarkPaid }: any) {
+function TableLayout({ data, onView, calculate, onMarkPaid, onUnmarkPaid, hoursInput, onHoursChange }: any) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -232,8 +273,20 @@ function TableLayout({ data, onView, calculate, onMarkPaid, onUnmarkPaid }: any)
                 <td className="p-4 text-xs">
                   <Badge variant={s.type === "titulaire" ? "default" : "secondary"}>{s.type}</Badge>
                 </td>
-                <td className="p-4">{calc.baseSalary.toLocaleString()}</td>
-                <td className="p-4">{s.hours_worked || "-"}</td>
+                <td className="p-4">
+                  {s.contrat === "horaire" ? `${s.salary.toLocaleString()} FCFA/h` : calc.baseSalary.toLocaleString()}
+                </td>
+                <td className="p-4">
+                  {s.contrat === "horaire" ? (
+                    <Input
+                      type="number"
+                      min="0"
+                      className="w-20 h-8 text-sm"
+                      value={hoursInput?.[s.id] ?? 0}
+                      onChange={(e) => onHoursChange?.(s.id, Number(e.target.value))}
+                    />
+                  ) : "-"}
+                </td>
                 <td className="p-4 font-bold text-green-600">{calc.total.toLocaleString()} FCFA</td>
                 <td className="p-4">
                   {s.paid ? (

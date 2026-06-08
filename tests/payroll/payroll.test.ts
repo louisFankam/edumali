@@ -282,4 +282,87 @@ describe("Payroll - Tests d'intégration", () => {
       paid_at: "2026-07-15T12:00:00.000Z",
     })).rejects.toThrow("période est clôturée");
   });
+
+  // ─── Attendance-based hours calculation ───
+
+  it("devrait calculer les heures d'un horaire basé sur les présences (present + retard)", async () => {
+    const { addTeacher, getTeacherAttendanceStats, saveTeacherAttendance } = await import("@/lib/services/teacher.service");
+
+    const teacher = await addTeacher({
+      first_name: "Attendance",
+      last_name: "Calc",
+      email: "attendance.calc@ecole.ml",
+      gender: "Masculin",
+      hire_date: "2026-01-01",
+      salary: 5000,
+      contrat: "horaire",
+      hours_per_day: 4,
+    });
+
+    await saveTeacherAttendance([
+      { teacher_id: teacher.id, date: "2026-06-01", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-02", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-03", status: "retard" },
+      { teacher_id: teacher.id, date: "2026-06-04", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-05", status: "absent" },
+      { teacher_id: teacher.id, date: "2026-06-08", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-09", status: "retard" },
+      { teacher_id: teacher.id, date: "2026-06-10", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-11", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-12", status: "present" },
+    ]);
+
+    const stats = await getTeacherAttendanceStats(teacher.id, 2026, 6);
+    // present: 7 jours, retard: 2 jours → 9 jours présents
+    expect(stats.presentDays).toBe(9);
+    // 9 jours × 4h/jour = 36 heures
+    const hours = stats.presentDays * 4;
+    expect(hours).toBe(36);
+  });
+
+  it("devrait exclure les absences du calcul des heures", async () => {
+    const { addTeacher, getTeacherAttendanceStats, saveTeacherAttendance } = await import("@/lib/services/teacher.service");
+
+    const teacher = await addTeacher({
+      first_name: "Attend",
+      last_name: "Only",
+      email: "attend.only@ecole.ml",
+      gender: "Féminin",
+      hire_date: "2026-01-01",
+      salary: 5000,
+      contrat: "horaire",
+      hours_per_day: 6,
+    });
+
+    await saveTeacherAttendance([
+      { teacher_id: teacher.id, date: "2026-06-01", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-02", status: "excused" },
+      { teacher_id: teacher.id, date: "2026-06-03", status: "absent" },
+      { teacher_id: teacher.id, date: "2026-06-04", status: "present" },
+      { teacher_id: teacher.id, date: "2026-06-05", status: "present" },
+    ]);
+
+    const stats = await getTeacherAttendanceStats(teacher.id, 2026, 6);
+    // seul present compte → 3 jours
+    expect(stats.presentDays).toBe(3);
+  });
+
+  it("devrait retourner 0 heures pour un mois sans présences", async () => {
+    const { addTeacher, getTeacherAttendanceStats } = await import("@/lib/services/teacher.service");
+
+    const teacher = await addTeacher({
+      first_name: "Zero",
+      last_name: "Attendance",
+      email: "zero.attendance@ecole.ml",
+      gender: "Masculin",
+      hire_date: "2026-01-01",
+      salary: 5000,
+      contrat: "horaire",
+      hours_per_day: 4,
+    });
+
+    const stats = await getTeacherAttendanceStats(teacher.id, 2026, 7);
+    expect(stats.presentDays).toBe(0);
+    expect(stats.totalDays).toBe(0);
+  });
 });

@@ -88,14 +88,15 @@ export async function seedTeacher(overrides: Record<string, any> = {}) {
   const gender = overrides.gender ?? "Masculin"
   const hireDate = overrides.hireDate ?? "2020-09-01"
   const salary = overrides.salary ?? 150000
+  const hoursPerDay = overrides.hoursPerDay ?? 4
   const contrat = overrides.contrat ?? "mensuel"
   const status = overrides.status ?? "active"
   const photo = overrides.photo ?? null
   const userId = overrides.userId ?? null
 
   const rows = db.all(sql`
-    INSERT INTO teachers (first_name, last_name, email, phone, address, gender, hire_date, salary, contrat, status, photo, user_id, created_at, updated_at)
-    VALUES (${firstName}, ${lastName}, ${email}, ${phone}, ${address}, ${gender}, ${hireDate}, ${salary}, ${contrat}, ${status}, ${photo}, ${userId}, unixepoch('now'), unixepoch('now'))
+    INSERT INTO teachers (first_name, last_name, email, phone, address, gender, hire_date, salary, hours_per_day, contrat, status, photo, user_id, created_at, updated_at)
+    VALUES (${firstName}, ${lastName}, ${email}, ${phone}, ${address}, ${gender}, ${hireDate}, ${salary}, ${hoursPerDay}, ${contrat}, ${status}, ${photo}, ${userId}, unixepoch('now'), unixepoch('now'))
     RETURNING id
   `) as { id: number }[]
   return String(rows[0].id)

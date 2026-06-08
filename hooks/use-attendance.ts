@@ -16,11 +16,13 @@ export interface AttendanceRecord {
 export function useAttendanceByDateClass() {
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const requestId = useRef(0)
 
   const load = useCallback(async (date: string, classId?: string, from?: string, to?: string) => {
     const id = ++requestId.current
     setIsLoading(true)
+    setError(null)
     try {
       const params = new URLSearchParams({ date })
       if (classId) params.set("classId", classId)
@@ -30,6 +32,9 @@ export function useAttendanceByDateClass() {
       const json = await res.json()
       if (id !== requestId.current) return
       if (json.ok) setRecords(json.data)
+      else setError(json.message ?? "Erreur lors du chargement")
+    } catch (e) {
+      if (id === requestId.current) setError(String(e))
     } finally {
       if (id === requestId.current) setIsLoading(false)
     }
@@ -44,17 +49,19 @@ export function useAttendanceByDateClass() {
     return res.json()
   }
 
-  return { records, isLoading, load, save }
+  return { records, isLoading, error, load, save }
 }
 
 export function useAttendanceStats() {
   const [stats, setStats] = useState<{ total: number; présent: number; absent: number; retard: number; congé: number; rate: number } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const requestId = useRef(0)
 
   const load = useCallback(async (opts?: { studentId?: string; classId?: string; from?: string; to?: string }) => {
     const id = ++requestId.current
     setIsLoading(true)
+    setError(null)
     try {
       const params = new URLSearchParams({ stats: "true" })
       if (opts?.studentId) params.set("studentId", opts.studentId)
@@ -65,10 +72,13 @@ export function useAttendanceStats() {
       const json = await res.json()
       if (id !== requestId.current) return
       if (json.ok) setStats(json.data)
+      else setError(json.message ?? "Erreur lors du chargement")
+    } catch (e) {
+      if (id === requestId.current) setError(String(e))
     } finally {
       if (id === requestId.current) setIsLoading(false)
     }
   }, [])
 
-  return { stats, isLoading, load }
+  return { stats, isLoading, error, load }
 }

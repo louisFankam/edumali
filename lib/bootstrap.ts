@@ -196,6 +196,7 @@ async function ensureAuthSchema(db: any) {
       gender text NOT NULL CHECK(gender IN ('Masculin', 'Féminin')),
       hire_date text NOT NULL,
       salary real DEFAULT 0,
+      hours_per_day integer DEFAULT 4,
       contrat text NOT NULL DEFAULT 'mensuel' CHECK(contrat IN ('horaire', 'mensuel')),
       status text NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'inactive', 'on_leave')),
       photo text,

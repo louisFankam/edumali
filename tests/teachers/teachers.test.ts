@@ -241,4 +241,66 @@ describe("Teachers - Tests d'intégration", () => {
     expect(subjects[0]).toHaveProperty("name");
     expect(subjects[0]).toHaveProperty("code");
   });
+
+  // ─── hours_per_day ───
+
+  it("devrait créer un enseignant horaire avec hours_per_day personnalisé", async () => {
+    const { addTeacher, getTeacherById } = await import("@/lib/services/teacher.service");
+
+    const created = await addTeacher({
+      first_name: "Horaire",
+      last_name: "Test",
+      email: "horaire.test@ecole.ml",
+      gender: "Masculin",
+      hire_date: "2026-01-01",
+      salary: 5000,
+      contrat: "horaire",
+      hours_per_day: 6,
+    });
+
+    expect(created.hours_per_day).toBe(6);
+
+    const reloaded = await getTeacherById(created.id);
+    expect(reloaded!.hours_per_day).toBe(6);
+  });
+
+  it("devrait avoir hours_per_day=4 par défaut pour un enseignant mensuel", async () => {
+    const { addTeacher, getTeacherById } = await import("@/lib/services/teacher.service");
+
+    const created = await addTeacher({
+      first_name: "Default",
+      last_name: "Hours",
+      email: "default.hours@ecole.ml",
+      gender: "Féminin",
+      hire_date: "2026-02-01",
+      salary: 200000,
+      contrat: "mensuel",
+    });
+
+    expect(created.hours_per_day).toBe(4);
+
+    const reloaded = await getTeacherById(created.id);
+    expect(reloaded!.hours_per_day).toBe(4);
+  });
+
+  it("devrait modifier hours_per_day via editTeacher", async () => {
+    const { addTeacher, editTeacher, getTeacherById } = await import("@/lib/services/teacher.service");
+
+    const created = await addTeacher({
+      first_name: "Edit",
+      last_name: "HPD",
+      email: "edit.hpd@ecole.ml",
+      gender: "Masculin",
+      hire_date: "2026-03-01",
+      salary: 5000,
+      contrat: "horaire",
+      hours_per_day: 4,
+    });
+
+    const updated = await editTeacher(created.id, { hours_per_day: 8 });
+    expect(updated.hours_per_day).toBe(8);
+
+    const reloaded = await getTeacherById(created.id);
+    expect(reloaded!.hours_per_day).toBe(8);
+  });
 });

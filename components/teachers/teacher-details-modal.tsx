@@ -19,6 +19,7 @@ interface Teacher {
   address: string
   hire_date: string
   salary: number
+  hours_per_day: number
   status: "active" | "inactive" | "on_leave"
   photo: string
   user_id: string
@@ -167,10 +168,10 @@ export function TeacherDetailsModal({ isOpen, onClose, teacher }: TeacherDetails
                 </div>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Salaire mensuel</p>
+                <p className="text-sm text-muted-foreground">{teacher.contrat === "horaire" ? "Taux horaire" : "Salaire mensuel"}</p>
                 <p className="font-medium flex items-center space-x-2">
                   <DollarSign className="h-4 w-4" />
-                  <span>{teacher.salary.toLocaleString('fr-FR')} FCFA</span>
+                  <span>{teacher.salary.toLocaleString('fr-FR')} FCFA{teacher.contrat === "horaire" ? `/h (${teacher.hours_per_day}h/jour)` : ""}</span>
                 </p>
               </div>
               <div>

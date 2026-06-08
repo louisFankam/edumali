@@ -1,0 +1,1 @@
+ALTER TABLE `teachers` ADD `hours_per_day` integer DEFAULT 4;

@@ -8,6 +8,13 @@
       "when": 1780742513038,
       "tag": "0000_daffy_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1780933517799,
+      "tag": "0001_boring_lady_mastermind",
+      "breakpoints": true
     }
   ]
 }

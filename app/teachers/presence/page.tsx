@@ -47,6 +47,9 @@ export default function TeacherAttendancePage() {
   const dateStr = format(selectedDate, "yyyy-MM-dd")
   const { records: attendanceRecords, isLoading: attendanceLoading, refetch: reloadAttendance, saveAttendance } = useTeacherAttendance({
     date: dateStr,
+  })
+
+  const { records: historyRecords, isLoading: historyLoading } = useTeacherAttendance({
     from: currentYear?.startDate,
     to: currentYear?.endDate,
   })
@@ -109,7 +112,7 @@ export default function TeacherAttendancePage() {
 
   const historyStats = useMemo(() => {
     const grouped: Record<string, { total: number; present: number }> = {}
-    attendanceRecords.forEach(r => {
+    historyRecords.forEach(r => {
       if (!grouped[r.date]) grouped[r.date] = { total: 0, present: 0 }
       grouped[r.date].total++
       if (r.status === "present") grouped[r.date].present++
@@ -118,11 +121,11 @@ export default function TeacherAttendancePage() {
       date,
       total: data.total,
       present: data.present,
-      rate: Math.round((data.present / data.total) * 100),
+      rate: data.total > 0 ? Math.round((data.present / data.total) * 100) : 0,
     })).sort((a, b) => b.date.localeCompare(a.date))
-  }, [attendanceRecords])
+  }, [historyRecords])
 
-  const isLoading = teachersLoading || attendanceLoading
+  const isLoading = teachersLoading || attendanceLoading || historyLoading
 
   return (
     <AppLayout>

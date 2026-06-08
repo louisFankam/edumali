@@ -103,6 +103,7 @@ export default function AttendancePage() {
         classId: Number(selectedClassId),
         date: dateStr,
         status: statusMap[attendance[s.id]] || "présent",
+        justification: "",
       }))
       const res = await saveAttendance(records)
       if (res.ok) alert("Présences sauvegardées")
