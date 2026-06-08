@@ -129,3 +129,11 @@ export async function seedEnrollment(studentId: string, classId: string, academi
   `) as { id: number }[]
   return String(rows[0].id)
 }
+
+export async function seedTeacherSubject(teacherId: string, subjectId: string) {
+  const { db } = await import("@/lib/db")
+  db.run(sql`
+    INSERT INTO teacher_subjects (teacher_id, subject_id)
+    VALUES (${Number(teacherId)}, ${Number(subjectId)})
+  `)
+}

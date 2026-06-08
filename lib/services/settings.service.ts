@@ -10,9 +10,11 @@ import {
 import {
   findAllSubjects,
   findSubjectById,
+  findSubjectByIdWithTeachers,
   createSubject,
   updateSubject,
   deleteSubject,
+  setSubjectTeachers,
 } from "@/lib/repositories/subject.repository";
 
 function mapSchoolInfo(s: any) {
@@ -48,10 +50,11 @@ function mapSubject(s: any) {
     name: s.name,
     code: s.code ?? "",
     coefficient: s.coefficient ?? 1,
-    hoursPerWeek: s.hoursPerWeek ?? 0,
+    hoursPerWeek: s.hoursPerWeek ?? s.hours_per_week ?? 0,
     description: s.description ?? "",
     color: s.color ?? "#6366f1",
     status: s.status,
+    teacherNumber: s.teacher_number ?? 0,
   };
 }
 
@@ -109,6 +112,10 @@ export async function fetchSubject(id: string) {
   return mapSubject(row);
 }
 
+export async function fetchSubjectWithTeachers(id: string) {
+  return await findSubjectByIdWithTeachers(Number(id));
+}
+
 export async function addSubject(input: {
   name: string;
   code?: string;
@@ -117,16 +124,29 @@ export async function addSubject(input: {
   description?: string;
   color?: string;
   status?: string;
+  teacherIds?: string[];
 }) {
-  const row = await createSubject(input);
+  const { teacherIds, ...subjectInput } = input;
+  const row = await createSubject(subjectInput);
+  if (teacherIds && teacherIds.length > 0) {
+    await setSubjectTeachers(Number(row.id), teacherIds.map(Number));
+  }
   return mapSubject(row);
 }
 
 export async function editSubject(id: string, input: any) {
-  const row = await updateSubject(Number(id), input);
+  const { teacherIds, ...subjectInput } = input;
+  const row = await updateSubject(Number(id), subjectInput);
+  if (teacherIds !== undefined) {
+    await setSubjectTeachers(Number(id), teacherIds.map(Number));
+  }
   return mapSubject(row);
 }
 
 export async function removeSubject(id: string) {
   await deleteSubject(Number(id));
+}
+
+export async function updateSubjectTeachers(subjectId: string, teacherIds: string[]) {
+  await setSubjectTeachers(Number(subjectId), teacherIds.map(Number));
 }

@@ -67,8 +67,7 @@ interface Subject {
   id: string
   name: string
   code: string
-  teacher_number: number
-  teacher_name?: string
+  teacherNumber: number
   hours_per_week: number
   coefficient: number
   color: string
@@ -338,12 +337,14 @@ function SubjectModal({
   isOpen, 
   onClose, 
   onSave, 
-  subjectData = null 
+  subjectData = null,
+  allTeachers = []
 }: {
   isOpen: boolean
   onClose: () => void
   onSave: (data: any) => Promise<void>
   subjectData?: Subject | null
+  allTeachers?: any[]
 }) {
   const [formData, setFormData] = useState({
     name: subjectData?.name || "",
@@ -352,7 +353,8 @@ function SubjectModal({
     coefficient: subjectData?.coefficient || 1,
     color: subjectData?.color || "#3b82f6",
     description: subjectData?.description || "",
-    status: subjectData?.status === "inactive" ? "inactive" : "active"
+    status: subjectData?.status === "inactive" ? "inactive" : "active",
+    teacherIds: [] as string[],
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -379,7 +381,19 @@ function SubjectModal({
         coefficient: subjectData.coefficient,
         color: subjectData.color,
         description: subjectData.description,
-        status: subjectData.status === 'active' ? 'active' : 'inactive'
+        status: subjectData.status === 'active' ? 'active' : 'inactive',
+        teacherIds: [],
+      })
+    } else if (isOpen && !subjectData) {
+      setFormData({
+        name: "",
+        code: "",
+        hours_per_week: 3,
+        coefficient: 1,
+        color: "#3b82f6",
+        description: "",
+        status: "active",
+        teacherIds: [],
       })
     }
   }, [isOpen, subjectData])
@@ -494,6 +508,31 @@ function SubjectModal({
               Matière active
             </Label>
           </div>
+
+          {!subjectData && allTeachers.length > 0 && (
+            <div>
+              <Label>Assigner des enseignants (optionnel)</Label>
+              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
+                {allTeachers.map(t => (
+                  <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 p-1 rounded">
+                    <input
+                      type="checkbox"
+                      checked={formData.teacherIds.includes(t.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({...formData, teacherIds: [...formData.teacherIds, t.id]})
+                        } else {
+                          setFormData({...formData, teacherIds: formData.teacherIds.filter(id => id !== t.id)})
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    {t.full_name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
@@ -829,8 +868,7 @@ export default function SettingsPage() {
         id: s.id,
         name: s.name,
         code: s.code,
-        teacher_number: 0,
-        teacher_name: "",
+        teacherNumber: s.teacherNumber ?? 0,
         hours_per_week: s.hoursPerWeek,
         coefficient: s.coefficient,
         color: s.color,
@@ -1005,6 +1043,7 @@ export default function SettingsPage() {
           description: subjectData.description,
           color: subjectData.color,
           status: subjectData.status === "active" ? "Actif" : "Inactif",
+          teacherIds: subjectData.teacherIds ?? [],
         })
       }
     } catch (e) {
@@ -1290,6 +1329,15 @@ export default function SettingsPage() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => router.push(`/settings/subjects/${subject.id}`)}
+                            className="h-6 w-6 p-0"
+                            title="Détails de la matière"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => handleEditSubject(subject)}
                             className="h-6 w-6 p-0"
                           >
@@ -1310,7 +1358,7 @@ export default function SettingsPage() {
                     <CardContent className="space-y-3">
                       <div className="flex justify-between text-sm">
                         <span>Nombre de professeurs:</span>
-                        <span className="font-medium">{subject.teacher_name}</span>
+                        <span className="font-medium">{subject.teacherNumber ?? 0} professeur{(subject.teacherNumber ?? 0) > 1 ? "s" : ""}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Heures/semaine:</span>
@@ -1764,6 +1812,7 @@ export default function SettingsPage() {
             }}
             onSave={handleSaveSubject}
             subjectData={selectedSubject}
+            allTeachers={apiTeachers}
           />
 
           <UserAccountModal

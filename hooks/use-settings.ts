@@ -31,6 +31,7 @@ export interface SubjectData {
   description: string
   color: string
   status: string
+  teacherNumber: number
 }
 
 export function useSchoolInfo() {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
-import { seedClass, seedStudent, seedSubject, seedAcademicYear, seedEnrollment } from "../helpers/seed";
+import { seedClass, seedStudent, seedSubject, seedTeacher, seedAcademicYear, seedEnrollment } from "../helpers/seed";
 
 let classId: string
 let subjectId: string
@@ -103,6 +103,69 @@ describe("Settings - Tests d'intégration", () => {
     const found = await fetchSubject(created.id);
     expect(found).toBeNull();
   });
+
+  // ─── Subject-Teacher Assignment ───
+
+  it("devrait créer une matière sans enseignant (teacherNumber = 0)", async () => {
+    const { addSubject, fetchSubjects } = await import("@/lib/services/settings.service")
+    const created = await addSubject({ name: "Sans Prof", code: "SP" })
+    const all = await fetchSubjects()
+    const found = all.find((s: any) => s.id === created.id)
+    expect(found).toBeDefined()
+    expect(found!.teacherNumber).toBe(0)
+  })
+
+  it("devrait créer une matière avec des enseignants", async () => {
+    const tid = await seedTeacher({ firstName: "ProfAdd", lastName: "Creation" })
+    const tid2 = await seedTeacher({ firstName: "ProfAdd2", lastName: "Creation" })
+    const { addSubject, fetchSubjectWithTeachers } = await import("@/lib/services/settings.service")
+    const created = await addSubject({
+      name: "Avec Profs",
+      code: "AP",
+      teacherIds: [tid, tid2],
+    })
+    expect(created).toBeDefined()
+    const detail = await fetchSubjectWithTeachers(created.id)
+    expect(detail!.teacherNumber).toBe(2)
+    expect(detail!.teachers.some((t: any) => t.id === tid)).toBe(true)
+    expect(detail!.teachers.some((t: any) => t.id === tid2)).toBe(true)
+  })
+
+  it("devrait assigner des enseignants après création", async () => {
+    const tid = await seedTeacher({ firstName: "LateAdd", lastName: "Teacher" })
+    const { addSubject, fetchSubjectWithTeachers, updateSubjectTeachers } = await import("@/lib/services/settings.service")
+    const created = await addSubject({ name: "Late Assign", code: "LA" })
+    let detail = await fetchSubjectWithTeachers(created.id)
+    expect(detail!.teacherNumber).toBe(0)
+    await updateSubjectTeachers(created.id, [tid])
+    detail = await fetchSubjectWithTeachers(created.id)
+    expect(detail!.teacherNumber).toBe(1)
+    expect(detail!.teachers[0].id).toBe(tid)
+  })
+
+  it("devrait retirer des enseignants d'une matière", async () => {
+    const tid = await seedTeacher({ firstName: "RemoveMe", lastName: "Teacher" })
+    const { addSubject, fetchSubjectWithTeachers, updateSubjectTeachers } = await import("@/lib/services/settings.service")
+    const created = await addSubject({ name: "Remove Test", code: "RT", teacherIds: [tid] })
+    let detail = await fetchSubjectWithTeachers(created.id)
+    expect(detail!.teacherNumber).toBe(1)
+    await updateSubjectTeachers(created.id, [])
+    detail = await fetchSubjectWithTeachers(created.id)
+    expect(detail!.teacherNumber).toBe(0)
+    expect(detail!.teachers.length).toBe(0)
+  })
+
+  it("devrait lister les enseignants d'une matière via fetchSubjectWithTeachers", async () => {
+    const tid1 = await seedTeacher({ firstName: "List", lastName: "Teacher1" })
+    const tid2 = await seedTeacher({ firstName: "List", lastName: "Teacher2" })
+    const { addSubject, fetchSubjectWithTeachers } = await import("@/lib/services/settings.service")
+    const created = await addSubject({ name: "List Test", code: "LT", teacherIds: [tid1, tid2] })
+    const detail = await fetchSubjectWithTeachers(created.id)
+    expect(detail).not.toBeNull()
+    expect(detail!.name).toBe("List Test")
+    expect(detail!.teachers.length).toBe(2)
+    expect(detail!.teacherNumber).toBe(2)
+  })
 
   // ─── Fee Types ───
 

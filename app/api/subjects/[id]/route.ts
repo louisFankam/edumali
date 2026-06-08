@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchSubject, editSubject, removeSubject } from "@/lib/services/settings.service";
+import { fetchSubject, fetchSubjectWithTeachers, editSubject, removeSubject } from "@/lib/services/settings.service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const data = await fetchSubject(id);
+    const data = await fetchSubjectWithTeachers(id);
     if (!data) return NextResponse.json({ ok: false, message: "Matière non trouvée" }, { status: 404 });
     return NextResponse.json({ ok: true, data });
   } catch (error) {
