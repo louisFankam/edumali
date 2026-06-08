@@ -205,6 +205,7 @@ async function ensureAuthSchema(db: any) {
       updated_at integer
     )
   `);
+  try { await db.run(sql`ALTER TABLE teachers ADD COLUMN hours_per_day integer DEFAULT 4`); } catch {}
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS teacher_subjects (
