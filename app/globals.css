@@ -135,6 +135,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  .bg-card { background-color: var(--card); }
+  .bg-muted { background-color: var(--muted); }
+  .bg-sidebar { background-color: var(--sidebar); }
   body {
     @apply bg-background text-foreground;
     font-size: var(--font-size);
