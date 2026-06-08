@@ -165,10 +165,14 @@ export default function ClassDetailPage() {
                         <TableCell>{s.subjectCode || "—"}</TableCell>
                         <TableCell>{s.coefficient}</TableCell>
                         <TableCell>
-                          {s.teacherName ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {s.teacherName}
-                            </Badge>
+                          {s.teacherNames ? (
+                            <div className="flex flex-wrap gap-1">
+                              {s.teacherNames.split(", ").map((name, i) => (
+                                <Badge key={i} variant="secondary" className="text-xs">
+                                  {name}
+                                </Badge>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-muted-foreground text-sm">—</span>
                           )}

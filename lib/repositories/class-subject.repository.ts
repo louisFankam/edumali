@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { classSubjects, subjects } from "@/lib/models/schema";
-import { eq, and } from "drizzle-orm";
+import { classSubjects, subjects, teacherSubjects, teachers } from "@/lib/models/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 export async function findSubjectsByClassId(classId: number) {
   return db.select({
@@ -10,9 +10,13 @@ export async function findSubjectsByClassId(classId: number) {
     coefficient: classSubjects.coefficient,
     subjectName: subjects.name,
     subjectCode: subjects.code,
+    teacherNames: sql<string>`GROUP_CONCAT(${teachers.firstName} || ' ' || ${teachers.lastName}, ', ')`,
   }).from(classSubjects)
     .innerJoin(subjects, eq(classSubjects.subjectId, subjects.id))
+    .leftJoin(teacherSubjects, eq(teacherSubjects.subjectId, subjects.id))
+    .leftJoin(teachers, eq(teachers.id, teacherSubjects.teacherId))
     .where(eq(classSubjects.classId, classId))
+    .groupBy(classSubjects.id)
     .orderBy(subjects.name);
 }
 

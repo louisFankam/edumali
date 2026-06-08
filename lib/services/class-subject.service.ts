@@ -11,6 +11,7 @@ export async function getClassSubjects(classId: string) {
     coefficient: r.coefficient,
     subjectName: r.subjectName,
     subjectCode: r.subjectCode || "",
+    teacherNames: r.teacherNames || "",
   }));
 }
 

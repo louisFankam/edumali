@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
 import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
@@ -790,6 +791,7 @@ export default function SettingsPage() {
   const { years: apiYears, currentYear, isLoading: yearsLoading, create: createYear, update: updateYear, remove: removeYear } = useAcademicYears()
 
   const { teachers: apiTeachers } = useTeachers()
+  const router = useRouter()
 
   const [classes, setClasses] = useState<Class[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -1181,6 +1183,15 @@ export default function SettingsPage() {
                             title="Modifier la classe"
                           >
                             <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => router.push(`/settings/classes/${classItem.id}`)}
+                            className="h-6 w-6 p-0"
+                            title="Détails de la classe"
+                          >
+                            <Eye className="h-3 w-3" />
                           </Button>
                           <Button
                             size="sm"

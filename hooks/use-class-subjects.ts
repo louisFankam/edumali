@@ -9,6 +9,7 @@ export interface ClassSubject {
   coefficient: number
   subjectName: string
   subjectCode: string
+  teacherNames?: string
 }
 
 export function useClassSubjects(classId: string | undefined) {
