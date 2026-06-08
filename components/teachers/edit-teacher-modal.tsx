@@ -42,6 +42,7 @@ interface Teacher {
   user_id: string
   gender: "Masculin" | "Féminin"
   contrat: "horaire" | "mensuel"
+  hours_per_day: number
   speciality: string[]
   speciality_names: string[]
   created: string
@@ -70,6 +71,7 @@ export function EditTeacherModal({ isOpen, onClose, teacher, onEdit, subjects }:
     user_id: "",
     gender: "Masculin" as "Masculin" | "Féminin",
     contrat: "mensuel" as const,
+    hours_per_day: 4,
     speciality: [] as string[]
   })
 
@@ -90,6 +92,7 @@ export function EditTeacherModal({ isOpen, onClose, teacher, onEdit, subjects }:
         user_id: teacher.user_id,
         gender: teacher.gender,
         contrat: teacher.contrat,
+        hours_per_day: teacher.hours_per_day ?? 4,
         speciality: teacher.speciality || []
       })
     }
@@ -247,6 +250,21 @@ export function EditTeacherModal({ isOpen, onClose, teacher, onEdit, subjects }:
               </Select>
             </div>
           </div>
+
+          {formData.contrat === "horaire" && (
+            <div className="space-y-2">
+              <Label htmlFor="hours_per_day">Heures par jour *</Label>
+              <Input
+                id="hours_per_day"
+                type="number"
+                min="1"
+                max="24"
+                value={formData.hours_per_day}
+                onChange={(e) => setFormData(prev => ({ ...prev, hours_per_day: Number(e.target.value) }))}
+                required
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Date d'embauche *</Label>
