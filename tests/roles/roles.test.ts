@@ -191,4 +191,60 @@ describe("Rôles - Tests d'intégration", () => {
     const managerCheck = await findUserById(managerUser.id);
     expect(managerCheck!.role).toBe("manager");
   });
+
+  it("devrait creer un audit_log lors de la creation d'un utilisateur", async () => {
+    const { logAudit, getAuditLogs } = await import("@/lib/services/audit.service");
+
+    await logAudit({
+      tableName: "users",
+      recordId: 42,
+      action: "create",
+      userId: 1,
+      newValues: { email: "test-audit", fullName: "Test Audit", role: "manager" },
+    });
+
+    const result = await getAuditLogs({ tableName: "users", action: "create" });
+    expect(result.data.length).toBeGreaterThanOrEqual(1);
+    const entry = result.data.find((e: any) => e.recordId === 42);
+    expect(entry).toBeDefined();
+    expect(entry.action).toBe("create");
+    expect(entry.newValues.email).toBe("test-audit");
+  });
+
+  it("devrait creer un audit_log lors de la modification d'un utilisateur", async () => {
+    const { logAudit, getAuditLogs } = await import("@/lib/services/audit.service");
+
+    await logAudit({
+      tableName: "users",
+      recordId: 1,
+      action: "update",
+      userId: 1,
+      oldValues: { role: "manager" },
+      newValues: { role: "admin" },
+    });
+
+    const result = await getAuditLogs({ tableName: "users", action: "update" });
+    expect(result.data.length).toBeGreaterThanOrEqual(1);
+    const entry = result.data.find((e: any) => e.recordId === 1 && e.oldValues?.role === "manager");
+    expect(entry).toBeDefined();
+    expect(entry.newValues.role).toBe("admin");
+  });
+
+  it("devrait creer un audit_log lors de la suppression d'un utilisateur", async () => {
+    const { logAudit, getAuditLogs } = await import("@/lib/services/audit.service");
+
+    await logAudit({
+      tableName: "users",
+      recordId: 7,
+      action: "delete",
+      userId: 1,
+      oldValues: { email: "delete-audit", fullName: "Delete Audit", role: "manager" },
+    });
+
+    const result = await getAuditLogs({ tableName: "users", action: "delete" });
+    expect(result.data.length).toBeGreaterThanOrEqual(1);
+    const entry = result.data.find((e: any) => e.recordId === 7);
+    expect(entry).toBeDefined();
+    expect(entry.oldValues.email).toBe("delete-audit");
+  });
 });

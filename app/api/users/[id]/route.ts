@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
+import { getSessionUserId } from "@/lib/auth/session";
 import { findUserById, updateUser, deleteUser } from "@/lib/repositories/user.repository";
+import { logAudit } from "@/lib/services/audit.service";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -34,6 +36,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const updated = await updateUser(userId, parsed.data);
+
+    const auditUserId = await getSessionUserId();
+    await logAudit({
+      tableName: "users",
+      recordId: userId,
+      action: "update",
+      userId: auditUserId ?? undefined,
+      oldValues: { email: existing.email, fullName: existing.fullName, role: existing.role },
+      newValues: { email: updated.email, fullName: updated.fullName, role: updated.role },
+    });
+
     return NextResponse.json({
       ok: true,
       user: {
@@ -74,7 +87,18 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       }
     }
 
+    const oldUser = { email: existing.email, fullName: existing.fullName, role: existing.role };
     await deleteUser(userId);
+
+    const auditUserId = await getSessionUserId();
+    await logAudit({
+      tableName: "users",
+      recordId: userId,
+      action: "delete",
+      userId: auditUserId ?? undefined,
+      oldValues: oldUser,
+    });
+
     return NextResponse.json({ ok: true, message: "Utilisateur supprimé." });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

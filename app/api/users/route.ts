@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
+import { getSessionUserId } from "@/lib/auth/session";
 import { findAllUsers, createUser, updateUser, deleteUser, findUserByEmail } from "@/lib/repositories/user.repository";
 import { hashPassword } from "@/lib/auth/password";
+import { logAudit } from "@/lib/services/audit.service";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -57,6 +59,15 @@ export async function POST(request: Request) {
       fullName: parsed.data.fullName,
       passwordHash,
       role: parsed.data.role,
+    });
+
+    const auditUserId = await getSessionUserId();
+    await logAudit({
+      tableName: "users",
+      recordId: created.id,
+      action: "create",
+      userId: auditUserId ?? undefined,
+      newValues: { email: created.email, fullName: created.fullName, role: created.role },
     });
 
     return NextResponse.json({
