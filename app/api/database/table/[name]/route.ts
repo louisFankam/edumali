@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/auth/session";
 import { findUserById } from "@/lib/repositories/user.repository";
 import { verifyPassword } from "@/lib/auth/password";
 import { clearTable, getDatabaseStats } from "@/lib/db";
+import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ const PROTECTED_TABLES = ["users", "academic_years", "school_info"];
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ name: string }> }) {
   try {
+    const { error } = await requireApiAdmin();
+    if (error) return error;
+
     const { name } = await params;
 
     if (PROTECTED_TABLES.includes(name)) {

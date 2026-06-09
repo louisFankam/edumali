@@ -77,7 +77,7 @@ describe("Journal d'activité - Tests d'intégration", () => {
     const result = await getAuditLogs({ tableName: "test" });
     expect(result.data.length).toBeGreaterThanOrEqual(2);
     // The most recent entries should be first (DESC order)
-    expect(result.data[0].recordId).toBeGreaterThanOrEqual(result.data[1].recordId);
+    expect(new Date(result.data[0].createdAt).getTime()).toBeGreaterThanOrEqual(new Date(result.data[1].createdAt).getTime());
   });
 
   it("A.7 logAudit stocke oldValues et newValues JSON", async () => {

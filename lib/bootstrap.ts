@@ -19,6 +19,7 @@ async function ensureAuthSchema(db: any) {
       email text NOT NULL UNIQUE,
       full_name text NOT NULL,
       password_hash text,
+      role text NOT NULL DEFAULT 'manager',
       created_at integer
     )
   `);
@@ -29,19 +30,26 @@ async function ensureAuthSchema(db: any) {
     // Column already exists.
   }
 
+  try {
+    await db.run(sql`ALTER TABLE users ADD COLUMN role text NOT NULL DEFAULT 'manager'`);
+  } catch {
+    // Column already exists.
+  }
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS users_auth_migration (
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       email text NOT NULL UNIQUE,
       full_name text NOT NULL,
       password_hash text,
+      role text NOT NULL DEFAULT 'manager',
       created_at integer
     )
   `);
 
   await db.run(sql`
-    INSERT OR IGNORE INTO users_auth_migration (id, email, full_name, password_hash, created_at)
-    SELECT id, email, full_name, password_hash, created_at FROM users
+    INSERT OR IGNORE INTO users_auth_migration (id, email, full_name, password_hash, role, created_at)
+    SELECT id, email, full_name, password_hash, COALESCE(role, 'manager'), created_at FROM users
   `);
 
   await db.run(sql`PRAGMA foreign_keys = OFF`);
@@ -510,6 +518,7 @@ export async function initializeApp() {
       email: adminEmail,
       fullName: "Administrateur",
       passwordHash,
+      role: "admin",
     });
 
     console.log(`[EduMali] Utilisateur admin cree: ${adminEmail}`);
@@ -520,12 +529,19 @@ export async function initializeApp() {
         email: adminEmail,
         fullName: "Administrateur",
         passwordHash,
+        role: "admin",
       });
 
       console.log(`[EduMali] Utilisateur admin cree: ${adminEmail}`);
     } else if (!admin.passwordHash?.startsWith("pbkdf2:")) {
       await updateUserPasswordHash(admin.id, passwordHash);
       console.log(`[EduMali] Hash du mot de passe admin mis a jour: ${adminEmail}`);
+    }
+
+    if (admin && admin.role !== "admin") {
+      const { updateUser } = await import("@/lib/repositories/user.repository");
+      await updateUser(admin.id, { role: "admin" });
+      console.log(`[EduMali] Role admin attribue a l'utilisateur existant: ${adminEmail}`);
     }
   }
 

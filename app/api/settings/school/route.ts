@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
 import { fetchSchoolInfo, saveSchoolInfo } from "@/lib/services/settings.service";
+import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +17,9 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
+    const { error } = await requireApiAdmin();
+    if (error) return error;
+
     const body = await request.json();
     const userId = await getSessionUserId();
     const data = await saveSchoolInfo(body, userId);

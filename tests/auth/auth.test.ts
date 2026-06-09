@@ -11,12 +11,13 @@ describe("Auth - Tests d'intégration", () => {
     await teardownTestDatabase();
   });
 
-  it("devrait authentifier un utilisateur avec des identifiants valides", async () => {
+  it("devrait authentifier un administrateur avec des identifiants valides", async () => {
     const { authenticateUser } = await import("@/lib/services/auth.service");
     const user = await authenticateUser("admin", "admin");
     expect(user).not.toBeNull();
     expect(user!.email).toBe("admin");
     expect(user!.id).toBeGreaterThan(0);
+    expect(user!.role).toBe("admin");
   });
 
   it("devrait retourner null pour un mot de passe invalide", async () => {
@@ -36,6 +37,7 @@ describe("Auth - Tests d'intégration", () => {
     const user = await getAuthenticatedUser(1);
     expect(user).not.toBeNull();
     expect(user!.email).toBeTruthy();
+    expect(user!.role).toBe("admin");
   });
 
   it("devrait retourner null pour un ID utilisateur inexistant", async () => {

@@ -22,6 +22,13 @@
       "when": 1780940736835,
       "tag": "0002_luxuriant_sunset_bain",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1781016254931,
+      "tag": "0003_right_iron_lad",
+      "breakpoints": true
     }
   ]
 }

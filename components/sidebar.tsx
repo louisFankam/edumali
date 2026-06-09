@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useSchoolInfo } from '@/hooks/use-school-info'
-import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle, IdCard, ClipboardList } from "lucide-react"
+import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle, IdCard, ClipboardList, Shield } from "lucide-react"
 
 interface NavigationItem {
   name: string
@@ -17,6 +17,12 @@ interface NavigationItem {
   current?: boolean
   children?: NavigationItem[]
 }
+
+const adminNavigation: NavigationItem[] = [
+  { name: "Utilisateurs", href: "/settings/utilisateurs", icon: Shield },
+  { name: "Base de données", href: "/settings/database", icon: Database },
+  { name: "Paramètres", href: "/settings", icon: Settings },
+]
 
 const navigation: NavigationItem[] = [
   {
@@ -71,8 +77,6 @@ const navigation: NavigationItem[] = [
   { name: "Trésorerie", href: "/finances", icon: DollarSign },
   { name: "Historique académique", href: "/academic-history", icon: BookOpen },
   { name: "Journal d'activité", href: "/audit", icon: ClipboardList },
-  { name: "Base de données", href: "/settings/database", icon: Database },
-  { name: "Paramètres", href: "/settings", icon: Settings },
   { name: "Personnalisation", href: "/personalization", icon: Palette },
   { name: "Aide", href: "/aide", icon: HelpCircle },
 ]
@@ -113,6 +117,13 @@ export function Sidebar() {
 
   if (!isAuthenticated) return null
 
+  const visibleNavigation = [...navigation]
+  const isAdmin = user?.role === "admin"
+
+  if (isAdmin) {
+    visibleNavigation.push(...adminNavigation)
+  }
+
   return (
     <>
       <Button
@@ -145,7 +156,7 @@ export function Sidebar() {
 
           <ScrollArea className="flex-1 px-3 py-4 overflow-y-auto">
             <nav className="space-y-1 pb-4">
-              {navigation.map((item) => (
+              {visibleNavigation.map((item) => (
                 <div key={item.name} className="sidebar-item">
                   {item.children ? (
                     <button
@@ -214,7 +225,9 @@ export function Sidebar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.fullName}</p>
-                  <p className="text-xs text-sidebar-foreground/60 truncate">{schoolInfo?.name}</p>
+                  <p className="text-xs text-sidebar-foreground/60 truncate">
+                    {user?.role === "admin" ? "Administrateur" : "Gestionnaire"}
+                  </p>
                 </div>
               </div>
             </div>

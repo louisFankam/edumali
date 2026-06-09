@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import { databasePath, rawDb } from "@/lib/db";
+import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    const { error } = await requireApiAdmin();
+    if (error) return error;
+
     const { searchParams } = new URL(request.url);
     const excludeAudit = searchParams.get("excludeAudit") === "true";
 

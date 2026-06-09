@@ -12,6 +12,7 @@ export async function authenticateUser(username: string, password: string) {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
+    role: user.role,
   };
 }
 
@@ -23,5 +24,6 @@ export async function getAuthenticatedUser(userId: number) {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
+    role: user.role,
   };
 }

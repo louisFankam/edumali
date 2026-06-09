@@ -19,6 +19,7 @@ export async function createUser(input: {
   email: string;
   fullName: string;
   passwordHash: string;
+  role?: string;
 }) {
   const [created] = await db
     .insert(users)
@@ -26,6 +27,7 @@ export async function createUser(input: {
       email: input.email,
       fullName: input.fullName,
       passwordHash: input.passwordHash,
+      role: (input.role ?? "manager") as "admin" | "manager",
     })
     .returning();
 
@@ -38,16 +40,25 @@ export async function updateUserPasswordHash(id: number, passwordHash: string) {
 
 export async function updateUser(
   id: number,
-  input: { email?: string; fullName?: string }
+  input: { email?: string; fullName?: string; role?: string }
 ) {
   const [updated] = await db
     .update(users)
     .set({
       ...(input.email !== undefined ? { email: input.email } : {}),
       ...(input.fullName !== undefined ? { fullName: input.fullName } : {}),
+      ...(input.role !== undefined ? { role: input.role as "admin" | "manager" } : {}),
     })
     .where(eq(users.id, id))
     .returning();
 
   return updated;
+}
+
+export async function deleteUser(id: number) {
+  await db.delete(users).where(eq(users.id, id));
+}
+
+export async function findAllUsers() {
+  return db.query.users.findMany({ orderBy: users.createdAt });
 }
