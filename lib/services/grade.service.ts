@@ -1,6 +1,7 @@
 import { findGradesByEvaluation, bulkSaveGrades, countStudentsByEvaluation, countAbsentByEvaluation } from "@/lib/repositories/grade.repository";
 import { findEvaluationById } from "@/lib/repositories/evaluation.repository";
 import { checkPeriodClosed } from "@/lib/services/period.service";
+import { logAudit } from "@/lib/services/audit.service";
 
 export async function getGrades(evaluationId: string) {
   const rows = await findGradesByEvaluation(Number(evaluationId));
@@ -18,12 +19,13 @@ export async function getGrades(evaluationId: string) {
 
 export async function saveGrades(evaluationId: string, gradeInputs: {
   studentId: number; score: number; remarks?: string; isAbsent?: boolean;
-}[]) {
+}[], userId?: number) {
   const evalRow = await findEvaluationById(Number(evaluationId));
   if (evalRow && await checkPeriodClosed(evalRow.date)) {
     throw new Error("Impossible de sauvegarder des notes : la période est clôturée");
   }
   const rows = await bulkSaveGrades(Number(evaluationId), gradeInputs);
+  logAudit({ tableName: "grades", recordId: 0, action: "create", userId, newValues: { batch: true, count: gradeInputs.length, evaluationId } });
   return rows.map(r => ({ id: String(r.id) }));
 }
 

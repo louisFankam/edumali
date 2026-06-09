@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { students, enrollments } from "@/lib/models/schema"
 import { findAllClasses } from "@/lib/repositories/class.repository"
 import { findCurrentAcademicYear } from "@/lib/repositories/academic-year.repository"
+import { logAudit } from "@/lib/services/audit.service"
 
 const COLUMN_MAP: Record<string, string> = {
   nom: "lastName",
@@ -234,7 +235,7 @@ export async function parseFile(
   return { rows, rawData }
 }
 
-export async function importStudents(rows: ImportRow[]): Promise<ImportResult> {
+export async function importStudents(rows: ImportRow[], userId?: number): Promise<ImportResult> {
   const validRows = rows.filter(r => r.errors.length === 0 && r.className)
   const errorRows = rows.filter(r => r.errors.length > 0)
 
@@ -282,5 +283,6 @@ export async function importStudents(rows: ImportRow[]): Promise<ImportResult> {
     }
   }
 
+  logAudit({ tableName: "students", recordId: 0, action: "create", userId, newValues: { batch: true, count: imported, total: rows.length, import: true } });
   return { total: rows.length, imported, errors: importErrors }
 }

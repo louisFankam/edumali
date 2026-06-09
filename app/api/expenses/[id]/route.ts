@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getExpenseById, editExpense, removeExpense } from "@/lib/services/expense.service";
 
 export const runtime = "nodejs";
@@ -19,7 +20,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const data = await editExpense(id, body);
+    const userId = await getSessionUserId();
+    const data = await editExpense(id, body, userId);
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
@@ -29,7 +31,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await removeExpense(id);
+    const userId = await getSessionUserId();
+    await removeExpense(id, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

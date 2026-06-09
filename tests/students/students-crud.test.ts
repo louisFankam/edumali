@@ -92,6 +92,12 @@ describe("Students CRUD - Tests d'intégration", () => {
       expect(s.status).toBe("Actif");
     });
 
+    it("devrait créer un audit_log pour addStudent", async () => {
+      const { getAuditLogs } = await import("@/lib/services/audit.service");
+      const result = await getAuditLogs({ tableName: "students", action: "create", limit: 1 });
+      expect(result.total).toBeGreaterThanOrEqual(1);
+    });
+
     it("devrait créer un élève avec une réduction", async () => {
       const { addStudent, getStudentById } = await import("@/lib/services/student.service");
       const s = await addStudent({

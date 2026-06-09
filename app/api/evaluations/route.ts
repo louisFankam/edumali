@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getEvaluations, addEvaluation } from "@/lib/services/evaluation.service";
 
 export const runtime = "nodejs";
@@ -28,7 +29,8 @@ export async function POST(req: NextRequest) {
     if (!body.name || !body.type || !body.classId || !body.subjectId || !body.trimester || !body.academicYearId || !body.date) {
       return NextResponse.json({ ok: false, message: "Champs obligatoires manquants" }, { status: 400 });
     }
-    const data = await addEvaluation(body);
+    const userId = await getSessionUserId();
+    const data = await addEvaluation(body, userId);
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

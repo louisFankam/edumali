@@ -34,6 +34,12 @@ describe("Dépenses - Tests d'intégration", () => {
     expect(created.category).toBe("fournitures");
     expect(created.categoryLabel).toBe("Fournitures");
     expect(created.date).toBe("2026-05-15");
+    });
+
+  it("devrait créer un audit_log pour addExpense", async () => {
+    const { getAuditLogs } = await import("@/lib/services/audit.service");
+    const result = await getAuditLogs({ tableName: "expenses", action: "create", limit: 1 });
+    expect(result.total).toBeGreaterThanOrEqual(1);
   });
 
   it("devrait créer une dépense avec catégorie personnalisée", async () => {

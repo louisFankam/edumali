@@ -1,6 +1,7 @@
 import {
   findAllEnrollments, findEnrollmentById, createEnrollment, updateEnrollment, deleteEnrollment, countEnrollmentsByYear,
 } from "@/lib/repositories/enrollment.repository";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapEnrollment(e: any) {
   if (!e) return null;
@@ -29,17 +30,22 @@ export async function getEnrollmentById(id: string) {
 export async function addEnrollment(input: {
   studentId: number; classId: number; academicYearId: number;
   enrollmentDate: string; status: string; notes?: string;
-}) {
+}, userId?: number) {
   const created = await createEnrollment(input);
+  logAudit({ tableName: "enrollments", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapEnrollment(created);
 }
 
-export async function editEnrollment(id: string, input: Partial<{ classId: number; status: string; notes: string }>) {
+export async function editEnrollment(id: string, input: Partial<{ classId: number; status: string; notes: string }>, userId?: number) {
+  const old = await findEnrollmentById(Number(id));
   const updated = await updateEnrollment(Number(id), input);
+  logAudit({ tableName: "enrollments", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapEnrollment(updated);
 }
 
-export async function removeEnrollment(id: string) {
+export async function removeEnrollment(id: string, userId?: number) {
+  const old = await findEnrollmentById(Number(id));
+  logAudit({ tableName: "enrollments", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
   await deleteEnrollment(Number(id));
 }
 

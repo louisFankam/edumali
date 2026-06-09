@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getClasses, addClass } from "@/lib/services/student.service";
 
 export const runtime = "nodejs";
@@ -16,6 +17,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const userId = await getSessionUserId();
     const data = await addClass({
       name: body.name,
       level: body.level ?? null,
@@ -25,7 +27,7 @@ export async function POST(req: NextRequest) {
       color: body.color,
       academicYear: body.academicYear,
       status: body.status,
-    });
+    }, userId);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

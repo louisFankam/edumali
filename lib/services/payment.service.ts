@@ -26,17 +26,22 @@ export async function getFeeTypes() {
   return rows.map(mapFeeType);
 }
 
-export async function addFeeType(input: { name: string; amount: number; period: string; description?: string }) {
+export async function addFeeType(input: { name: string; amount: number; period: string; description?: string }, userId?: number) {
   const created = await createFeeType(input);
+  logAudit({ tableName: "fee_types", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapFeeType(created);
 }
 
-export async function editFeeType(id: string, input: Partial<{ name: string; amount: number; period: string; description: string }>) {
+export async function editFeeType(id: string, input: Partial<{ name: string; amount: number; period: string; description: string }>, userId?: number) {
+  const old = await findFeeTypeById(Number(id));
   const updated = await updateFeeType(Number(id), input);
+  logAudit({ tableName: "fee_types", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapFeeType(updated);
 }
 
-export async function removeFeeType(id: string) {
+export async function removeFeeType(id: string, userId?: number) {
+  const old = await findFeeTypeById(Number(id));
+  logAudit({ tableName: "fee_types", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
   await deleteFeeType(Number(id));
 }
 
@@ -61,16 +66,16 @@ export async function getPaymentById(id: string) {
 
 export async function addPayment(input: {
   studentId: number; feeTypeId?: number; amount: number; method: string; reference?: string; date: string; notes?: string;
-}) {
+}, userId?: number) {
   const created = await createPayment(input);
   logAudit({
     tableName: "payments", recordId: created.id,
-    action: "create", newValues: input,
+    action: "create", userId, newValues: input,
   });
   return mapPayment(created);
 }
 
-export async function editPayment(id: string, input: Partial<{ amount: number; method: string; reference: string; status: string; notes: string }>) {
+export async function editPayment(id: string, input: Partial<{ amount: number; method: string; reference: string; status: string; notes: string }>, userId?: number) {
   const existing = await findPaymentById(Number(id));
   if (!existing) throw new Error("Paiement introuvable");
   if (await checkPeriodClosed(existing.date)) {
@@ -79,12 +84,12 @@ export async function editPayment(id: string, input: Partial<{ amount: number; m
   const updated = await updatePayment(Number(id), input);
   logAudit({
     tableName: "payments", recordId: Number(id),
-    action: "update", oldValues: existing, newValues: { ...existing, ...input },
+    action: "update", userId, oldValues: existing, newValues: { ...existing, ...input },
   });
   return mapPayment(updated);
 }
 
-export async function removePayment(id: string) {
+export async function removePayment(id: string, userId?: number) {
   const existing = await findPaymentById(Number(id));
   if (!existing) throw new Error("Paiement introuvable");
   if (await checkPeriodClosed(existing.date)) {
@@ -93,7 +98,7 @@ export async function removePayment(id: string) {
   await deletePayment(Number(id));
   logAudit({
     tableName: "payments", recordId: Number(id),
-    action: "delete", oldValues: existing,
+    action: "delete", userId, oldValues: existing,
   });
 }
 

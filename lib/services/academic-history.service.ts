@@ -1,6 +1,7 @@
 import {
   findHistoriesByStudentId, createHistory, updateHistory, deleteHistory,
 } from "@/lib/repositories/academic-history.repository";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapHistory(h: any) {
   return {
@@ -21,18 +22,21 @@ export async function getAcademicHistories(studentId: string) {
 
 export async function addAcademicHistory(studentId: string, input: {
   schoolName: string; className?: string; academicYear?: string; reason?: string; remarks?: string;
-}) {
+}, userId?: number) {
   const created = await createHistory(Number(studentId), input);
+  logAudit({ tableName: "academic_histories", recordId: created.id, action: "create", userId, newValues: { ...input, studentId } as any });
   return mapHistory(created);
 }
 
 export async function editAcademicHistory(id: string, input: Partial<{
   schoolName: string; className: string; academicYear: string; reason: string; remarks: string;
-}>) {
+}>, userId?: number) {
   const updated = await updateHistory(Number(id), input);
+  logAudit({ tableName: "academic_histories", recordId: Number(id), action: "update", userId, newValues: input as any });
   return mapHistory(updated);
 }
 
-export async function removeAcademicHistory(id: string) {
+export async function removeAcademicHistory(id: string, userId?: number) {
+  logAudit({ tableName: "academic_histories", recordId: Number(id), action: "delete", userId });
   await deleteHistory(Number(id));
 }

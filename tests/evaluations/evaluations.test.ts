@@ -63,6 +63,12 @@ describe("Évaluations & Notes - Tests d'intégration", () => {
     expect(created.id).toBeTruthy();
   });
 
+  it("devrait créer un audit_log pour addEvaluation", async () => {
+    const { getAuditLogs } = await import("@/lib/services/audit.service");
+    const result = await getAuditLogs({ tableName: "evaluations", action: "create", limit: 1 });
+    expect(result.total).toBeGreaterThanOrEqual(1);
+  });
+
   it("devrait filtrer les évaluations par classe", async () => {
     const { getEvaluations } = await import("@/lib/services/evaluation.service");
     const { db } = await import("@/lib/db");

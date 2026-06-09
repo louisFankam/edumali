@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getClosedPeriods, closePeriod, openPeriod } from "@/lib/services/period.service";
 
 export const runtime = "nodejs";
@@ -19,7 +20,8 @@ export async function POST(req: NextRequest) {
     if (!month || !year) {
       return NextResponse.json({ ok: false, message: "month et year requis" }, { status: 400 });
     }
-    const data = await closePeriod(Number(month), Number(year));
+    const userId = await getSessionUserId();
+    const data = await closePeriod(Number(month), Number(year), userId);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {
     const msg = String(error);
@@ -36,7 +38,8 @@ export async function DELETE(req: NextRequest) {
     if (!month || !year) {
       return NextResponse.json({ ok: false, message: "month et year requis" }, { status: 400 });
     }
-    await openPeriod(Number(month), Number(year));
+    const userId = await getSessionUserId();
+    await openPeriod(Number(month), Number(year), userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

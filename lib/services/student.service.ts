@@ -16,6 +16,7 @@ import { findGradesByEvaluation } from "@/lib/repositories/grade.repository";
 import { db } from "@/lib/db";
 import { medicalInfos, familyInfos, academicHistories, evaluations, schedules, exams, classSubjects, attendance, grades, students as studentsTable, enrollments as enrollmentsTable } from "@/lib/models/schema";
 import { eq, and, inArray } from "drizzle-orm";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapStudent(s: any) {
   if (!s) return null;
@@ -86,7 +87,7 @@ export async function addStudent(input: {
   discountType?: string | null;
   discountValue?: number | null;
   discountReason?: string | null;
-}) {
+}, userId?: number) {
   const data: NewStudent = {
     firstName: input.firstName,
     lastName: input.lastName,
@@ -118,6 +119,7 @@ export async function addStudent(input: {
     });
   }
 
+  logAudit({ tableName: "students", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapStudent(created);
 }
 
@@ -136,7 +138,8 @@ export async function editStudent(id: string, input: Partial<{
   discountType: string | null;
   discountValue: number | null;
   discountReason: string | null;
-}>) {
+}>, userId?: number) {
+  const old = await findStudentById(Number(id));
   const data: any = {};
   if (input.firstName !== undefined) data.firstName = input.firstName;
   if (input.lastName !== undefined) data.lastName = input.lastName;
@@ -153,6 +156,7 @@ export async function editStudent(id: string, input: Partial<{
   if (input.discountValue !== undefined) data.discountValue = input.discountValue;
   if (input.discountReason !== undefined) data.discountReason = input.discountReason;
   const updated = await updateStudent(Number(id), data);
+  logAudit({ tableName: "students", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
 
   // If classId changed, update or create enrollment for current academic year
   if (input.classId !== undefined) {
@@ -176,10 +180,10 @@ export async function editStudent(id: string, input: Partial<{
   return mapStudent(updated);
 }
 
-export async function removeStudent(id: string) {
+export async function removeStudent(id: string, userId?: number) {
   const studentId = Number(id);
 
-  const existing = await getStudentById(id);
+  const existing = await findStudentById(Number(id));
   if (!existing) {
     throw new Error("Élève introuvable");
   }
@@ -220,6 +224,7 @@ export async function removeStudent(id: string) {
     throw new Error("Impossible de supprimer cet élève : il a un historique scolaire");
   }
 
+  logAudit({ tableName: "students", recordId: studentId, action: "delete", userId, oldValues: existing as any });
   await deleteStudent(studentId);
 }
 
@@ -248,8 +253,9 @@ export async function addClass(input: {
   name: string; level?: number | null; capacity?: number | null;
   totalFee?: number | null; teacherId?: number | null; color?: string;
   academicYear?: string; status?: string;
-}) {
+}, userId?: number) {
   const created = await createClass(input);
+  logAudit({ tableName: "classes", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapClass(created);
 }
 
@@ -257,13 +263,16 @@ export async function editClass(id: string, input: {
   name?: string; level?: number | null; capacity?: number | null;
   totalFee?: number | null; teacherId?: number | null; color?: string;
   academicYear?: string; status?: string;
-}) {
+}, userId?: number) {
+  const old = await findClassById(Number(id));
   const updated = await updateClass(Number(id), input);
+  logAudit({ tableName: "classes", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapClass(updated);
 }
 
-export async function removeClass(id: string) {
+export async function removeClass(id: string, userId?: number) {
   const classId = Number(id);
+  const oldClass = await findClassById(classId);
 
   const studentsInClass = db.select({ id: studentsTable.id }).from(studentsTable).where(eq(studentsTable.classId, classId)).all();
   if (studentsInClass.length > 0) {
@@ -300,5 +309,6 @@ export async function removeClass(id: string) {
     throw new Error("Impossible de supprimer cette classe : elle a des examens");
   }
 
+  logAudit({ tableName: "classes", recordId: classId, action: "delete", userId, oldValues: oldClass ?? undefined });
   await deleteClass(classId);
 }

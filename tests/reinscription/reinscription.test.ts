@@ -96,6 +96,12 @@ describe("Reinscription Page - Tests d'intégration", () => {
       expect(created.enrollmentDate).toBe("2025-09-01");
     });
 
+    it("devrait créer un audit_log pour addEnrollment", async () => {
+      const { getAuditLogs } = await import("@/lib/services/audit.service");
+      const result = await getAuditLogs({ tableName: "enrollments", action: "create", limit: 1 });
+      expect(result.total).toBeGreaterThanOrEqual(1);
+    });
+
     it("devrait créer un enrollment avec le statut 'inscrit' par défaut", async () => {
       const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
       const created = await addEnrollment({

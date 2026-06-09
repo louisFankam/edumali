@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getTeacherById, editTeacher, removeTeacher } from "@/lib/services/teacher.service";
 
 export const runtime = "nodejs";
@@ -21,7 +22,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const data = await editTeacher(id, body);
+    const userId = await getSessionUserId();
+    const data = await editTeacher(id, body, userId);
     if (!data) {
       return NextResponse.json({ ok: false, message: "Enseignant non trouvé" }, { status: 404 });
     }
@@ -34,7 +36,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await removeTeacher(id);
+    const userId = await getSessionUserId();
+    await removeTeacher(id, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

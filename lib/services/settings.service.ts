@@ -16,6 +16,7 @@ import {
   deleteSubject,
   setSubjectTeachers,
 } from "@/lib/repositories/subject.repository";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapSchoolInfo(s: any) {
   if (!s) return null;
@@ -63,8 +64,9 @@ export async function fetchSchoolInfo() {
   return mapSchoolInfo(row);
 }
 
-export async function saveSchoolInfo(input: any) {
+export async function saveSchoolInfo(input: any, userId?: number) {
   const row = await upsertSchoolInfo(input);
+  logAudit({ tableName: "school_info", recordId: row?.id ?? 1, action: "create", userId, newValues: input as any });
   return mapSchoolInfo(row);
 }
 
@@ -88,17 +90,22 @@ export async function addAcademicYear(input: {
   startDate: string;
   endDate: string;
   isCurrent?: boolean;
-}) {
+}, userId?: number) {
   const row = await createAcademicYear(input);
+  logAudit({ tableName: "academic_years", recordId: row.id, action: "create", userId, newValues: input as any });
   return mapAcademicYear(row);
 }
 
-export async function editAcademicYear(id: string, input: any) {
+export async function editAcademicYear(id: string, input: any, userId?: number) {
+  const old = await findAcademicYearById(Number(id));
   const row = await updateAcademicYear(Number(id), input);
+  logAudit({ tableName: "academic_years", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapAcademicYear(row);
 }
 
-export async function removeAcademicYear(id: string) {
+export async function removeAcademicYear(id: string, userId?: number) {
+  const old = await findAcademicYearById(Number(id));
+  logAudit({ tableName: "academic_years", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
   await deleteAcademicYear(Number(id));
 }
 
@@ -125,28 +132,34 @@ export async function addSubject(input: {
   color?: string;
   status?: string;
   teacherIds?: string[];
-}) {
+}, userId?: number) {
   const { teacherIds, ...subjectInput } = input;
   const row = await createSubject(subjectInput);
   if (teacherIds && teacherIds.length > 0) {
     await setSubjectTeachers(Number(row.id), teacherIds.map(Number));
   }
+  logAudit({ tableName: "subjects", recordId: row.id, action: "create", userId, newValues: input as any });
   return mapSubject(row);
 }
 
-export async function editSubject(id: string, input: any) {
+export async function editSubject(id: string, input: any, userId?: number) {
   const { teacherIds, ...subjectInput } = input;
+  const old = await findSubjectById(Number(id));
   const row = await updateSubject(Number(id), subjectInput);
   if (teacherIds !== undefined) {
     await setSubjectTeachers(Number(id), teacherIds.map(Number));
   }
+  logAudit({ tableName: "subjects", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapSubject(row);
 }
 
-export async function removeSubject(id: string) {
+export async function removeSubject(id: string, userId?: number) {
+  const old = await findSubjectById(Number(id));
+  logAudit({ tableName: "subjects", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
   await deleteSubject(Number(id));
 }
 
-export async function updateSubjectTeachers(subjectId: string, teacherIds: string[]) {
+export async function updateSubjectTeachers(subjectId: string, teacherIds: string[], userId?: number) {
   await setSubjectTeachers(Number(subjectId), teacherIds.map(Number));
+  logAudit({ tableName: "teacher_subjects", recordId: Number(subjectId), action: "update", userId, newValues: { subjectId, teacherIds } as any });
 }

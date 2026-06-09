@@ -40,6 +40,12 @@ describe("Settings - Tests d'intégration", () => {
     });
     expect(created.name).toBe("Terminale S");
     expect(created.totalFee).toBe(500000);
+    });
+
+  it("devrait créer un audit_log pour addClass", async () => {
+    const { getAuditLogs } = await import("@/lib/services/audit.service");
+    const result = await getAuditLogs({ tableName: "classes", action: "create", limit: 1 });
+    expect(result.total).toBeGreaterThanOrEqual(1);
   });
 
   it("devrait modifier une classe", async () => {
@@ -86,6 +92,12 @@ describe("Settings - Tests d'intégration", () => {
     });
     expect(created.name).toBe("Philosophie");
     expect(created.coefficient).toBe(3);
+    });
+
+  it("devrait créer un audit_log pour addSubject", async () => {
+    const { getAuditLogs } = await import("@/lib/services/audit.service");
+    const result = await getAuditLogs({ tableName: "subjects", action: "create", limit: 1 });
+    expect(result.total).toBeGreaterThanOrEqual(1);
   });
 
   it("devrait modifier une matière", async () => {
@@ -184,6 +196,12 @@ describe("Settings - Tests d'intégration", () => {
     });
     expect(created.name).toBe("Assurance scolaire");
     expect(created.amount).toBe(5000);
+    });
+
+  it("devrait créer un audit_log pour addFeeType", async () => {
+    const { getAuditLogs } = await import("@/lib/services/audit.service");
+    const result = await getAuditLogs({ tableName: "fee_types", action: "create", limit: 1 });
+    expect(result.total).toBeGreaterThanOrEqual(1);
   });
 
   it("devrait modifier un type de frais", async () => {

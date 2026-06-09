@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getGrades, saveGrades, getGradeStats } from "@/lib/services/grade.service";
 import { findAllStudents } from "@/lib/repositories/student.repository";
 
@@ -28,7 +29,8 @@ export async function POST(req: NextRequest) {
     if (!body.evaluationId || !Array.isArray(body.grades)) {
       return NextResponse.json({ ok: false, message: "evaluationId et grades requis" }, { status: 400 });
     }
-    const data = await saveGrades(body.evaluationId, body.grades);
+    const userId = await getSessionUserId();
+    const data = await saveGrades(body.evaluationId, body.grades, userId);
     return NextResponse.json({ ok: true, data });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

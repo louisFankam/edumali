@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getEvaluationById, editEvaluation, removeEvaluation } from "@/lib/services/evaluation.service";
 
 export const runtime = "nodejs";
@@ -19,7 +20,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await req.json();
-    await editEvaluation(id, body);
+    const userId = await getSessionUserId();
+    await editEvaluation(id, body, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
@@ -29,7 +31,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await removeEvaluation(id);
+    const userId = await getSessionUserId();
+    await removeEvaluation(id, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/use-auth'
 import { useSchoolInfo } from '@/hooks/use-school-info'
-import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle, IdCard } from "lucide-react"
+import { ChevronDown, ChevronRight, LayoutDashboard, GraduationCap, Users, UserCheck, DollarSign, Calendar, Settings, Menu, X, FileText, Clock, Palette, LogOutIcon, RotateCcw, CalendarCheck, CreditCard, BookOpen, ClipboardCheck, CalendarDays, Database, HelpCircle, IdCard, ClipboardList } from "lucide-react"
 
 interface NavigationItem {
   name: string
@@ -64,11 +64,13 @@ const navigation: NavigationItem[] = [
     children: [
       { name: "Emploi du temps", href: "/planning/emploi-du-temps", icon: Clock },
       { name: "Examens", href: "/planning/examens", icon: CalendarDays },
+      { name: "Calendrier", href: "/planning/calendrier", icon: CalendarCheck },
     ],
   },
   { name: "Années scolaires", href: "/school-years", icon: Calendar },
   { name: "Trésorerie", href: "/finances", icon: DollarSign },
   { name: "Historique académique", href: "/academic-history", icon: BookOpen },
+  { name: "Journal d'activité", href: "/audit", icon: ClipboardList },
   { name: "Base de données", href: "/settings/database", icon: Database },
   { name: "Paramètres", href: "/settings", icon: Settings },
   { name: "Personnalisation", href: "/personalization", icon: Palette },

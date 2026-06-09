@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getTeacherAttendance, getTeacherAttendanceByDate, saveTeacherAttendance } from "@/lib/services/teacher.service";
 
 export const runtime = "nodejs";
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
     if (!Array.isArray(records) || records.length === 0) {
       return NextResponse.json({ ok: false, message: "Aucune présence fournie" }, { status: 400 });
     }
-    await saveTeacherAttendance(records);
+    const userId = await getSessionUserId();
+    await saveTeacherAttendance(records, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

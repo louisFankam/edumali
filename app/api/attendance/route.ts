@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getAttendanceByDateAndClass, saveAttendance, getAttendanceStats, getAttendanceByRange } from "@/lib/services/attendance.service";
 
 export const runtime = "nodejs";
@@ -41,7 +42,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    await saveAttendance(body.records);
+    const userId = await getSessionUserId();
+    await saveAttendance(body.records, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

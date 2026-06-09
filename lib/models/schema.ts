@@ -321,6 +321,21 @@ export const userPreferences = sqliteTable("user_preferences", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
+export const schoolEvents = sqliteTable("school_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type", { enum: ["holiday", "event", "meeting", "exam", "deadline"] }).notNull().default("event"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  allDay: integer("all_day", { mode: "boolean" }).notNull().default(true),
+  color: text("color"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
 // Relations
 
 export const classesRelations = relations(classes, ({ one, many }) => ({
@@ -451,3 +466,5 @@ export const exams = sqliteTable("exams", {
 export const closedPeriodsRelations = relations(closedPeriods, ({}) => ({}));
 
 export const auditLogRelations = relations(auditLog, ({}) => ({}));
+
+export const schoolEventsRelations = relations(schoolEvents, ({}) => ({}));

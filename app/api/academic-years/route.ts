@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { fetchAcademicYears, fetchCurrentAcademicYear, addAcademicYear } from "@/lib/services/settings.service";
 
 export const runtime = "nodejs";
@@ -33,7 +34,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const data = await addAcademicYear(body);
+    const userId = await getSessionUserId();
+    const data = await addAcademicYear(body, userId);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

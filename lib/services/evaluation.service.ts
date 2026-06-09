@@ -4,6 +4,7 @@ import {
 } from "@/lib/repositories/evaluation.repository";
 import { deleteGrade } from "@/lib/repositories/grade.repository";
 import { checkPeriodClosed } from "@/lib/services/period.service";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapEvaluation(row: any) {
   return {
@@ -37,18 +38,19 @@ export async function getEvaluationById(id: string) {
 export async function addEvaluation(input: {
   name: string; type: string; classId: number; subjectId: number;
   trimester: number; academicYearId: number; date: string;
-}) {
+}, userId?: number) {
   if (await checkPeriodClosed(input.date)) {
     throw new Error("Impossible d'ajouter une évaluation : la période est clôturée");
   }
   const row = await createEvaluation(input);
+  logAudit({ tableName: "evaluations", recordId: row.id, action: "create", userId, newValues: input as any });
   return { id: String(row.id) };
 }
 
 export async function editEvaluation(id: string, input: Partial<{
   name: string; type: string; classId: number; subjectId: number;
   trimester: number; date: string; status: string;
-}>) {
+}>, userId?: number) {
   if (input.date && await checkPeriodClosed(input.date)) {
     throw new Error("Impossible de modifier une évaluation : la période est clôturée");
   }
@@ -58,14 +60,18 @@ export async function editEvaluation(id: string, input: Partial<{
       throw new Error("Impossible de modifier une évaluation : la période est clôturée");
     }
   }
+  const old = await findEvaluationById(Number(id));
   await updateEvaluation(Number(id), input);
+  logAudit({ tableName: "evaluations", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return { id };
 }
 
-export async function removeEvaluation(id: string) {
+export async function removeEvaluation(id: string, userId?: number) {
   const existing = await findEvaluationById(Number(id));
   if (existing && await checkPeriodClosed(existing.date)) {
     throw new Error("Impossible de supprimer une évaluation : la période est clôturée");
   }
+  const old = await findEvaluationById(Number(id));
+  logAudit({ tableName: "evaluations", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
   await deleteEvaluation(Number(id));
 }

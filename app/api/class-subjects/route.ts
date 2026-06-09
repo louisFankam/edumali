@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getClassSubjects, saveClassSubjects } from "@/lib/services/class-subject.service";
 
 export const runtime = "nodejs";
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest) {
     if (!body.classId || !Array.isArray(body.assignments)) {
       return NextResponse.json({ ok: false, message: "classId et assignments requis" }, { status: 400 });
     }
-    await saveClassSubjects(body.classId, body.assignments);
+    const userId = await getSessionUserId();
+    await saveClassSubjects(body.classId, body.assignments, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

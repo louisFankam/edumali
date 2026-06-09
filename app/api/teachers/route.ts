@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getTeachers, addTeacher, getTeacherStats } from "@/lib/services/teacher.service";
 
 export const runtime = "nodejs";
@@ -33,7 +34,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const teacher = await addTeacher(body);
+    const userId = await getSessionUserId();
+    const teacher = await addTeacher(body, userId);
     return NextResponse.json({ ok: true, data: teacher }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

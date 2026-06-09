@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getEnrollments, addEnrollment, getEnrollmentStats } from "@/lib/services/enrollment.service";
 
 export const runtime = "nodejs";
@@ -26,7 +27,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const data = await addEnrollment(body);
+    const userId = await getSessionUserId();
+    const data = await addEnrollment(body, userId);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

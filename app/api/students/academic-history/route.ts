@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getAcademicHistories, addAcademicHistory } from "@/lib/services/academic-history.service";
 
 export const runtime = "nodejs";
@@ -20,7 +21,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     if (!body.studentId) return NextResponse.json({ ok: false, message: "studentId requis" }, { status: 400 });
     if (!body.schoolName) return NextResponse.json({ ok: false, message: "schoolName requis" }, { status: 400 });
-    const data = await addAcademicHistory(body.studentId, body);
+    const userId = await getSessionUserId();
+    const data = await addAcademicHistory(body.studentId, body, userId);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

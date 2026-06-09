@@ -107,6 +107,12 @@ describe("Teachers - Tests d'intégration", () => {
     expect(created.id).toBeTruthy();
   });
 
+  it("devrait créer un audit_log pour addTeacher", async () => {
+    const { getAuditLogs } = await import("@/lib/services/audit.service");
+    const result = await getAuditLogs({ tableName: "teachers", action: "create", limit: 1 });
+    expect(result.total).toBeGreaterThanOrEqual(1);
+  });
+
   it("devrait créer un enseignant avec spécialités", async () => {
     const { addTeacher, getTeacherById } = await import("@/lib/services/teacher.service");
     const { db } = await import("@/lib/db");

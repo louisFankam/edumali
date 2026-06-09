@@ -138,3 +138,23 @@ export async function seedTeacherSubject(teacherId: string, subjectId: string) {
     VALUES (${Number(teacherId)}, ${Number(subjectId)})
   `)
 }
+
+export async function seedSchoolEvent(overrides: Record<string, any> = {}) {
+  const { db } = await import("@/lib/db")
+  const title = overrides.title ?? uniq("Événement")
+  const description = overrides.description ?? null
+  const type = overrides.type ?? "event"
+  const startDate = overrides.startDate ?? "2026-06-15"
+  const endDate = overrides.endDate ?? null
+  const startTime = overrides.startTime ?? null
+  const endTime = overrides.endTime ?? null
+  const allDay = overrides.allDay ?? 1
+  const color = overrides.color ?? null
+
+  const rows = db.all(sql`
+    INSERT INTO school_events (title, description, type, start_date, end_date, start_time, end_time, all_day, color, created_at, updated_at)
+    VALUES (${title}, ${description}, ${type}, ${startDate}, ${endDate}, ${startTime}, ${endTime}, ${allDay}, ${color}, unixepoch('now'), unixepoch('now'))
+    RETURNING id
+  `) as { id: number }[]
+  return String(rows[0].id)
+}

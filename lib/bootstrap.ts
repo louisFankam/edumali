@@ -392,6 +392,24 @@ async function ensureAuthSchema(db: any) {
   `);
 
   await db.run(sql`
+    CREATE TABLE IF NOT EXISTS school_events (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      title text NOT NULL,
+      description text,
+      type text NOT NULL DEFAULT 'event' CHECK(type IN ('holiday', 'event', 'meeting', 'exam', 'deadline')),
+      start_date text NOT NULL,
+      end_date text,
+      start_time text,
+      end_time text,
+      all_day integer NOT NULL DEFAULT 1,
+      color text,
+      created_at integer,
+      updated_at integer
+    )
+  `);
+  try { await db.run(sql`ALTER TABLE school_events ADD COLUMN color text`); } catch {}
+
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS schedules (
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       class_id integer NOT NULL REFERENCES classes(id),

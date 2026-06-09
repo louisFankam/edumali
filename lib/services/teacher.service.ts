@@ -6,6 +6,7 @@ import {
 } from "@/lib/repositories/teacher.repository";
 import { findAllSubjects } from "@/lib/repositories/subject.repository";
 import { checkPeriodClosed } from "@/lib/services/period.service";
+import { logAudit } from "@/lib/services/audit.service";
 
 function mapTeacher(t: any) {
   if (!t) return null;
@@ -80,7 +81,7 @@ export async function addTeacher(input: {
   address?: string; gender: string; hire_date: string; salary?: number;
   contrat: string; status?: string; photo?: string; speciality?: string[];
   hours_per_day?: number;
-}) {
+}, userId?: number) {
   const data: NewTeacher = {
     firstName: input.first_name,
     lastName: input.last_name,
@@ -101,6 +102,7 @@ export async function addTeacher(input: {
     await setTeacherSubjects(created.id, input.speciality.map(Number));
   }
 
+  logAudit({ tableName: "teachers", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapTeacher(created);
 }
 
@@ -109,7 +111,8 @@ export async function editTeacher(id: string, input: Partial<{
   address: string; gender: string; hire_date: string; salary: number;
   contrat: string; status: string; photo: string; speciality: string[];
   hours_per_day: number;
-}>) {
+}>, userId?: number) {
+  const old = await findTeacherById(Number(id));
   const data: any = {};
   if (input.first_name !== undefined) data.firstName = input.first_name;
   if (input.last_name !== undefined) data.lastName = input.last_name;
@@ -130,10 +133,13 @@ export async function editTeacher(id: string, input: Partial<{
     await setTeacherSubjects(Number(id), input.speciality.map(Number));
   }
 
+  logAudit({ tableName: "teachers", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapTeacher(updated);
 }
 
-export async function removeTeacher(id: string) {
+export async function removeTeacher(id: string, userId?: number) {
+  const old = await findTeacherById(Number(id));
+  logAudit({ tableName: "teachers", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
   await deleteTeacher(Number(id));
 }
 
@@ -182,7 +188,7 @@ export async function getTeacherAttendanceByDate(date: string) {
   }));
 }
 
-export async function saveTeacherAttendance(records: { teacher_id: string; date: string; status: string; justification?: string }[]) {
+export async function saveTeacherAttendance(records: { teacher_id: string; date: string; status: string; justification?: string }[], userId?: number) {
   const dates = [...new Set(records.map(r => r.date))];
   for (const date of dates) {
     if (await checkPeriodClosed(date)) {
@@ -197,6 +203,8 @@ export async function saveTeacherAttendance(records: { teacher_id: string; date:
       justification: r.justification,
     }))
   );
+  const firstDate = dates[0];
+  logAudit({ tableName: "teacher_attendance", recordId: 0, action: "create", userId, newValues: { batch: true, count: records.length, date: firstDate } });
 }
 
 export async function getTeacherAttendanceStats(teacherId: string, year: number, month: number) {
@@ -231,7 +239,7 @@ export async function getPayroll(filters?: { teacherId?: string; month?: number;
 export async function addPayroll(input: {
   teacher_id: string; month: number; year: number;
   amount: number; bonus?: number; deductions?: number; paid_at?: string; notes?: string;
-}) {
+}, userId?: number) {
   const dateStr = `${input.year}-${String(input.month).padStart(2, "0")}-01`;
   if (await checkPeriodClosed(dateStr)) {
     throw new Error("Impossible d'ajouter une paie : la période est clôturée");
@@ -246,10 +254,12 @@ export async function addPayroll(input: {
     paidAt: input.paid_at,
     notes: input.notes,
   });
+  logAudit({ tableName: "payroll", recordId: created.id, action: "create", userId, newValues: { ...input, teacher_id: Number(input.teacher_id) } as any });
   return mapPayroll(created);
 }
 
-export async function updatePayroll(id: string, input: any) {
+export async function updatePayroll(id: string, input: any, userId?: number) {
+  const old = await findTeacherById(Number(id));
   const data: any = {};
   if (input.amount !== undefined) data.amount = input.amount;
   if (input.bonus !== undefined) data.bonus = input.bonus;
@@ -267,9 +277,11 @@ export async function updatePayroll(id: string, input: any) {
     }
   }
   await updatePayrollRecord(Number(id), data);
+  logAudit({ tableName: "payroll", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
 }
 
-export async function removePayroll(id: string) {
+export async function removePayroll(id: string, userId?: number) {
+  logAudit({ tableName: "payroll", recordId: Number(id), action: "delete", userId });
   await deletePayrollRecord(Number(id));
 }
 

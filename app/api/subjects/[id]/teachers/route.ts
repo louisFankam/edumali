@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSessionUserId } from "@/lib/auth/session";
 import { getTeachers } from "@/lib/services/teacher.service";
 import { updateSubjectTeachers } from "@/lib/services/settings.service";
 
@@ -20,7 +21,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const body = await request.json();
     const teacherIds: string[] = body.teacherIds ?? [];
-    await updateSubjectTeachers(id, teacherIds);
+    const userId = await getSessionUserId();
+    await updateSubjectTeachers(id, teacherIds, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });

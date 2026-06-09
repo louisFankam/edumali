@@ -85,6 +85,12 @@ describe("Presence Page - Tests d'intégration", () => {
       expect(records[0].status).toBe("retard");
     });
 
+    it("devrait créer un audit_log pour saveAttendance", async () => {
+      const { getAuditLogs } = await import("@/lib/services/audit.service");
+      const result = await getAuditLogs({ tableName: "attendance", action: "create", limit: 1 });
+      expect(result.total).toBeGreaterThanOrEqual(1);
+    });
+
     it("devrait mettre à jour un enregistrement existant (UPSERT = UPDATE)", async () => {
       const { saveAttendance, getAttendanceByDateAndClass } = await import("@/lib/services/attendance.service");
 
