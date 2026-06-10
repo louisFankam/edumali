@@ -6,15 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Download, Printer, FileText, Loader2 } from "lucide-react"
+import { Download, Printer, FileText } from "lucide-react"
 import { useSchoolInfo, useAcademicYears } from "@/hooks/use-settings"
-import { buildBulletinDocument } from "@/lib/reports/bulletin-html"
+import { downloadBulletinPDF } from "@/lib/reports/bulletin"
 
 export function BulletinModal({ open, onOpenChange, student }) {
   const { schoolInfo } = useSchoolInfo()
   const { currentYear } = useAcademicYears()
   const [bulletin, setBulletin] = useState(null)
-  const [loading, setLoading] = useState(false)
 
   const schoolName = schoolInfo?.name || "Établissement scolaire"
   const schoolAddress = schoolInfo?.address || ""
@@ -34,7 +33,7 @@ export function BulletinModal({ open, onOpenChange, student }) {
     window.print()
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const subjects = (student.subjects || []).map(s => {
       const grade = typeof s.grade === "string" ? Number.parseFloat(s.grade.split("/")[0]) : (s.finalAverage ?? 0)
       const gradeNum = isNaN(grade) ? 0 : grade
@@ -50,16 +49,20 @@ export function BulletinModal({ open, onOpenChange, student }) {
     const totalCoeffs = subjects.reduce((sum, s) => sum + s.coefficient, 0)
     const weightedSum = subjects.reduce((sum, s) => sum + (s.finalAverage || 0) * s.coefficient, 0)
     const generalAvg = totalCoeffs > 0 ? weightedSum / totalCoeffs : null
+    const nameParts = (student.studentName || "").split(" ")
+    const firstName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
+    const lastName = nameParts[0] || ""
     const studentData = {
-      lastName: student.studentName,
-      firstName: "",
+      lastName,
+      firstName,
       subjects,
       generalAverage: generalAvg,
       rank: student.rank || null,
+      totalStudents: 1,
       mention: student.status || "",
       totalActiveCoeffs: totalCoeffs,
     }
-    const html = buildBulletinDocument(
+    await downloadBulletinPDF(
       [studentData],
       schoolName,
       schoolAddress,
@@ -70,12 +73,6 @@ export function BulletinModal({ open, onOpenChange, student }) {
       student.trimesterNum || 1,
       logoUrl,
     )
-    const blob = new Blob([html], { type: "text/html" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `bulletin-${student.studentName.replace(/\s+/g, "_")}.html`
-    a.click()
   }
 
   const subjects = student.subjects || []
@@ -140,9 +137,7 @@ export function BulletinModal({ open, onOpenChange, student }) {
               <CardTitle className="text-lg">Notes par matière</CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-              ) : subjects.length === 0 ? (
+              {subjects.length === 0 ? (
                 <p className="text-gray-500 text-center py-4">Aucune note disponible</p>
               ) : (
                 <div className="overflow-x-auto">

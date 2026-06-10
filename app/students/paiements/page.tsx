@@ -293,7 +293,9 @@ export default function StudentPaymentsPage() {
                 <Select value={paymentFeeType} onValueChange={setPaymentFeeType}>
                   <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
                   <SelectContent>
-                    {feeTypes.map(ft => (
+                    {feeTypes.length === 0 ? (
+                      <SelectItem value="" disabled>Aucun type de frais — créez-en dans Paramètres</SelectItem>
+                    ) : feeTypes.map(ft => (
                       <SelectItem key={ft.id} value={ft.id}>{ft.name} - {ft.amount.toLocaleString()} FCFA</SelectItem>
                     ))}
                   </SelectContent>
@@ -334,7 +336,9 @@ export default function StudentPaymentsPage() {
                 <Select value={editFeeType} onValueChange={setEditFeeType}>
                   <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
                   <SelectContent>
-                    {feeTypes.map(ft => (
+                    {feeTypes.length === 0 ? (
+                      <SelectItem value="" disabled>Aucun type de frais — créez-en dans Paramètres</SelectItem>
+                    ) : feeTypes.map(ft => (
                       <SelectItem key={ft.id} value={ft.id}>{ft.name} - {ft.amount.toLocaleString()} FCFA</SelectItem>
                     ))}
                   </SelectContent>
@@ -364,6 +368,16 @@ export default function StudentPaymentsPage() {
 
   return (
     <AppLayout>
+      {!currentYear && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-md text-sm mb-4">
+          Aucune année académique active. Les élèves de toutes les années peuvent s&apos;afficher.
+        </div>
+      )}
+      {feeTypes.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-md text-sm mb-4">
+          Aucun type de frais configuré. Créez-en dans <strong>Paramètres → Types de frais</strong> pour associer des frais aux paiements.
+        </div>
+      )}
       <PageHeader title="Paiements Scolarité" description="Suivi financier des élèves">
   <HelpButton section="eleves" />
 </PageHeader>

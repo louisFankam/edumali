@@ -65,7 +65,20 @@ export default function DashboardPage() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <AppLayout>
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <TrendingUp className="h-12 w-12 text-muted-foreground" />
+          <p className="text-muted-foreground text-lg">Aucune donnée disponible</p>
+          <p className="text-sm text-muted-foreground">Ajoutez des élèves, des inscriptions et des paiements pour voir les statistiques.</p>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
+          </Button>
+        </div>
+      </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>

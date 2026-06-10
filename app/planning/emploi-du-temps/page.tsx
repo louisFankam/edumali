@@ -71,12 +71,12 @@ export default function EmploiDuTempsPage() {
     if (!teachers.length) return m
     teachers.forEach((t: any) => {
       const tid = Number(t.id)
-      if (t.subjectIds) {
-        t.subjectIds.forEach((sid: number) => {
-          if (!m.has(sid)) m.set(sid, [])
-          m.get(sid)!.push(t)
-        })
-      }
+      const sids = t.speciality || t.speciality_ids || []
+      sids.forEach((sid: string) => {
+        const nid = Number(sid)
+        if (!m.has(nid)) m.set(nid, [])
+        m.get(nid)!.push(t)
+      })
     })
     return m
   }, [teachers])
@@ -187,7 +187,7 @@ export default function EmploiDuTempsPage() {
         const tch = teachers.find((t: any) => Number(t.id) === slot.teacherId)
         return `<td style="border:1px solid #000;padding:2mm;text-align:center;font-size:8pt">
           <strong>${subj?.name || ""}</strong><br/>
-          <span style="font-size:7pt">${tch ? tch.firstName + " " + tch.lastName : ""}</span>
+          <span style="font-size:7pt">${tch ? tch.first_name + " " + tch.last_name : ""}</span>
         </td>`
       })
       return `<tr>
@@ -291,9 +291,9 @@ export default function EmploiDuTempsPage() {
                     draggable
                     onDragStart={() => setDraggedSubj({ subjectId: cs.subjectId, name: cs.subject?.name })}
                   >
-                    <strong>{cs.subject?.name}</strong>
-                    {teachersForSubject.length > 0 && (
-                      <div className="text-muted-foreground mt-0.5">{teachersForSubject[0]?.firstName} {teachersForSubject[0]?.lastName}</div>
+                    <strong>{cs.subject?.name || cs.subjectName}</strong>
+                    {cs.teacherNames && (
+                      <div className="text-muted-foreground mt-0.5 text-[9px]">{cs.teacherNames}</div>
                     )}
                   </div>
                 ))}
@@ -338,13 +338,13 @@ export default function EmploiDuTempsPage() {
                                   e.preventDefault()
                                   if (draggedSubj) handleDrop(row.startTime, row.endTime, di, draggedSubj)
                                 }}
-                                onClick={() => slot ? openEdit(slot) : handleDrop(row.startTime, row.endTime, di, classSubjectList[0] || {})}
+                                onClick={() => slot && openEdit(slot)}
                                 style={{ minWidth: 80, height: 48 }}
                               >
                                 {subj ? (
                                   <div className="flex flex-col items-center">
                                     <span className="font-medium">{subj.name}</span>
-                                    {tch && <span className="text-[9px] text-muted-foreground">{tch.firstName} {tch.lastName}</span>}
+                                    {tch && <span className="text-[9px] text-muted-foreground">{tch.first_name} {tch.last_name}</span>}
                                     <div className="flex gap-1 mt-1">
                                       <button className="text-[9px] text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); openEdit(slot!) }}><Pencil className="h-3 w-3" /></button>
                                       <button className="text-[9px] text-red-600 hover:underline" onClick={e => { e.stopPropagation(); handleClearSlot(slot!) }}>×</button>
@@ -420,7 +420,7 @@ export default function EmploiDuTempsPage() {
                   <SelectContent>
                     <SelectItem value="__none__">— Aucun —</SelectItem>
                     {teachersForSubject.map((t: any) => (
-                      <SelectItem key={t.id} value={String(t.id)}>{t.firstName} {t.lastName}</SelectItem>
+                      <SelectItem key={t.id} value={String(t.id)}>{t.first_name} {t.last_name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

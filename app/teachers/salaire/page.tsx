@@ -210,17 +210,31 @@ export default function SalairesPage() {
             </CardContent>
           </Card>
 
+          {!currentYear && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-lg text-sm">
+              Aucune année académique active. Définissez une année scolaire courante pour afficher les salaires.
+            </div>
+          )}
+
           <Card>
             <CardContent className="p-0">
-              <TableLayout
-                data={filteredSalaries}
-                onView={(s) => { setSelectedSalary(s); setShowDetailsModal(true); }}
-                calculate={calculateSalary}
-                onMarkPaid={handleMarkPaid}
-                onUnmarkPaid={handleUnmarkPaid}
-                hoursInput={hoursInput}
-                onHoursChange={(id: string, value: number) => setHoursInput(prev => ({ ...prev, [id]: value }))}
-              />
+              {currentYear ? (
+                <TableLayout
+                  data={filteredSalaries}
+                  onView={(s) => { setSelectedSalary(s); setShowDetailsModal(true); }}
+                  calculate={calculateSalary}
+                  onMarkPaid={handleMarkPaid}
+                  onUnmarkPaid={handleUnmarkPaid}
+                  hoursInput={hoursInput}
+                  onHoursChange={(id: string, value: number) => setHoursInput(prev => ({ ...prev, [id]: value }))}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                  <Calendar className="h-10 w-10" />
+                  <p>Année scolaire non définie</p>
+                  <p className="text-sm">Rendez-vous dans Paramètres &gt; Années scolaires pour en créer une.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
       {selectedSalary && (

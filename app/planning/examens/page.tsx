@@ -248,7 +248,9 @@ export default function ExamensPage() {
               <Select value={formSubjectId} onValueChange={v => setFormSubjectId(v)}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                 <SelectContent>
-                  {classSubjectList.map((cs: any) => (
+                  {classSubjectList.length === 0 ? (
+                    <SelectItem value="" disabled>Aucune matière assignée — ajoutez-en dans la classe</SelectItem>
+                  ) : classSubjectList.map((cs: any) => (
                     <SelectItem key={cs.subjectId} value={String(cs.subjectId)}>{cs.subject?.name}</SelectItem>
                   ))}
                 </SelectContent>

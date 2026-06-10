@@ -117,6 +117,11 @@ export function StudentsClient() {
 
   return (
     <AppLayout>
+      {!currentYear && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-3 rounded-md text-sm mb-4">
+          Aucune année académique active. Les élèves de toutes les années s&apos;affichent.
+        </div>
+      )}
       <PageHeader title="Gestion des Élèves" description="Gérer les inscriptions et profils des élèves">
           <HelpButton section="eleves" />
         <div className="flex items-center space-x-2">

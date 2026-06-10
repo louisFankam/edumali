@@ -17,7 +17,8 @@ import { useSubjects } from "@/hooks/use-settings"
 import { useAcademicYears, useSchoolInfo } from "@/hooks/use-settings"
 import { useBulletins, type BulletinData, type StudentBulletin } from "@/hooks/use-bulletins"
 import BulletinPrint from "@/components/bulletin-print"
-import { fmt, escHtml, bulletinStyles, previewStyles, buildBulletinHTML, buildBulletinDocument } from "@/lib/reports/bulletin-html"
+import { fmt, escHtml, reportStyles } from "@/lib/reports/helpers"
+import { buildBulletinHTML, buildBulletinDocument } from "@/lib/reports/bulletin"
 
 export default function BulletinPage() {
   const { classes } = useClasses()
@@ -66,7 +67,7 @@ export default function BulletinPage() {
     const printWin = window.open("", "_blank")
     if (!printWin) return
     const lUrl = schoolInfo?.logoUrl || ""
-    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Bulletin - ${student.lastName} ${student.firstName}</title><style>${bulletinStyles}</style></head><body><div class="page"><div class="bulletin" style="width:100%">${buildBulletinHTML(student, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, lUrl)}</div></div></body></html>`
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Bulletin - ${student.lastName} ${student.firstName}</title><style>${reportStyles}</style></head><body>${buildBulletinHTML(student, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, lUrl)}</body></html>`
     printWin.document.write(html)
     printWin.document.close()
     printWin.print()
@@ -284,12 +285,10 @@ export default function BulletinPage() {
           </DialogHeader>
           {previewStudent && data && (
             <div>
-              <style>{previewStyles}</style>
-              <div className="preview-bulletin">
-                <div dangerouslySetInnerHTML={{
-                  __html: buildBulletinHTML(previewStudent, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, schoolInfo?.logoUrl || "")
-                }} />
-              </div>
+              <style>{reportStyles}</style>
+              <div dangerouslySetInnerHTML={{
+                __html: buildBulletinHTML(previewStudent, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, schoolInfo?.logoUrl || "")
+              }} />
 
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => setShowPreview(false)}>Fermer</Button>

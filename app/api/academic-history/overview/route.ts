@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
       studentId: s.studentId,
       class: bulletinData.className,
       trimester: `${t}e Trimestre`,
+      trimesterNum: t,
       averageGrade: s.generalAverage !== null ? `${s.generalAverage}/20` : "—",
       numericAverage: s.generalAverage,
       rank: s.rank !== null ? `${s.rank}/${totalStudents}` : "—",

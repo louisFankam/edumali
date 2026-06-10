@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
-import { getSessionUserId } from "@/lib/auth/session";
 import { findUserById, updateUser, deleteUser } from "@/lib/repositories/user.repository";
 import { logAudit } from "@/lib/services/audit.service";
 import { z } from "zod";
@@ -15,7 +14,7 @@ const updateUserSchema = z.object({
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { error } = await requireApiAdmin();
+    const { error, userId: auditUserId } = await requireApiAdmin();
     if (error) return error;
 
     const { id } = await params;
@@ -35,9 +34,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ ok: false, message: "Données invalides.", errors: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
 
+    if (auditUserId === userId && parsed.data.role !== undefined) {
+      return NextResponse.json({ ok: false, message: "Vous ne pouvez pas modifier votre propre rôle." }, { status: 403 });
+    }
+
     const updated = await updateUser(userId, parsed.data);
 
-    const auditUserId = await getSessionUserId();
     await logAudit({
       tableName: "users",
       recordId: userId,
@@ -78,9 +80,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
 
     if (existing.role === "admin") {
-      const { countUsers } = await import("@/lib/repositories/user.repository");
-      const adminCount = (await countUsers()); // approximate - need a better check
-      const allUsers = await import("@/lib/repositories/user.repository").then(m => m.findAllUsers());
+      const { findAllUsers } = await import("@/lib/repositories/user.repository");
+      const allUsers = await findAllUsers();
       const admins = allUsers.filter(u => u.role === "admin");
       if (admins.length <= 1) {
         return NextResponse.json({ ok: false, message: "Impossible de supprimer le dernier administrateur." }, { status: 403 });
@@ -90,7 +91,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const oldUser = { email: existing.email, fullName: existing.fullName, role: existing.role };
     await deleteUser(userId);
 
-    const auditUserId = await getSessionUserId();
+    const auditUserId = await import("@/lib/auth/session").then(m => m.getSessionUserId());
     await logAudit({
       tableName: "users",
       recordId: userId,

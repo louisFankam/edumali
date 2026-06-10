@@ -255,7 +255,7 @@ export default function ReinscriptionPage() {
 
       <Dialog open={dialogOpen} onOpenChange={open => { if (!open) resetDialog() }}>
         <DialogContent className="sm:max-w-md">
-          {!enrollmentSuccess ? (
+              {!enrollmentSuccess ? (
             <>
               <DialogHeader>
                 <DialogTitle>Réinscrire un élève</DialogTitle>
@@ -263,6 +263,12 @@ export default function ReinscriptionPage() {
                   Choisissez la classe d&apos;accueil pour {selectedStudent?.firstName} {selectedStudent?.lastName}
                 </DialogDescription>
               </DialogHeader>
+
+              {!currentYearId && (
+                <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
+                  Aucune année académique active. Veuillez d&apos;abord définir une année scolaire courante dans les paramètres.
+                </p>
+              )}
 
               {selectedStudent && (
                 <div className="space-y-4">
@@ -313,7 +319,7 @@ export default function ReinscriptionPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={resetDialog}>Annuler</Button>
-                <Button onClick={handleSubmit} disabled={isSubmitting || !selectedClassId}>
+                <Button onClick={handleSubmit} disabled={isSubmitting || !selectedClassId || !currentYearId}>
                   {isSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserCheck className="h-4 w-4 mr-2" />}
                   Réinscrire
                 </Button>

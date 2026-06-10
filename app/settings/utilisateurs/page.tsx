@@ -25,6 +25,7 @@ interface UserAccount {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserAccount[]>([])
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -44,7 +45,14 @@ export default function UsersPage() {
     }
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => {
+    fetchUsers()
+    fetch("/api/auth/session").then(r => r.json()).then(d => {
+      if (d.ok && d.user?.id) setCurrentUserId(d.user.id)
+    }).catch(() => {})
+  }, [])
+
+  const isSelf = (userId: number) => currentUserId === userId
 
   const handleCreate = async () => {
     if (!username || !fullName || !password) {
@@ -162,9 +170,10 @@ export default function UsersPage() {
                         <div className="flex items-center gap-2">
                           <Select
                             value={u.role}
+                            disabled={isSelf(u.id)}
                             onValueChange={(v) => handleRoleChange(u, v)}
                           >
-                            <SelectTrigger className="h-8 w-36">
+                            <SelectTrigger className="h-8 w-36" title={isSelf(u.id) ? "Vous ne pouvez pas modifier votre propre rôle" : ""}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -176,7 +185,9 @@ export default function UsersPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive"
+                            disabled={isSelf(u.id)}
                             onClick={() => handleDelete(u)}
+                            title={isSelf(u.id) ? "Vous ne pouvez pas vous supprimer" : ""}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

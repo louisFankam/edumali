@@ -19,12 +19,10 @@ import { ProgressionModal } from "@/components/academic-history/progression-moda
 import { useAcademicOverview } from "@/hooks/use-academic-overview"
 import { useClasses } from "@/hooks/use-classes"
 import { useAcademicYears, useSchoolInfo } from "@/hooks/use-settings"
-import { buildBulletinDocument } from "@/lib/reports/bulletin-html"
-import { buildCertificateHTML } from "@/lib/reports/certificate-html"
-import { buildAttendanceHTML } from "@/lib/reports/attendance-html"
-import { buildProgressionHTML } from "@/lib/reports/progression-html"
-import { buildClassReportHTML } from "@/lib/reports/class-report-html"
-import { buildComparativeHTML } from "@/lib/reports/comparative-html"
+import { downloadBulletinPDF } from "@/lib/reports/bulletin"
+import { downloadCertificatePDF } from "@/lib/reports/certificate"
+import { downloadAttendancePDF } from "@/lib/reports/attendance"
+import { downloadClassReportPDF } from "@/lib/reports/class-report"
 import { Search, FileText, TrendingUp, Award, Users, BarChart3, Eye, Download, Loader2 } from "lucide-react"
 
 export default function AcademicHistoryPage() {
@@ -221,7 +219,7 @@ export default function AcademicHistoryPage() {
   }
 
   const handleDownloadBulletins = useCallback(async () => {
-    if (!selectedClass || !selectedYear) return
+    if (!selectedClass || !selectedYear) { toast.error("Veuillez sélectionner une classe et une année scolaire."); return }
     setReportLoading("bulletins")
     try {
       const res = await fetch(`/api/bulletins?classId=${selectedClass}&trimester=${selectedTrimester}&academicYearId=${selectedYear}`)
@@ -233,44 +231,20 @@ export default function AcademicHistoryPage() {
         subjects: s.subjects,
         generalAverage: s.generalAverage,
         rank: s.rank,
+        totalStudents: json.data.students.length,
         mention: s.mention,
         totalActiveCoeffs: s.totalActiveCoeffs,
       }))
       const yearName = getYearName(selectedYear)
-      const html = buildBulletinDocument(students, schoolName, schoolAddress, schoolPhone, directorName, yearName, json.data.className, json.data.trimester, logoUrl)
-      downloadHTML(html, `bulletins-${json.data.className}-T${json.data.trimester}.html`)
+      await downloadBulletinPDF(students, schoolName, schoolAddress, schoolPhone, directorName, yearName, json.data.className, json.data.trimester, logoUrl)
     } catch (e) {
-      alert("Erreur : " + e.message)
+      toast.error("Erreur : " + e.message)
     } finally {
       setReportLoading("")
     }
   }, [selectedClass, selectedYear, selectedTrimester, schoolName, schoolAddress, schoolPhone, directorName, logoUrl, getYearName])
 
-  const handleDownloadProgression = useCallback(async () => {
-    if (!selectedClass || !selectedYear) return
-    setReportLoading("progression")
-    try {
-      const yearName = getYearName(selectedYear)
-      const clsName = getClassName(selectedClass)
-      const { trimesterAverages } = await fetchTrimesterStats(selectedClass, selectedYear)
-      const html = buildProgressionHTML({
-        className: clsName,
-        academicYearName: yearName,
-        trimesterAverages,
-        topSubjects: data?.topSubjects || [],
-        weakSubjects: data?.weakSubjects || [],
-        schoolName,
-        schoolAddress,
-        schoolPhone,
-        directorName,
-      })
-      downloadHTML(html, `progression-${clsName}.html`)
-    } catch (e) {
-      alert("Erreur : " + e.message)
-    } finally {
-      setReportLoading("")
-    }
-  }, [selectedClass, selectedYear, data, schoolName, schoolAddress, schoolPhone, directorName, getYearName, getClassName])
+
 
   const handleGenerateCertificate = useCallback(async () => {
     if (!certificateStudentId || !data) return
@@ -280,7 +254,7 @@ export default function AcademicHistoryPage() {
       if (!student) throw new Error("Élève introuvable")
       const yearName = getYearName(selectedYear)
       const clsName = getClassName(selectedClass)
-      const html = buildCertificateHTML({
+      await downloadCertificatePDF({
         studentName: student.studentName,
         studentId: student.studentId,
         className: clsName,
@@ -290,18 +264,17 @@ export default function AcademicHistoryPage() {
         directorName,
         academicYearName: yearName,
       })
-      downloadHTML(html, `certificat-${student.studentName.replace(/\s+/g, "_")}.html`)
       setCertificateOpen(false)
       setCertificateStudentId("")
     } catch (e) {
-      alert("Erreur : " + e.message)
+      toast.error("Erreur : " + e.message)
     } finally {
       setReportLoading("")
     }
   }, [certificateStudentId, data, selectedClass, selectedYear, schoolName, schoolAddress, schoolPhone, directorName, getYearName, getClassName])
 
   const handleDownloadAttendance = useCallback(async () => {
-    if (!selectedClass || !selectedYear) return
+    if (!selectedClass || !selectedYear) { toast.error("Veuillez sélectionner une classe et une année scolaire."); return }
     setReportLoading("attendance")
     try {
       const { from, to } = getTrimesterDates(selectedYear, Number(selectedTrimester))
@@ -314,7 +287,7 @@ export default function AcademicHistoryPage() {
       const stats = json.data
       const yearName = getYearName(selectedYear)
       const clsName = getClassName(selectedClass)
-      const html = buildAttendanceHTML({
+      await downloadAttendancePDF({
         className: clsName,
         trimester: Number(selectedTrimester),
         academicYearName: yearName,
@@ -329,16 +302,15 @@ export default function AcademicHistoryPage() {
         congé: stats.congé || 0,
         rate: stats.rate || 0,
       })
-      downloadHTML(html, `presences-${clsName}-T${selectedTrimester}.html`)
     } catch (e) {
-      alert("Erreur : " + e.message)
+      toast.error("Erreur : " + e.message)
     } finally {
       setReportLoading("")
     }
   }, [selectedClass, selectedYear, selectedTrimester, schoolName, schoolAddress, schoolPhone, directorName, getYearName, getClassName])
 
   const handleExportAllBulletins = useCallback(async () => {
-    if (!selectedClass || !selectedYear) return
+    if (!selectedClass || !selectedYear) { toast.error("Veuillez sélectionner une classe et une année scolaire."); return }
     setReportLoading("bulletins")
     try {
       const bulletinsData = await fetchAllBulletins(selectedClass, selectedYear)
@@ -350,23 +322,23 @@ export default function AcademicHistoryPage() {
           subjects: s.subjects,
           generalAverage: s.generalAverage,
           rank: s.rank,
+          totalStudents: d.students.length,
           mention: s.mention,
           totalActiveCoeffs: s.totalActiveCoeffs,
         })),
       )
       const yearName = getYearName(selectedYear)
       const clsName = getClassName(selectedClass)
-      const html = buildBulletinDocument(allStudents, schoolName, schoolAddress, schoolPhone, directorName, yearName, clsName, 0, logoUrl)
-      downloadHTML(html, `bulletins-complets-${clsName}.html`)
+      await downloadBulletinPDF(allStudents, schoolName, schoolAddress, schoolPhone, directorName, yearName, clsName, 0, logoUrl)
     } catch (e) {
-      alert("Erreur : " + e.message)
+      toast.error("Erreur : " + e.message)
     } finally {
       setReportLoading("")
     }
   }, [selectedClass, selectedYear, schoolName, schoolAddress, schoolPhone, directorName, logoUrl, getYearName, getClassName])
 
   const handleDownloadClassReport = useCallback(async () => {
-    if (!data || !selectedClass || !selectedYear) return
+    if (!data || !selectedClass || !selectedYear) { toast.error("Veuillez sélectionner une classe et une année scolaire."); return }
     setReportLoading("classreport")
     try {
       const [attendanceStats, { trimesterAverages }] = await Promise.all([
@@ -378,7 +350,7 @@ export default function AcademicHistoryPage() {
       ])
       const yearName = getYearName(selectedYear)
       const clsName = getClassName(selectedClass)
-      const html = buildClassReportHTML({
+      await downloadClassReportPDF({
         className: clsName,
         academicYearName: yearName,
         trimester: Number(selectedTrimester),
@@ -404,63 +376,14 @@ export default function AcademicHistoryPage() {
         schoolPhone,
         directorName,
       })
-      downloadHTML(html, `rapport-classe-${clsName}-T${selectedTrimester}.html`)
     } catch (e) {
-      alert("Erreur : " + e.message)
+      toast.error("Erreur : " + e.message)
     } finally {
       setReportLoading("")
     }
   }, [data, selectedClass, selectedYear, selectedTrimester, schoolName, schoolAddress, schoolPhone, directorName, getYearName, getClassName])
 
-  const handleDownloadComparative = useCallback(async () => {
-    if (!selectedClass) return
-    setReportLoading("comparative")
-    try {
-      const clsName = getClassName(selectedClass)
-      const yearResults = await Promise.all(years.map(async year => {
-        const results = await Promise.all(
-          [1, 2, 3].map(t =>
-            fetch(`/api/bulletins?classId=${selectedClass}&trimester=${t}&academicYearId=${year.id}`)
-              .then(r => r.json())
-              .then(json => {
-                if (!json.ok) return { avg: null, count: 0, passRate: 0 }
-                const withAvg = json.data.students.filter(s => s.generalAverage !== null)
-                const avg = withAvg.length > 0
-                  ? Math.round(withAvg.reduce((s, a) => s + a.generalAverage, 0) / withAvg.length * 100) / 100
-                  : null
-                const passed = withAvg.filter(s => s.generalAverage >= 10).length
-                return {
-                  avg,
-                  count: json.data.students.length,
-                  passRate: withAvg.length > 0 ? Math.round((passed / withAvg.length) * 100) : 0,
-                }
-              })
-              .catch(() => ({ avg: null, count: 0, passRate: 0 })),
-          ),
-        )
-        return {
-          name: year.name,
-          trimesterAverages: results.map(r => r.avg),
-          studentCount: Math.max(...results.map(r => r.count)),
-          passRate: results[0]?.passRate || 0,
-        }
-      }))
 
-      const html = buildComparativeHTML({
-        className: clsName,
-        schoolName,
-        schoolAddress,
-        schoolPhone,
-        directorName,
-        years: yearResults,
-      })
-      downloadHTML(html, `comparatif-${clsName}.html`)
-    } catch (e) {
-      alert("Erreur : " + e.message)
-    } finally {
-      setReportLoading("")
-    }
-  }, [selectedClass, years, schoolName, schoolAddress, schoolPhone, directorName, getClassName])
 
   const stats = data ? [
     {
@@ -524,7 +447,7 @@ export default function AcademicHistoryPage() {
               <SelectItem value="3">3ème Trimestre</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" disabled>
+          <Button variant="outline" onClick={handleDownloadBulletins} disabled={!!reportLoading}>
             <Download className="h-4 w-4 mr-2" />
             Exporter
           </Button>
@@ -587,7 +510,6 @@ export default function AcademicHistoryPage() {
                         <SelectValue placeholder="Filtrer par classe" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Toutes les classes</SelectItem>
                         {classes.map((cls) => (
                           <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
                         ))}
@@ -598,7 +520,6 @@ export default function AcademicHistoryPage() {
                         <SelectValue placeholder="Année scolaire" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">Toutes les années</SelectItem>
                         {years.map((yr) => (
                           <SelectItem key={yr.id} value={yr.id}>{yr.name}</SelectItem>
                         ))}
@@ -775,15 +696,7 @@ export default function AcademicHistoryPage() {
                       {reportLoading === "bulletins" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
                       Bulletin trimestriel
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start bg-transparent"
-                      onClick={handleDownloadProgression}
-                      disabled={reportLoading === "progression"}
-                    >
-                      {reportLoading === "progression" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BarChart3 className="h-4 w-4 mr-2" />}
-                      Rapport de progression
-                    </Button>
+
                     <Button
                       variant="outline"
                       className="w-full justify-start bg-transparent"
@@ -826,15 +739,7 @@ export default function AcademicHistoryPage() {
                       {reportLoading === "classreport" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
                       Générer rapport de classe
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full bg-transparent"
-                      onClick={handleDownloadComparative}
-                      disabled={reportLoading === "comparative"}
-                    >
-                      {reportLoading === "comparative" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <BarChart3 className="h-4 w-4 mr-2" />}
-                      Analyse comparative
-                    </Button>
+
                   </CardContent>
                 </Card>
               </div>
