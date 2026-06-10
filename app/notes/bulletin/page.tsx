@@ -17,8 +17,8 @@ import { useSubjects } from "@/hooks/use-settings"
 import { useAcademicYears, useSchoolInfo } from "@/hooks/use-settings"
 import { useBulletins, type BulletinData, type StudentBulletin } from "@/hooks/use-bulletins"
 import BulletinPrint from "@/components/bulletin-print"
-import { fmt, escHtml, reportStyles } from "@/lib/reports/helpers"
-import { buildBulletinHTML, buildBulletinDocument } from "@/lib/reports/bulletin"
+import { fmt, escHtml } from "@/lib/reports/helpers"
+import { buildBulletinHTML, buildBulletinDocument, bulletinStyles, previewStyles, type StudentBulletinData } from "@/lib/reports/bulletin"
 
 export default function BulletinPage() {
   const { classes } = useClasses()
@@ -58,16 +58,29 @@ export default function BulletinPage() {
     }
   }
 
+  const totalStudents = data?.students?.length ?? 0
+
   const handlePreview = (student: StudentBulletin) => {
     setPreviewStudent(student)
     setShowPreview(true)
   }
 
+  const mapStudent = (s: StudentBulletin): StudentBulletinData => ({
+    lastName: s.lastName,
+    firstName: s.firstName,
+    subjects: s.subjects,
+    generalAverage: s.generalAverage,
+    rank: s.rank,
+    totalStudents,
+    mention: s.mention,
+    totalActiveCoeffs: s.totalActiveCoeffs,
+  })
+
   const handlePrintStudent = (student: StudentBulletin) => {
     const printWin = window.open("", "_blank")
     if (!printWin) return
     const lUrl = schoolInfo?.logoUrl || ""
-    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Bulletin - ${student.lastName} ${student.firstName}</title><style>${reportStyles}</style></head><body>${buildBulletinHTML(student, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, lUrl)}</body></html>`
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Bulletin - ${student.lastName} ${student.firstName}</title><style>${bulletinStyles}</style></head><body><div class="bulletin" style="width:auto;border:none;border-right:none">${buildBulletinHTML(mapStudent(student), schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, lUrl)}</div></body></html>`
     printWin.document.write(html)
     printWin.document.close()
     printWin.print()
@@ -76,7 +89,7 @@ export default function BulletinPage() {
   const handlePrintAll = () => {
     if (!data) return
     const lUrl = schoolInfo?.logoUrl || ""
-    const html = buildBulletinDocument(data.students, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data.className, data.trimester, lUrl)
+    const html = buildBulletinDocument(data.students.map(mapStudent), schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data.className, data.trimester, lUrl)
     const printWin = window.open("", "_blank")
     if (!printWin) return
     printWin.document.write(html)
@@ -285,9 +298,9 @@ export default function BulletinPage() {
           </DialogHeader>
           {previewStudent && data && (
             <div>
-              <style>{reportStyles}</style>
-              <div dangerouslySetInnerHTML={{
-                __html: buildBulletinHTML(previewStudent, schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, schoolInfo?.logoUrl || "")
+              <style>{previewStyles}</style>
+              <div className="preview-bulletin" dangerouslySetInnerHTML={{
+                __html: buildBulletinHTML(mapStudent(previewStudent), schoolName, schoolAddress, schoolPhone, directorName, academicYearName, data?.className || "", data?.trimester || 1, schoolInfo?.logoUrl || "")
               }} />
 
               <div className="flex justify-end gap-2 mt-4">

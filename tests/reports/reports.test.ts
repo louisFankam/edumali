@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { escHtml, fmt } from "@/lib/reports/helpers"
-import { buildBulletinHTML } from "@/lib/reports/bulletin"
+import { buildBulletinHTML, buildBulletinDocument, bulletinStyles, previewStyles } from "@/lib/reports/bulletin"
 import { buildClassReportHTML } from "@/lib/reports/class-report"
 import { buildAttendanceHTML } from "@/lib/reports/attendance"
 import { buildCertificateHTML } from "@/lib/reports/certificate"
@@ -109,6 +109,164 @@ describe("bulletins", () => {
     const student = { ...baseStudent, rank: null, totalStudents: 0 }
     const html = buildBulletinHTML(student, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
     expect(html).toContain("—")
+  })
+
+  it("inclut l'en-tête REPUBLIQUE DU MALI", () => {
+    const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("REPUBLIQUE DU MALI")
+    expect(html).toContain("Un Peuple")
+    expect(html).toContain("BULLETIN SCOLAIRE")
+  })
+
+  it("inclut les infos école", () => {
+    const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("École Test")
+    expect(html).toContain("Bamako")
+    expect(html).toContain("70123456")
+  })
+
+  it("inclut les signatures parent et directeur", () => {
+    const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("Parent")
+    expect(html).toContain("Le Directeur")
+    expect(html).toContain("M. le Directeur")
+  })
+
+  it("inclut le logo dans le HTML si logoUrl est fourni", () => {
+    const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "https://example.com/logo.png")
+    expect(html).toContain("<img")
+    expect(html).toContain("logo.png")
+  })
+
+  it("affiche trimester correctement", () => {
+    const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 2, "")
+    expect(html).toContain("Trimestre 2")
+  })
+
+  it("n'utilise pas de couleurs ni styles modernes", () => {
+    const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).not.toContain("#1e40af")
+    expect(html).not.toContain("Helvetica")
+    expect(html).not.toContain("sans-serif")
+  })
+
+  it("gère des matières vides", () => {
+    const student = { ...baseStudent, subjects: [] }
+    const html = buildBulletinHTML(student, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("Total")
+  })
+})
+
+describe("buildBulletinDocument", () => {
+  const baseStudent = {
+    lastName: "Diallo",
+    firstName: "Amadou",
+    subjects: [
+      { subjectName: "Math", coefficient: 4, devoirAverage: 14, trimestrielleScore: 15, finalAverage: 14.5, absent: false, appreciation: "Bien" },
+    ],
+    generalAverage: 14.5,
+    rank: 1,
+    totalStudents: 2,
+    mention: "Bien",
+    totalActiveCoeffs: 4,
+  }
+
+  const secondStudent = {
+    lastName: "Traoré",
+    firstName: "Fatoumata",
+    subjects: [
+      { subjectName: "Math", coefficient: 4, devoirAverage: 12, trimestrielleScore: 11, finalAverage: 11.5, absent: false, appreciation: "Passable" },
+    ],
+    generalAverage: 11.5,
+    rank: 2,
+    totalStudents: 2,
+    mention: "Passable",
+    totalActiveCoeffs: 4,
+  }
+
+  it("génère un document HTML complet", () => {
+    const html = buildBulletinDocument([baseStudent, secondStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("<!DOCTYPE html>")
+    expect(html).toContain("<html")
+    expect(html).toContain("</html>")
+  })
+
+  it("inclut les deux bulletins dans le document", () => {
+    const html = buildBulletinDocument([baseStudent, secondStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("DIALLO")
+    expect(html).toContain("TRAORÉ")
+    expect(html).toContain("Amadou")
+    expect(html).toContain("Fatoumata")
+  })
+
+  it("affiche les bulletins en page paysage A4", () => {
+    const html = buildBulletinDocument([baseStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("page")
+    expect(html).toContain("bulletin")
+  })
+
+  it("affiche deux bulletins par page", () => {
+    const html = buildBulletinDocument([baseStudent, secondStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    const bulletinCount = (html.match(/class="bulletin"/g) || []).length
+    expect(bulletinCount).toBe(2)
+  })
+
+  it("inclut le style bulletin dans le head", () => {
+    const html = buildBulletinDocument([baseStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("<style>")
+    expect(html).toContain("Times New Roman")
+  })
+
+  it("crée plusieurs pages pour plus de 2 élèves", () => {
+    const students = Array.from({ length: 5 }, (_, i) => ({
+      ...baseStudent,
+      lastName: `Élève${i + 1}`,
+      firstName: "Test",
+      rank: i + 1,
+      totalStudents: 5,
+    }))
+    const html = buildBulletinDocument(students, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    const pageCount = (html.match(/class="page"/g) || []).length
+    expect(pageCount).toBe(3)
+  })
+
+  it("fonctionne avec des données réelles (logoUrl fourni)", () => {
+    const html = buildBulletinDocument([baseStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "https://example.com/logo.png")
+    expect(html).toContain("https://example.com/logo.png")
+    expect(html).toContain("REPUBLIQUE DU MALI")
+  })
+
+  it("affiche le rang avec totalStudents", () => {
+    const html = buildBulletinDocument([baseStudent], "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
+    expect(html).toContain("1/2")
+  })
+})
+
+describe("bulletinStyles et previewStyles", () => {
+  it("bulletinStyles définit Times New Roman et bordures noires", () => {
+    expect(bulletinStyles).toContain("Times New Roman")
+    expect(bulletinStyles).toContain("border: 1px solid #000")
+    expect(bulletinStyles).toContain("A4 landscape")
+  })
+
+  it("previewStyles est préfixé par .preview-bulletin", () => {
+    expect(previewStyles).toContain(".preview-bulletin")
+    expect(previewStyles).toContain("Times New Roman")
+    expect(previewStyles).toContain("border: 1px solid #000")
+  })
+
+  it("les deux styles utilisent @page et font-family serif", () => {
+    expect(bulletinStyles).toContain("font-family")
+    expect(previewStyles).toContain("font-family")
+    expect(bulletinStyles).toContain("serif")
+    expect(previewStyles).toContain("serif")
+  })
+
+  it("n'ont pas de styles modernes (bleu, Helvetica)", () => {
+    expect(bulletinStyles).not.toContain("#1e40af")
+    expect(bulletinStyles).not.toContain("Helvetica")
+    expect(previewStyles).not.toContain("#1e40af")
+    expect(previewStyles).not.toContain("Helvetica")
   })
 })
 
