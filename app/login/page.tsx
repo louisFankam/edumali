@@ -28,7 +28,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [dbStatus, setDbStatus] = useState<"checking" | "success" | "error">("checking")
 
   const router = useRouter()
   const { login, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -38,18 +37,6 @@ export default function LoginPage() {
       router.push("/dashboard")
     }
   }, [isAuthenticated, router])
-
-  useEffect(() => {
-    const checkDb = async () => {
-      try {
-        const response = await fetch("/api/health/db", { cache: "no-store" })
-        setDbStatus(response.ok ? "success" : "error")
-      } catch {
-        setDbStatus("error")
-      }
-    }
-    checkDb()
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -102,20 +89,6 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            {dbStatus === "success" && (
-              <Alert className="border-green-200 bg-green-50 text-green-800">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>Connexion base de donnees: SUCCESS</AlertDescription>
-              </Alert>
-            )}
-
-            {dbStatus === "error" && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Connexion base de donnees: ECHEC</AlertDescription>
-              </Alert>
-            )}
-
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -235,7 +208,7 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-sm text-gray-500">
-            © 2024 École Primaire de Bamako. Tous droits réservés.
+            © 2026 Ekima. Tous droits réservés.
           </p>
         </div>
       </div>
