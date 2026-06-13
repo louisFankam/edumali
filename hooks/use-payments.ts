@@ -85,7 +85,7 @@ export function useFeeTypes() {
   return { feeTypes, isLoading, error, create, update, remove }
 }
 
-export function usePayments(filters?: { studentId?: string; from?: string; to?: string; page?: number; limit?: number }) {
+export function usePayments(filters?: { studentId?: string; from?: string; to?: string; classId?: string; page?: number; limit?: number }) {
   const [payments, setPayments] = useState<PaymentData[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -102,6 +102,7 @@ export function usePayments(filters?: { studentId?: string; from?: string; to?: 
       if (filters?.studentId) params.set("studentId", filters.studentId)
       if (filters?.from) params.set("from", filters.from)
       if (filters?.to) params.set("to", filters.to)
+      if (filters?.classId) params.set("classId", filters.classId)
       if (filters?.page) params.set("page", String(filters.page))
       if (filters?.limit) params.set("limit", String(filters.limit))
       const data = await cachedFetch<any[]>(`/api/payments?${params.toString()}`)
@@ -114,7 +115,7 @@ export function usePayments(filters?: { studentId?: string; from?: string; to?: 
     } finally {
       if (id === requestId.current) setIsLoading(false)
     }
-  }, [filters?.studentId, filters?.from, filters?.to, filters?.page, filters?.limit])
+  }, [filters?.studentId, filters?.from, filters?.to, filters?.classId, filters?.page, filters?.limit])
 
   useEffect(() => { load() }, [load])
 

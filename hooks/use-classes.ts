@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react"
 
+export interface ClassFeeTypeData {
+  id: string
+  feeTypeId: string
+  feeTypeName: string
+  feeTypeAmount: number
+  feeTypePeriod: string
+  amount: number | null
+}
+
 export interface ClassData {
   id: string
   name: string
@@ -13,6 +22,7 @@ export interface ClassData {
   academicYear?: string
   status?: string
   studentCount?: number
+  feeTypes?: ClassFeeTypeData[]
 }
 
 export function useClasses() {
@@ -36,6 +46,7 @@ export function useClasses() {
     name: string; level?: number | null; capacity?: number | null;
     totalFee?: number | null; teacherId?: number | null; color?: string;
     academicYear?: string; status?: string;
+    feeTypeItems?: { feeTypeId: number; amount: number | null }[];
   }) => {
     const res = await window.fetch("/api/classes", {
       method: "POST",
@@ -51,6 +62,7 @@ export function useClasses() {
     name?: string; level?: number | null; capacity?: number | null;
     totalFee?: number | null; teacherId?: number | null; color?: string;
     academicYear?: string; status?: string;
+    feeTypeItems?: { feeTypeId: number; amount: number | null }[];
   }) => {
     const res = await window.fetch(`/api/classes/${id}`, {
       method: "PUT",

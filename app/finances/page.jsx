@@ -16,10 +16,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Switch } from "@/components/ui/switch"
 import {
-  Search, DollarSign, TrendingUp,
+  Search, DollarSign, TrendingUp, FileText,
   Plus, Eye, CreditCard, Download, Trash2, Loader2, ArrowUpRight, ArrowDownRight, Pencil, Lock,
 } from "lucide-react"
-import { useAcademicYears } from "@/hooks/use-settings"
+import { useAcademicYears, useSchoolInfo } from "@/hooks/use-settings"
+import { ReceiptModal } from "@/components/invoice/receipt-modal"
 import { useStudents } from "@/hooks/use-students"
 import { usePayments, useFeeTypes } from "@/hooks/use-payments"
 import { useExpenses } from "@/hooks/use-expenses"
@@ -52,10 +53,11 @@ export default function FinancesPage() {
   const { currentYear } = useAcademicYears()
 
   // Auto-set date range from current academic year (when dates are empty)
+  // Extend end_date to today if the academic year has ended, so recent payments still appear
   useEffect(() => {
     if (currentYear && !dateFrom && !dateTo) {
       setDateFrom(currentYear.startDate)
-      setDateTo(currentYear.endDate)
+      setDateTo(currentYear.endDate < today ? today : currentYear.endDate)
     }
   }, [currentYear, dateFrom, dateTo])
 
@@ -65,6 +67,7 @@ export default function FinancesPage() {
   const { payments, isLoading: paymentsLoading, create: createPayment, update: updatePayment, remove: removePayment, refetch: refetchPayments } = usePayments({ from: dateFrom || undefined, to: dateTo || undefined })
   const { classes } = useClasses()
   const { feeTypes } = useFeeTypes()
+  const { schoolInfo } = useSchoolInfo()
 
   const LIMIT = 20
 
@@ -108,8 +111,12 @@ export default function FinancesPage() {
   const [payMethod, setPayMethod] = useState("espèces")
   const [payFeeType, setPayFeeType] = useState("")
 
+  // Receipt
+  const [showReceipt, setShowReceipt] = useState(false)
+  const [receiptPayment, setReceiptPayment] = useState(null)
+
   // Dashboard data (server-side aggregated)
-  const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData({ from: dateFrom || undefined, to: dateTo || undefined })
+  const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useDashboardData({ from: dateFrom || undefined, to: dateTo || undefined })
 
   // Period management
   const { periods, close: closePeriod, open: openPeriod, isClosed } = usePeriods()
@@ -210,16 +217,34 @@ export default function FinancesPage() {
     })
   }, [payments, expenses, payrollAsExpenses])
 
+  const openReceipt = (payment, student) => {
+    const cls = classes.find(c => c.id === student.classId)
+    setReceiptPayment({
+      payment: { ...payment, feeTypeName: payment.feeTypeName || null },
+      student: {
+        firstName: student.firstName,
+        lastName: student.lastName,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        className: cls?.name,
+      },
+    })
+    setShowReceipt(true)
+  }
+
   const handleRecordPayment = async () => {
     if (!selectedStudent || !payAmount) return
-    await createPayment({
+    const result = await createPayment({
       studentId: Number(selectedStudent.id),
       feeTypeId: payFeeType ? Number(payFeeType) : undefined,
       amount: Number(payAmount),
       method: payMethod,
       date: today,
     })
-    setPayAmount(""); setPayFeeType(""); setShowPaymentModal(false); refetchPayments()
+    setPayAmount(""); setPayFeeType(""); setShowPaymentModal(false); refetchPayments(); refetchDashboard()
+    if (result.ok && result.data) {
+      setTimeout(() => openReceipt(result.data, selectedStudent), 0)
+    }
   }
 
   const handleAddExpense = async () => {
@@ -233,7 +258,7 @@ export default function FinancesPage() {
       notes: expNotes || undefined,
     })
     setExpDesc(""); setExpAmount(""); setExpCategory("autres"); setExpCategoryCustom("")
-    setExpDate(today); setExpNotes(""); setShowAddExpense(false)
+    setExpDate(today); setExpNotes(""); setShowAddExpense(false); refetchDashboard()
   }
 
   const openEditExpense = (e) => {
@@ -257,7 +282,7 @@ export default function FinancesPage() {
       date: editExpDate,
       notes: editExpNotes || undefined,
     })
-    setShowEditExpense(false)
+    setShowEditExpense(false); refetchDashboard()
   }
 
   const openEditPayment = (p) => {
@@ -275,7 +300,7 @@ export default function FinancesPage() {
       method: editPayMethod,
       feeTypeId: editPayFeeType ? Number(editPayFeeType) : undefined,
     })
-    setShowEditPayment(false)
+    setShowEditPayment(false); refetchDashboard()
   }
 
   const exportPaymentsCSV = () => {
@@ -498,13 +523,19 @@ export default function FinancesPage() {
                               <TableCell>{p.feeTypeName || "-"}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => {
+                                    const s = students.find(st => st.id === p.studentId)
+                                    openReceipt(p, s || { firstName: "", lastName: p.studentName || "", classId: "", parentName: "", parentPhone: "" })
+                                  }}>
+                                    <FileText className="h-4 w-4" />
+                                  </Button>
                                   {!closed && (
                                     <Button variant="ghost" size="sm" onClick={() => openEditPayment(p)}>
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                   )}
                                   {!closed && (
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer ?")) await removePayment(p.id) }}>
+                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer ?")) { await removePayment(p.id); refetchDashboard() } }}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   )}
@@ -589,7 +620,7 @@ export default function FinancesPage() {
                                     </Button>
                                   )}
                                   {!closed && (
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer cette dépense ?")) await removeExpense(e.id) }}>
+                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer cette dépense ?")) { await removeExpense(e.id); refetchDashboard() } }}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   )}
@@ -812,6 +843,20 @@ export default function FinancesPage() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Receipt modal */}
+      {receiptPayment && (
+        <ReceiptModal
+          open={showReceipt}
+          onOpenChange={setShowReceipt}
+          data={{
+            payment: receiptPayment.payment,
+            student: receiptPayment.student,
+            schoolInfo: schoolInfo || { name: "", address: "", phone: "", email: "", logoUrl: "", director: "" },
+            receiptNumber: `FACT-${String(receiptPayment.payment.id).padStart(3, "0")}-${receiptPayment.payment.date ? receiptPayment.payment.date.replace(/-/g, "").slice(2) : ""}`,
+          }}
+        />
+      )}
 
       {/* Period management dialog */}
       <Dialog open={showPeriodDialog} onOpenChange={setShowPeriodDialog}>

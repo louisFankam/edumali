@@ -71,6 +71,31 @@ describe("Paiements Page - Tests d'intégration", () => {
       expect(result.data.length).toBe(1);
       expect(result.total).toBe(2);
     });
+
+    it("devrait filtrer les paiements par classe", async () => {
+      const { addPayment, getPayments } = await import("@/lib/services/payment.service");
+
+      await addPayment({ studentId: Number(studentId2), amount: 10000, method: "espèces", date: "2025-10-05" });
+
+      const result = await getPayments({ classId: classId1 });
+      expect(result.data.length).toBeGreaterThanOrEqual(3);
+      expect(result.total).toBeGreaterThanOrEqual(3);
+    });
+
+    it("devrait filtrer les paiements par classe + étudiant", async () => {
+      const { getPayments } = await import("@/lib/services/payment.service");
+
+      const result = await getPayments({ classId: classId1, studentId: studentId1 });
+      expect(result.data.length).toBe(2);
+      expect(result.data.every(p => p.studentId === studentId1)).toBe(true);
+    });
+
+    it("devrait retourner vide pour une classe sans paiement", async () => {
+      const { getPayments } = await import("@/lib/services/payment.service");
+      const result = await getPayments({ classId: "99999" });
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
   });
 
   // ─────────── B. CRÉATION PAIEMENT ───────────
@@ -217,13 +242,13 @@ describe("Paiements Page - Tests d'intégration", () => {
       await db.update(classes).set({ totalFee: 50000 }).where(eq(classes.id, Number(classId1)));
 
       // Student 1: 65000 payé > 50000 → pas impayé
-      // Student 2: 15000 payé < 50000 → impayé (remaining = 35000)
+      // Student 2: 15000 + 10000 = 25000 payé < 50000 → impayé (remaining = 25000)
       const { getUnpaidStudents } = await import("@/lib/services/payment.service");
       const result = await getUnpaidStudents({ academicYearId });
 
       expect(result.data.length).toBe(1);
       expect(result.data[0].firstName).toBe("Fatoumata");
-      expect(result.data[0].remaining).toBe(35000);
+      expect(result.data[0].remaining).toBe(25000);
     });
 
     it("devrait filtrer les impayés par classe", async () => {
@@ -311,8 +336,9 @@ describe("Paiements Page - Tests d'intégration", () => {
       const { getPaymentStatsService } = await import("@/lib/services/payment.service");
 
       const stats = await getPaymentStatsService("2025-10-01", "2025-10-31");
-      expect(stats.totalRevenue).toBe(30000);
-      expect(stats.totalPayments).toBe(1);
+      // Student 1: 30000 (2025-10-01) + Student 2: 10000 (2025-10-05)
+      expect(stats.totalRevenue).toBe(40000);
+      expect(stats.totalPayments).toBe(2);
     });
 
     it("devrait retourner 0 pour une période sans paiements", async () => {

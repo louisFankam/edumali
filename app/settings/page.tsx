@@ -44,9 +44,10 @@ import {
 
 import { AffectationsPanel } from "@/components/affectations-panel"
 import { useSchoolInfo, useAcademicYears, useSubjects } from "@/hooks/use-settings"
-import { useClasses } from "@/hooks/use-classes"
+import { useClasses, type ClassFeeTypeData } from "@/hooks/use-classes"
 import { useTeachers } from "@/hooks/use-teachers"
 import { useClassSubjects } from "@/hooks/use-class-subjects"
+import { useFeeTypes } from "@/hooks/use-payments"
 
 // Types pour les données
 interface Class {
@@ -61,6 +62,7 @@ interface Class {
   color: string
   academic_year: string // Utilisez academic_year ici
   status: string
+  feeTypes?: ClassFeeTypeData[]
 }
 
 interface Subject {
@@ -116,7 +118,8 @@ function ClassModal({
   classData = null, 
   teachers = [], 
   academicYears = [], 
-  selectedAcademicYear = null 
+  selectedAcademicYear = null,
+  allFeeTypes = [],
 }: {
   isOpen: boolean
   onClose: () => void
@@ -125,6 +128,7 @@ function ClassModal({
   teachers?: any[]
   academicYears?: AcademicYear[]
   selectedAcademicYear?: AcademicYear | null
+  allFeeTypes?: ClassFeeTypeData[]
 }) {
   const [formData, setFormData] = useState({
   name: classData?.name || "",
@@ -137,13 +141,14 @@ function ClassModal({
   status: classData?.status === "inactive" ? "inactive" : "active"
 })
 
+  const [selectedFeeTypes, setSelectedFeeTypes] = useState<{ feeTypeId: string; amount: number | null }[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      await onSave(formData)
+      await onSave({ ...formData, feeTypeItems: selectedFeeTypes })
       onClose()
     } catch (error) {
       console.error('Erreur:', error)
@@ -152,20 +157,56 @@ function ClassModal({
     }
   }
 
+  const supplementaryTotal = selectedFeeTypes.reduce((sum, item) => {
+    const feeType = allFeeTypes.find(f => f.id === item.feeTypeId)
+    return sum + (item.amount ?? feeType?.amount ?? 0)
+  }, 0)
+
+  const baseFee = Number(formData.total_fee) || 0
+  const totalWithSupplements = baseFee + supplementaryTotal
+
   useEffect(() => {
-    if (isOpen && classData) {
-      setFormData({
-        name: classData.name,
-        level: classData.level,
-        capacity: classData.capacity,
-        total_fee: classData.total_fee,
-        teacher_id: classData.teacher_id,
-        color: classData.color,
-        academic_year: classData.academic_year, // Utilisez academic_year directement
-        status: classData.status === 'active' ? 'active' : 'inactive'
-      })
+    if (isOpen) {
+      if (classData) {
+        setFormData({
+          name: classData.name,
+          level: classData.level,
+          capacity: classData.capacity,
+          total_fee: classData.total_fee,
+          teacher_id: classData.teacher_id,
+          color: classData.color,
+          academic_year: classData.academic_year, // Utilisez academic_year directement
+          status: classData.status === 'active' ? 'active' : 'inactive'
+        })
+        setSelectedFeeTypes(
+          (classData.feeTypes ?? []).map(ft => ({
+            feeTypeId: ft.feeTypeId,
+            amount: ft.amount,
+          }))
+        )
+      } else {
+        setSelectedFeeTypes([])
+      }
     }
   }, [isOpen, classData])
+
+  const toggleFeeType = (feeType: ClassFeeTypeData) => {
+    setSelectedFeeTypes(prev => {
+      const exists = prev.find(item => item.feeTypeId === feeType.id)
+      if (exists) {
+        return prev.filter(item => item.feeTypeId !== feeType.id)
+      }
+      return [...prev, { feeTypeId: feeType.id, amount: null }]
+    })
+  }
+
+  const updateFeeTypeAmount = (feeTypeId: string, amount: number | null) => {
+    setSelectedFeeTypes(prev =>
+      prev.map(item =>
+        item.feeTypeId === feeTypeId ? { ...item, amount } : item
+      )
+    )
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -224,7 +265,7 @@ function ClassModal({
               />
             </div>
             <div>
-              <Label htmlFor="total_fee">Frais de scolarité</Label>
+              <Label htmlFor="total_fee">Frais de scolarité (base)</Label>
               <Input
                 id="total_fee"
                 type="number"
@@ -236,6 +277,68 @@ function ClassModal({
               />
             </div>
           </div>
+
+          {allFeeTypes.length > 0 && (
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-semibold">Frais supplémentaires</Label>
+              <p className="text-xs text-muted-foreground">
+                Cochez les types de frais à ajouter au montant de base de cette classe
+              </p>
+              <div className="space-y-2">
+                {allFeeTypes.map((ft) => {
+                  const selected = selectedFeeTypes.find(s => s.feeTypeId === ft.id)
+                  const isChecked = !!selected
+                  const displayAmount = selected?.amount ?? ft.amount
+                  return (
+                    <div key={ft.id} className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleFeeType(ft)}
+                        className="rounded border-gray-300 h-4 w-4"
+                        disabled={isSubmitting}
+                      />
+                      <span className="text-sm flex-1">{ft.name}</span>
+                      {isChecked && (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            value={displayAmount}
+                            onChange={(e) => updateFeeTypeAmount(ft.id, parseInt(e.target.value) || 0)}
+                            className="w-24 h-8 text-sm"
+                            disabled={isSubmitting}
+                          />
+                          <span className="text-xs text-muted-foreground">FCFA</span>
+                        </div>
+                      )}
+                      {!isChecked && (
+                        <span className="text-xs text-muted-foreground">
+                          {ft.amount.toLocaleString()} FCFA
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {selectedFeeTypes.length > 0 && (
+                <div className="pt-2 border-t text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span>Frais de base</span>
+                    <span className="font-medium">{baseFee.toLocaleString()} FCFA</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Supplémentaires</span>
+                    <span className="font-medium text-green-600">+ {supplementaryTotal.toLocaleString()} FCFA</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-base pt-1 border-t">
+                    <span>Total</span>
+                    <span>{totalWithSupplements.toLocaleString()} FCFA</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -830,6 +933,7 @@ export default function SettingsPage() {
   const { years: apiYears, currentYear, isLoading: yearsLoading, create: createYear, update: updateYear, remove: removeYear } = useAcademicYears()
 
   const { teachers: apiTeachers } = useTeachers()
+  const { feeTypes: allFeeTypes } = useFeeTypes()
   const router = useRouter()
 
   const [classes, setClasses] = useState<Class[]>([])
@@ -892,6 +996,7 @@ export default function SettingsPage() {
         color: c.color ?? "",
         academic_year: c.academicYear ?? "",
         status: c.status ?? "active",
+        feeTypes: c.feeTypes ?? [],
       })))
     }
   }, [apiClasses])
@@ -974,6 +1079,14 @@ export default function SettingsPage() {
     }
   }, [schoolInfo])
 
+  const buildFeeTypeItems = (classData: any) => {
+    if (!classData.feeTypeItems || classData.feeTypeItems.length === 0) return undefined
+    return classData.feeTypeItems.map((item: any) => ({
+      feeTypeId: Number(item.feeTypeId),
+      amount: item.amount ?? null,
+    }))
+  }
+
   const handleAddClass = async (classData: any) => {
     await createClassApi({
       name: classData.name,
@@ -984,6 +1097,7 @@ export default function SettingsPage() {
       color: classData.color,
       academicYear: classData.academic_year,
       status: classData.status === true ? "active" : classData.status || "active",
+      feeTypeItems: buildFeeTypeItems(classData),
     })
   }
 
@@ -1002,6 +1116,7 @@ export default function SettingsPage() {
       color: classData.color,
       academicYear: classData.academic_year,
       status: classData.status === true ? "active" : classData.status || "active",
+      feeTypeItems: buildFeeTypeItems(classData),
     }
     if (selectedClass) {
       await updateClassApi(selectedClass.id, payload)
@@ -1253,6 +1368,17 @@ export default function SettingsPage() {
                       <div className="flex justify-between text-sm">
                         <span>Inscrits:</span>
                         <span className="font-medium">{classItem.current_students} élèves</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Frais:</span>
+                        <span className="font-medium">
+                          {classItem.total_fee.toLocaleString()} FCFA
+                          {classItem.feeTypes && classItem.feeTypes.length > 0 && (
+                            <span className="text-green-600 text-xs ml-1">
+                              +{classItem.feeTypes.reduce((s, ft) => s + (ft.amount ?? ft.feeTypeAmount), 0).toLocaleString()}
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Professeur principal:</span>
@@ -1802,6 +1928,7 @@ export default function SettingsPage() {
             teachers={apiTeachers}
             academicYears={academicYears}
             selectedAcademicYear={selectedAcademicYear}
+            allFeeTypes={allFeeTypes}
           />
 
           <SubjectModal

@@ -13,10 +13,12 @@ import { findCurrentAcademicYear } from "@/lib/repositories/academic-year.reposi
 import { findAllPayments } from "@/lib/repositories/payment.repository";
 import { findAttendanceByStudent } from "@/lib/repositories/attendance.repository";
 import { findGradesByEvaluation } from "@/lib/repositories/grade.repository";
+import { findAllClassFeeTypes } from "@/lib/repositories/class-fee-type.repository";
 import { db } from "@/lib/db";
 import { medicalInfos, familyInfos, academicHistories, evaluations, schedules, exams, classSubjects, attendance, grades, students as studentsTable, enrollments as enrollmentsTable } from "@/lib/models/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { logAudit } from "@/lib/services/audit.service";
+import type { ClassFeeTypeData } from "@/lib/services/class-fee-type.service";
 
 function mapStudent(s: any) {
   if (!s) return null;
@@ -42,12 +44,21 @@ function mapStudent(s: any) {
 
 function mapClass(c: any) {
   if (!c) return null;
+  const feeTypes: ClassFeeTypeData[] = (c.classFeeTypes ?? []).map((cft: any) => ({
+    id: String(cft.id),
+    feeTypeId: String(cft.feeTypeId),
+    feeTypeName: cft.feeType?.name ?? "",
+    feeTypeAmount: cft.feeType?.amount ?? 0,
+    feeTypePeriod: cft.feeType?.period ?? "",
+    amount: cft.amount ?? null,
+  }));
   return {
     id: String(c.id), name: c.name, level: c.level,
     capacity: c.capacity, totalFee: c.totalFee,
     teacherId: c.teacherId ? String(c.teacherId) : null,
     color: c.color, academicYear: c.academicYear, status: c.status,
     studentCount: c.students?.length ?? 0,
+    feeTypes,
   };
 }
 
@@ -253,8 +264,16 @@ export async function addClass(input: {
   name: string; level?: number | null; capacity?: number | null;
   totalFee?: number | null; teacherId?: number | null; color?: string;
   academicYear?: string; status?: string;
+  feeTypeItems?: { feeTypeId: number; amount: number | null }[];
 }, userId?: number) {
   const created = await createClass(input);
+  if (input.feeTypeItems && input.feeTypeItems.length > 0) {
+    const { setClassFeeTypes } = await import("@/lib/repositories/class-fee-type.repository");
+    await setClassFeeTypes(created.id, input.feeTypeItems.map(item => ({
+      feeTypeId: item.feeTypeId,
+      amount: item.amount,
+    })));
+  }
   logAudit({ tableName: "classes", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapClass(created);
 }
@@ -263,9 +282,17 @@ export async function editClass(id: string, input: {
   name?: string; level?: number | null; capacity?: number | null;
   totalFee?: number | null; teacherId?: number | null; color?: string;
   academicYear?: string; status?: string;
+  feeTypeItems?: { feeTypeId: number; amount: number | null }[];
 }, userId?: number) {
   const old = await findClassById(Number(id));
   const updated = await updateClass(Number(id), input);
+  if (input.feeTypeItems !== undefined) {
+    const { setClassFeeTypes } = await import("@/lib/repositories/class-fee-type.repository");
+    await setClassFeeTypes(Number(id), input.feeTypeItems.map(item => ({
+      feeTypeId: item.feeTypeId,
+      amount: item.amount,
+    })));
+  }
   logAudit({ tableName: "classes", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
   return mapClass(updated);
 }
@@ -308,6 +335,9 @@ export async function removeClass(id: string, userId?: number) {
   if (examRows.length > 0) {
     throw new Error("Impossible de supprimer cette classe : elle a des examens");
   }
+
+  const { deleteClassFeeTypesByClass } = await import("@/lib/repositories/class-fee-type.repository");
+  await deleteClassFeeTypesByClass(classId);
 
   logAudit({ tableName: "classes", recordId: classId, action: "delete", userId, oldValues: oldClass ?? undefined });
   await deleteClass(classId);

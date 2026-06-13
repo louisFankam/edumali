@@ -99,7 +99,7 @@ export default function ExamensPage() {
                   <SelectTrigger className="w-44"><SelectValue placeholder={classId ? "Sélectionner" : "Choisissez d'abord une classe"} /></SelectTrigger>
                   <SelectContent>
                     {availableSubjects.length === 0 ? (
-                      <SelectItem value=" " disabled>Aucune matière assignée</SelectItem>
+                      <SelectItem value="__placeholder__" disabled>Aucune matière assignée</SelectItem>
                     ) : availableSubjects.map(s => (
                       <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                     ))}
@@ -475,7 +475,7 @@ function GradeDialog({
                       <input
                         className={`w-32 h-9 rounded-md border border-input bg-background px-2 text-xs ${isAbsent ? "opacity-50" : ""}`}
                         placeholder="Observation"
-                        value={isAbsent ? "Absent" : (remarks[s.id] ?? existing?.remarks || "")}
+                        value={isAbsent ? "Absent" : ((remarks[s.id] ?? existing?.remarks) || "")}
                         onChange={e => handleRemarksChange(s.id, e.target.value)}
                         disabled={isAbsent}
                       />

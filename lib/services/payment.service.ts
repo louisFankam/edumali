@@ -45,16 +45,18 @@ export async function removeFeeType(id: string, userId?: number) {
   await deleteFeeType(Number(id));
 }
 
-export async function getPayments(filters?: { studentId?: string; from?: string; to?: string; page?: number; limit?: number }) {
+export async function getPayments(filters?: { studentId?: string; from?: string; to?: string; classId?: string; page?: number; limit?: number }) {
   const rows = await findAllPayments({
     studentId: filters?.studentId ? Number(filters.studentId) : undefined,
     from: filters?.from, to: filters?.to,
+    classId: filters?.classId ? Number(filters.classId) : undefined,
     page: filters?.page, limit: filters?.limit,
   });
   const items = rows.map(mapPayment);
   const total = await countPayments({
     studentId: filters?.studentId ? Number(filters.studentId) : undefined,
     from: filters?.from, to: filters?.to,
+    classId: filters?.classId ? Number(filters.classId) : undefined,
   });
   return { data: items, total };
 }

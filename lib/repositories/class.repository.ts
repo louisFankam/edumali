@@ -4,7 +4,7 @@ import { classes } from "@/lib/models/schema";
 
 export async function findAllClasses() {
   return db.query.classes.findMany({
-    with: { students: true },
+    with: { students: true, classFeeTypes: { with: { feeType: true } } },
     orderBy: (c, { asc }) => [asc(c.name)],
   });
 }

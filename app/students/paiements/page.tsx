@@ -15,8 +15,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  DollarSign, Search, CheckCircle, Clock, ArrowLeft, PlusCircle, Trash2, Pencil, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Download,
+  DollarSign, Search, CheckCircle, Clock, ArrowLeft, PlusCircle, Trash2, Pencil, FileText, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Download,
 } from "lucide-react"
+import { ReceiptModal } from "@/components/invoice/receipt-modal"
 import { cn } from "@/lib/utils"
 import { useStudents } from "@/hooks/use-students"
 import { usePayments, useFeeTypes, useUnpaidStudents } from "@/hooks/use-payments"
@@ -36,12 +37,16 @@ export default function StudentPaymentsPage() {
   const [showAddPayment, setShowAddPayment] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("espèces")
-  const [paymentFeeType, setPaymentFeeType] = useState("")
+  const [paymentFeeType, setPaymentFeeType] = useState<string | undefined>(undefined)
   const [showEditPayment, setShowEditPayment] = useState(false)
   const [editPayment, setEditPayment] = useState<any>(null)
   const [editAmount, setEditAmount] = useState("")
   const [editMethod, setEditMethod] = useState("espèces")
-  const [editFeeType, setEditFeeType] = useState("")
+  const [editFeeType, setEditFeeType] = useState<string | undefined>(undefined)
+
+  // Receipt
+  const [showReceipt, setShowReceipt] = useState(false)
+  const [receiptPayment, setReceiptPayment] = useState<any>(null)
 
   // Unpaid section
   const [unpaidClassFilter, setUnpaidClassFilter] = useState("all")
@@ -63,8 +68,12 @@ export default function StudentPaymentsPage() {
     if (enrollments.length === 0) return undefined
     return [...enrollments].sort((a, b) => a.enrollmentDate.localeCompare(b.enrollmentDate))[0].enrollmentDate
   }, [enrollments])
+  const showClassPayments = classFilter !== "all" && !selectedStudent
   const { payments, isLoading: paymentsLoading, create: createPayment, update: updatePayment, remove: removePayment, refetch: refetchPayments } = usePayments(
     selectedStudent ? { studentId: selectedStudent.id, from: enrollmentFrom } : undefined
+  )
+  const { payments: classPayments, isLoading: classPaymentsLoading, total: classPaymentsTotal } = usePayments(
+    showClassPayments ? { classId: classFilter, from: currentYear?.startDate } : undefined
   )
   const { data: unpaidData, total: unpaidTotal, isLoading: unpaidLoading } = useUnpaidStudents(
     unpaidClassFilter !== "all" ? unpaidClassFilter : undefined,
@@ -124,6 +133,9 @@ export default function StudentPaymentsPage() {
       setPaymentAmount("")
       setShowAddPayment(false)
       refetchPayments()
+      if (result.data) {
+        setTimeout(() => openReceipt(result.data, selectedStudent), 0)
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur lors du paiement")
     }
@@ -151,6 +163,23 @@ export default function StudentPaymentsPage() {
     if (confirm("Supprimer ce paiement ?")) {
       await removePayment(paymentId)
     }
+  }
+
+  const openReceipt = (payment: any, student: any) => {
+    const feeTypeName = payment.feeTypeName || (payment.feeTypeId ? feeTypes.find((ft: any) => ft.id === payment.feeTypeId)?.name : null) || null
+    const cls = classes.find(c => c.id === student.classId)
+    setReceiptPayment({
+      payment: { ...payment, feeTypeName },
+      student: {
+        firstName: student.firstName,
+        lastName: student.lastName,
+        parentName: student.parentName,
+        parentPhone: student.parentPhone,
+        className: cls?.name || student.className,
+      },
+      receiptNumber: `FACT-${String(payment.id).padStart(3, "0")}-${payment.date ? payment.date.replace(/-/g, "").slice(2) : ""}`,
+    })
+    setShowReceipt(true)
   }
 
   const handlePrintUnpaid = () => {
@@ -261,7 +290,10 @@ export default function StudentPaymentsPage() {
                         <TableCell>{p.method}</TableCell>
                         <TableCell>{p.feeTypeName || "-"}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" onClick={() => { setEditPayment(p); setEditAmount(String(p.amount)); setEditMethod(p.method); setEditFeeType(p.feeTypeId || ""); setShowEditPayment(true) }}>
+                          <Button variant="ghost" size="sm" onClick={() => openReceipt(p, selectedStudent)}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => { setEditPayment(p); setEditAmount(String(p.amount)); setEditMethod(p.method); setEditFeeType(p.feeTypeId || undefined); setShowEditPayment(true) }}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" className="text-red-600" onClick={() => handleDeletePayment(p.id)}>
@@ -294,7 +326,7 @@ export default function StudentPaymentsPage() {
                   <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
                   <SelectContent>
                     {feeTypes.length === 0 ? (
-                      <SelectItem value="" disabled>Aucun type de frais — créez-en dans Paramètres</SelectItem>
+                      <SelectItem value="__placeholder__" disabled>Aucun type de frais — créez-en dans Paramètres</SelectItem>
                     ) : feeTypes.map(ft => (
                       <SelectItem key={ft.id} value={ft.id}>{ft.name} - {ft.amount.toLocaleString()} FCFA</SelectItem>
                     ))}
@@ -337,7 +369,7 @@ export default function StudentPaymentsPage() {
                   <SelectTrigger><SelectValue placeholder="Optionnel" /></SelectTrigger>
                   <SelectContent>
                     {feeTypes.length === 0 ? (
-                      <SelectItem value="" disabled>Aucun type de frais — créez-en dans Paramètres</SelectItem>
+                      <SelectItem value="__placeholder__" disabled>Aucun type de frais — créez-en dans Paramètres</SelectItem>
                     ) : feeTypes.map(ft => (
                       <SelectItem key={ft.id} value={ft.id}>{ft.name} - {ft.amount.toLocaleString()} FCFA</SelectItem>
                     ))}
@@ -362,6 +394,20 @@ export default function StudentPaymentsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Receipt modal */}
+        {receiptPayment && (
+          <ReceiptModal
+            open={showReceipt}
+            onOpenChange={setShowReceipt}
+            data={{
+              payment: receiptPayment.payment,
+              student: receiptPayment.student,
+              schoolInfo: schoolInfo || { name: "", address: "", phone: "", email: "", logoUrl: "", director: "" },
+              receiptNumber: receiptPayment.receiptNumber,
+            }}
+          />
+        )}
       </AppLayout>
     )
   }
@@ -416,7 +462,56 @@ export default function StudentPaymentsPage() {
             </CardContent>
           </Card>
 
-          {studentsLoading ? (
+          {showClassPayments ? (
+            <Card className="mt-4">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">
+                    Paiements — {classes.find(c => c.id === classFilter)?.name || "Classe"} ({classPaymentsTotal} paiement{classPaymentsTotal > 1 ? "s" : ""})
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {classPaymentsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Élève</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Type</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {classPayments.length === 0 ? (
+                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucun paiement pour cette classe</TableCell></TableRow>
+                      ) : (
+                        classPayments.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell>{p.date}</TableCell>
+                            <TableCell>
+                              <button className="text-primary hover:underline" onClick={() => {
+                                const s = students.find(st => st.id === p.studentId)
+                                if (s) setSelectedStudent(s)
+                              }}>
+                                {p.studentName}
+                              </button>
+                            </TableCell>
+                            <TableCell className="font-bold">{p.amount.toLocaleString()} FCFA</TableCell>
+                            <TableCell>{p.method}</TableCell>
+                            <TableCell>{p.feeTypeName || "-"}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          ) : studentsLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (
             <>

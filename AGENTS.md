@@ -35,6 +35,10 @@ pnpm db:studio    # drizzle studio
 ```sh
 pnpm build
 ```
+- **`NEXT_DISABLE_SWC=1`** est dans le script build — nécessaire sur CPU anciens (SWC segfault)
+- Babel utilisé à la place de SWC (`.babelrc` présent)
+- Minification via `terser-webpack-plugin` au lieu de SWC
+- `@next/swc-linux-x64-gnu` installé explicitement (le binaire musl ne fonctionne pas sur glibc)
 - `config.next` ignore ESLint + TS errors en build
 - `images.unoptimized: true` (pas de next/image optimization)
 - `serverExternalPackages: ["better-sqlite3"]`

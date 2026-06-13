@@ -27,10 +27,11 @@ import { useClasses } from "@/hooks/use-classes"
 import { useMedicalInfo } from "@/hooks/use-medical-info"
 import { useFamilyInfo } from "@/hooks/use-family-info"
 import { useAcademicHistory } from "@/hooks/use-academic-history"
-import { useAcademicYears } from "@/hooks/use-settings"
+import { useAcademicYears, useSchoolInfo } from "@/hooks/use-settings"
 import { useEnrollments } from "@/hooks/use-enrollments"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { ReceiptModal } from "@/components/invoice/receipt-modal"
 
 export default function StudentProfilePage() {
   const params = useParams()
@@ -49,6 +50,7 @@ export default function StudentProfilePage() {
   )
   const { feeTypes } = useFeeTypes()
   const { classes } = useClasses()
+  const { schoolInfo } = useSchoolInfo()
   const { data: medicalData, isLoading: medicalLoading, save: saveMedical } = useMedicalInfo(id)
   const { data: familyData, isLoading: familyLoading, save: saveFamily } = useFamilyInfo(id)
   const { records: academicRecords, isLoading: academicLoading, add: addAcademic, update: updateAcademic, remove: removeAcademic } = useAcademicHistory(id)
@@ -56,7 +58,11 @@ export default function StudentProfilePage() {
   const [showAddPayment, setShowAddPayment] = useState(false)
   const [payAmount, setPayAmount] = useState("")
   const [payMethod, setPayMethod] = useState("espèces")
-  const [payFeeType, setPayFeeType] = useState("")
+  const [payFeeType, setPayFeeType] = useState(undefined)
+
+  // Receipt
+  const [showReceipt, setShowReceipt] = useState(false)
+  const [receiptPayment, setReceiptPayment] = useState(null)
 
   // Medical edit
   const [showMedDialog, setShowMedDialog] = useState(false)
@@ -113,6 +119,22 @@ export default function StudentProfilePage() {
       setPayAmount("")
       setShowAddPayment(false)
       refetchPayments()
+      if (result.data) {
+        setTimeout(() => {
+          const cls = classes.find(c => c.id === student.classId)
+          setReceiptPayment({
+            payment: { ...result.data, feeTypeName: result.data.feeTypeName || payFeeType ? (feeTypes.find(ft => ft.id === payFeeType)?.name) || null : null },
+            student: {
+              firstName: student.firstName,
+              lastName: student.lastName,
+              parentName: student.parentName,
+              parentPhone: student.parentPhone,
+              className: cls?.name,
+            },
+          })
+          setShowReceipt(true)
+        }, 0)
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur lors du paiement")
     }
@@ -428,28 +450,46 @@ export default function StudentProfilePage() {
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Montant</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Type</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Aucun paiement</TableCell></TableRow>
-                  ) : (
-                    payments.map(p => (
-                      <TableRow key={p.id}>
-                        <TableCell>{p.date}</TableCell>
-                        <TableCell className="font-bold">{p.amount.toLocaleString()} FCFA</TableCell>
-                        <TableCell>{p.method}</TableCell>
-                        <TableCell>{p.feeTypeName || "-"}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Montant</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Facture</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucun paiement</TableCell></TableRow>
+                    ) : (
+                      payments.map(p => (
+                        <TableRow key={p.id}>
+                          <TableCell>{p.date}</TableCell>
+                          <TableCell className="font-bold">{p.amount.toLocaleString()} FCFA</TableCell>
+                          <TableCell>{p.method}</TableCell>
+                          <TableCell>{p.feeTypeName || "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              setReceiptPayment({
+                                payment: { ...p, feeTypeName: p.feeTypeName || null },
+                                student: {
+                                  firstName: student?.firstName || "",
+                                  lastName: student?.lastName || "",
+                                  parentName: student?.parentName,
+                                  parentPhone: student?.parentPhone,
+                                  className: student ? (classes.find(c => c.id === student.classId)?.name) : "",
+                                },
+                              })
+                              setShowReceipt(true)
+                            }}>
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
               </Table>
             </CardContent>
           </Card>
@@ -588,6 +628,20 @@ export default function StudentProfilePage() {
       </Dialog>
 
       <EditStudentProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} student={{ ...student, fullName }} onEdit={refetchStudent} />
+
+      {/* Receipt modal */}
+      {receiptPayment && (
+        <ReceiptModal
+          open={showReceipt}
+          onOpenChange={setShowReceipt}
+          data={{
+            payment: receiptPayment.payment,
+            student: receiptPayment.student,
+            schoolInfo: schoolInfo || { name: "", address: "", phone: "", email: "", logoUrl: "", director: "" },
+            receiptNumber: `FACT-${String(receiptPayment.payment.id).padStart(3, "0")}-${receiptPayment.payment.date ? receiptPayment.payment.date.replace(/-/g, "").slice(2) : ""}`,
+          }}
+        />
+      )}
     </AppLayout>
   )
 }

@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
     const studentId = searchParams.get("studentId");
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const classId = searchParams.get("classId");
     const stats = searchParams.get("stats");
     const page = searchParams.get("page") ? Number(searchParams.get("page")) : undefined;
     const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : undefined;
@@ -20,7 +21,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, data });
     }
 
-    const result = await getPayments({ studentId: studentId ?? undefined, from: from ?? undefined, to: to ?? undefined, page, limit });
+    const result = await getPayments({
+      studentId: studentId ?? undefined,
+      from: from ?? undefined,
+      to: to ?? undefined,
+      classId: classId ?? undefined,
+      page, limit,
+    });
     return NextResponse.json({
       ok: true,
       data: result.data,

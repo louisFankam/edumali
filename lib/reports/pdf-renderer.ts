@@ -3,11 +3,18 @@
 import { jsPDF } from "jspdf"
 import { reportStyles } from "./helpers"
 
+const FORMATS: Record<string, { width: number; height: number; margin: number; contentWidth: number }> = {
+  a4: { width: 210, height: 297, margin: 10, contentWidth: 190 },
+  a5: { width: 148, height: 210, margin: 8, contentWidth: 132 },
+}
+
 export async function downloadHTMLAsPDF(
   html: string,
   filename: string,
   landscape = false,
+  format: "a4" | "a5" = "a4",
 ): Promise<void> {
+  const fmt = FORMATS[format]
   const fullHtml = `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -22,7 +29,7 @@ export async function downloadHTMLAsPDF(
   container.style.position = "absolute"
   container.style.left = "-9999px"
   container.style.top = "0"
-  container.style.width = landscape ? "297mm" : "210mm"
+  container.style.width = landscape ? `${fmt.height}mm` : `${fmt.width}mm`
   document.body.appendChild(container)
 
   await Promise.all(
@@ -42,7 +49,7 @@ export async function downloadHTMLAsPDF(
   const doc = new jsPDF({
     orientation: landscape ? "l" : "p",
     unit: "mm",
-    format: "a4",
+    format,
   })
 
   try {
@@ -51,9 +58,9 @@ export async function downloadHTMLAsPDF(
         d.save(filename.replace(/\.html$/, ".pdf"))
         document.body.removeChild(container)
       },
-      margin: [10, 10, 10, 10],
-      width: landscape ? 277 : 190,
-      windowWidth: landscape ? 1200 : 800,
+      margin: fmt.margin,
+      width: landscape ? fmt.height - fmt.margin * 2 : fmt.contentWidth,
+      windowWidth: landscape ? 900 : format === "a5" ? 500 : 800,
       autoPaging: "text",
     })
   } catch {

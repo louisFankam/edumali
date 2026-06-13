@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       color: body.color,
       academicYear: body.academicYear,
       status: body.status,
+      feeTypeItems: body.feeTypeItems,
     }, userId);
     return NextResponse.json({ ok: true, data }, { status: 201 });
   } catch (error) {

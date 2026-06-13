@@ -152,6 +152,17 @@ async function ensureAuthSchema(db: any) {
   `);
 
   await db.run(sql`
+    CREATE TABLE IF NOT EXISTS fees (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      name text NOT NULL,
+      amount real NOT NULL DEFAULT 0,
+      period text NOT NULL DEFAULT 'annuel',
+      created_at integer,
+      updated_at integer
+    )
+  `);
+
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS fee_types (
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       name text NOT NULL,
@@ -160,6 +171,18 @@ async function ensureAuthSchema(db: any) {
       description text DEFAULT '',
       created_at integer,
       updated_at integer
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS class_fee_types (
+      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+      class_id integer NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      fee_type_id integer NOT NULL REFERENCES fee_types(id) ON DELETE CASCADE,
+      amount real,
+      created_at integer,
+      updated_at integer,
+      UNIQUE(class_id, fee_type_id)
     )
   `);
 

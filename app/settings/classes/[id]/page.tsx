@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, DollarSign, Users, GraduationCap, BookOpen, Loader2, UserCheck } from "lucide-react"
+import { ArrowLeft, DollarSign, Users, GraduationCap, BookOpen, Loader2, UserCheck, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useClasses } from "@/hooks/use-classes"
 import { useClassSubjects } from "@/hooks/use-class-subjects"
@@ -69,6 +69,7 @@ export default function ClassDetailPage() {
         <StatCard
           title="Frais de scolarité"
           value={`${(classData.totalFee || 0).toLocaleString()} FCFA`}
+          subtitle={classData.feeTypes?.length ? `+${classData.feeTypes.reduce((s, ft) => s + (ft.amount ?? ft.feeTypeAmount), 0).toLocaleString()}F supp.` : undefined}
           icon={DollarSign}
           color="text-green-600"
         />
@@ -129,7 +130,27 @@ export default function ClassDetailPage() {
             <CardContent className="space-y-3">
               <InfoRow label="Niveau" value={classData.level?.toString() || "—"} />
               <InfoRow label="Capacité" value={`${classData.capacity || 0} places`} />
-              <InfoRow label="Frais" value={`${(classData.totalFee || 0).toLocaleString()} FCFA`} />
+              <InfoRow label="Frais de base" value={`${(classData.totalFee || 0).toLocaleString()} FCFA`} />
+              {classData.feeTypes && classData.feeTypes.length > 0 && (
+                <>
+                  <div className="border-t pt-2 space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium">Frais supplémentaires</p>
+                    {classData.feeTypes.map(ft => (
+                      <InfoRow
+                        key={ft.id}
+                        label={ft.feeTypeName}
+                        value={`${(ft.amount ?? ft.feeTypeAmount).toLocaleString()} FCFA`}
+                      />
+                    ))}
+                  </div>
+                  <div className="border-t pt-2 font-medium">
+                    <InfoRow
+                      label="Total"
+                      value={`${((classData.totalFee || 0) + classData.feeTypes.reduce((s, ft) => s + (ft.amount ?? ft.feeTypeAmount), 0)).toLocaleString()} FCFA`}
+                    />
+                  </div>
+                </>
+              )}
               <InfoRow label="Statut" value={classData.status === "active" ? "Active" : "Inactive"} />
             </CardContent>
           </Card>
@@ -190,7 +211,7 @@ export default function ClassDetailPage() {
   )
 }
 
-function StatCard({ title, value, icon: Icon, color }: { title: string; value: string; icon: any; color: string }) {
+function StatCard({ title, value, subtitle, icon: Icon, color }: { title: string; value: string; subtitle?: string; icon: any; color: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -199,6 +220,7 @@ function StatCard({ title, value, icon: Icon, color }: { title: string; value: s
       </CardHeader>
       <CardContent>
         <div className={cn("text-2xl font-bold", color)}>{value}</div>
+        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
       </CardContent>
     </Card>
   )

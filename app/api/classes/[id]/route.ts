@@ -19,6 +19,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       color: body.color,
       academicYear: body.academicYear,
       status: body.status,
+      feeTypeItems: body.feeTypeItems,
     }, userId);
     return NextResponse.json({ ok: true, data });
   } catch (error) {

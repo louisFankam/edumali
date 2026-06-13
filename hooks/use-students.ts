@@ -16,6 +16,9 @@ export interface StudentData {
   className: string
   registrationDate: string
   status: string
+  discountType?: string
+  discountValue?: number
+  discountReason?: string
 }
 
 export interface ClassData {

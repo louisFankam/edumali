@@ -92,6 +92,17 @@ export const feeTypes = sqliteTable("fee_types", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
+export const classFeeTypes = sqliteTable("class_fee_types", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  classId: integer("class_id").notNull().references(() => classes.id, { onDelete: "cascade" }),
+  feeTypeId: integer("fee_type_id").notNull().references(() => feeTypes.id, { onDelete: "cascade" }),
+  amount: real("amount"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+}, (table) => ({
+  uniqueClassFeeType: uniqueIndex("cft_class_fee_type").on(table.classId, table.feeTypeId),
+}));
+
 export const payments = sqliteTable("payments", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   studentId: integer("student_id").notNull().references(() => students.id),
@@ -345,6 +356,7 @@ export const classesRelations = relations(classes, ({ one, many }) => ({
   enrollments: many(enrollments),
   teacher: one(teachers, { fields: [classes.teacherId], references: [teachers.id] }),
   classSubjects: many(classSubjects),
+  classFeeTypes: many(classFeeTypes),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
@@ -360,6 +372,12 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
 
 export const feeTypesRelations = relations(feeTypes, ({ many }) => ({
   payments: many(payments),
+  classFeeTypes: many(classFeeTypes),
+}));
+
+export const classFeeTypesRelations = relations(classFeeTypes, ({ one }) => ({
+  class: one(classes, { fields: [classFeeTypes.classId], references: [classes.id] }),
+  feeType: one(feeTypes, { fields: [classFeeTypes.feeTypeId], references: [feeTypes.id] }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({

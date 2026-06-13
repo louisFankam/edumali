@@ -29,7 +29,7 @@ export default function ExamensPage() {
   const [classSubjects, setClassSubjects] = useState<any[]>([])
 
   const [showAdd, setShowAdd] = useState(false)
-  const [formSubjectId, setFormSubjectId] = useState("")
+  const [formSubjectId, setFormSubjectId] = useState<string | undefined>(undefined)
   const [formDate, setFormDate] = useState("")
   const [formStart, setFormStart] = useState("08:00")
   const [formEnd, setFormEnd] = useState("10:00")
@@ -74,7 +74,7 @@ export default function ExamensPage() {
     })
     if (res?.ok || res?.data) {
       setShowAdd(false)
-      setFormSubjectId("")
+      setFormSubjectId(undefined)
       setFormDate("")
       setFormStart("08:00")
       setFormEnd("10:00")
@@ -249,7 +249,7 @@ export default function ExamensPage() {
                 <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                 <SelectContent>
                   {classSubjectList.length === 0 ? (
-                    <SelectItem value="" disabled>Aucune matière assignée — ajoutez-en dans la classe</SelectItem>
+                    <SelectItem value="__placeholder__" disabled>Aucune matière assignée — ajoutez-en dans la classe</SelectItem>
                   ) : classSubjectList.map((cs: any) => (
                     <SelectItem key={cs.subjectId} value={String(cs.subjectId)}>{cs.subject?.name}</SelectItem>
                   ))}

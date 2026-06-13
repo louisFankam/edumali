@@ -72,4 +72,34 @@ describe("Seed integrity — base de production", () => {
     expect(rows.length).toBe(1)
     expect(rows[0].role).toBe("admin")
   })
+
+  it("11 - paiements existent pour l'année académique courante", () => {
+    // Vérifie que les étudiants inscrits à l'année courante ont des paiements
+    // après leur date d'inscription (évite le bug "reste à payer plein")
+    const rows = db.prepare(`
+      SELECT COUNT(*) c FROM payments p
+      JOIN enrollments e ON e.student_id = p.student_id
+      JOIN academic_years ay ON ay.id = e.academic_year_id
+      WHERE ay.is_current = 1
+        AND p.date >= e.enrollment_date
+    `).get() as { c: number }
+    expect(rows.c).toBeGreaterThan(0)
+  })
+
+  it("12 - chaque étudiant actif a au moins un paiement dans l'année courante", () => {
+    // Vérifie que tous les étudiants actifs ont au moins un paiement
+    // dans l'année académique courante (après leur inscription)
+    const rows = db.prepare(`
+      SELECT s.id, s.first_name, s.last_name,
+             COUNT(p.id) as payment_count
+      FROM students s
+      JOIN enrollments e ON e.student_id = s.id
+      JOIN academic_years ay ON ay.id = e.academic_year_id AND ay.is_current = 1
+      LEFT JOIN payments p ON p.student_id = s.id AND p.date >= e.enrollment_date
+      WHERE s.status = 'Actif'
+      GROUP BY s.id
+      HAVING payment_count = 0
+    `).all() as { id: number; first_name: string; last_name: string }[]
+    expect(rows.length).toBe(0)
+  })
 })

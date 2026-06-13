@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, sql, count } from "drizzle-orm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { payments, feeTypes, students, classes } from "@/lib/models/schema";
 
@@ -26,20 +26,28 @@ export async function deleteFeeType(id: number) {
 }
 
 // Payments
-function paymentConditions(filters?: { studentId?: number; from?: string; to?: string }) {
+function paymentConditions(filters?: { studentId?: number; from?: string; to?: string; classId?: number }) {
   const conditions: any[] = [];
   if (filters?.studentId) conditions.push(eq(payments.studentId, filters.studentId));
   if (filters?.from) conditions.push(gte(payments.date, filters.from));
   if (filters?.to) conditions.push(lte(payments.date, filters.to));
+  if (filters?.classId) {
+    conditions.push(sql`${payments.studentId} IN (SELECT id FROM students WHERE class_id = ${filters.classId})`);
+  }
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-export async function countPayments(filters?: { studentId?: number; from?: string; to?: string }) {
-  const rows = await db.select({ total: count() }).from(payments).where(paymentConditions(filters));
-  return rows[0]?.total ?? 0;
+export async function countPayments(filters?: { studentId?: number; from?: string; to?: string; classId?: number }) {
+  const cond = paymentConditions(filters);
+  if (!cond) {
+    const raw = db.prepare("SELECT COUNT(*) as total FROM payments").get() as { total: number };
+    return raw.total;
+  }
+  const rows = await db.select({ total: sql<number>`count(*)` }).from(payments).where(cond);
+  return Number(rows[0]?.total ?? 0);
 }
 
-export async function findAllPayments(filters?: { studentId?: number; from?: string; to?: string; page?: number; limit?: number }) {
+export async function findAllPayments(filters?: { studentId?: number; from?: string; to?: string; classId?: number; page?: number; limit?: number }) {
   const where = paymentConditions(filters);
   let query = db.query.payments.findMany({
     where,
