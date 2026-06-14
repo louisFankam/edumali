@@ -96,6 +96,14 @@ interface UserAccount {
   created_at: number | null
 }
 
+interface FeeTypeData {
+  id: string
+  name: string
+  amount: number
+  period: string
+  description?: string
+}
+
 interface AccountMessage {
   type: "success" | "error"
   text: string
@@ -656,6 +664,146 @@ function SubjectModal({
   )
 }
 
+function FeeTypeModal({
+  isOpen,
+  onClose,
+  onSave,
+  feeTypeData = null,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onSave: (data: any) => Promise<void>
+  feeTypeData?: FeeTypeData | null
+}) {
+  const periods = [
+    { value: "mensuel", label: "Mensuel" },
+    { value: "trimestriel", label: "Trimestriel" },
+    { value: "annuel", label: "Annuel" },
+    { value: "unique", label: "Unique" },
+  ]
+
+  const [formData, setFormData] = useState({
+    name: feeTypeData?.name || "",
+    amount: feeTypeData?.amount || 0,
+    period: feeTypeData?.period || "annuel",
+    description: feeTypeData?.description || "",
+  })
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    try {
+      await onSave(formData)
+      onClose()
+    } catch (error) {
+      console.error("Erreur:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      if (feeTypeData) {
+        setFormData({
+          name: feeTypeData.name,
+          amount: feeTypeData.amount,
+          period: feeTypeData.period,
+          description: feeTypeData.description || "",
+        })
+      } else {
+        setFormData({ name: "", amount: 0, period: "annuel", description: "" })
+      }
+    }
+  }, [isOpen, feeTypeData])
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{feeTypeData ? "Modifier le type de frais" : "Ajouter un type de frais"}</DialogTitle>
+          <DialogDescription>
+            {feeTypeData ? "Modifiez les informations du type de frais" : "Ajoutez un nouveau type de frais à l'école"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="ft-name">Nom</Label>
+              <Input
+                id="ft-name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Ex: Frais d'examen"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <Label htmlFor="ft-amount">Montant (FCFA)</Label>
+              <Input
+                id="ft-amount"
+                type="number"
+                min="0"
+                value={formData.amount}
+                onChange={(e) => setFormData({...formData, amount: parseInt(e.target.value) || 0})}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="ft-period">Période</Label>
+            <Select
+              value={formData.period}
+              onValueChange={(value) => setFormData({...formData, period: value})}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner la période" />
+              </SelectTrigger>
+              <SelectContent>
+                {periods.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="ft-description">Description (optionnelle)</Label>
+            <Input
+              id="ft-description"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              placeholder="Description du type de frais"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {feeTypeData ? "Modifier" : "Ajouter"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function UserAccountModal({ 
   isOpen, 
   onClose, 
@@ -933,7 +1081,7 @@ export default function SettingsPage() {
   const { years: apiYears, currentYear, isLoading: yearsLoading, create: createYear, update: updateYear, remove: removeYear } = useAcademicYears()
 
   const { teachers: apiTeachers } = useTeachers()
-  const { feeTypes: allFeeTypes } = useFeeTypes()
+  const { feeTypes: allFeeTypes, create: createFeeType, update: updateFeeType, remove: removeFeeType } = useFeeTypes()
   const router = useRouter()
 
   const [classes, setClasses] = useState<Class[]>([])
@@ -1007,6 +1155,9 @@ export default function SettingsPage() {
   
   const [selectedClass, setSelectedClass] = useState<Class | null>(null)
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
+  
+  const [showFeeTypeModal, setShowFeeTypeModal] = useState(false)
+  const [selectedFeeType, setSelectedFeeType] = useState<FeeTypeData | null>(null)
   
   const [schoolFormData, setSchoolFormData] = useState<Partial<SchoolInfo>>({})
   const [isSavingSchool, setIsSavingSchool] = useState(false)
@@ -1173,6 +1324,40 @@ export default function SettingsPage() {
     }
   }
 
+  const handleEditFeeType = (feeType: FeeTypeData) => {
+    setSelectedFeeType(feeType)
+    setShowFeeTypeModal(true)
+  }
+
+  const handleSaveFeeType = async (data: any) => {
+    try {
+      if (selectedFeeType) {
+        await updateFeeType(selectedFeeType.id, {
+          name: data.name,
+          amount: data.amount,
+          period: data.period,
+          description: data.description,
+        })
+      } else {
+        await createFeeType({
+          name: data.name,
+          amount: data.amount,
+          period: data.period,
+          description: data.description,
+        })
+      }
+    } catch (e) {
+      console.error("Erreur sauvegarde type de frais:", e)
+    }
+    setSelectedFeeType(null)
+  }
+
+  const handleDeleteFeeType = async (feeTypeId: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce type de frais ?")) {
+      await removeFeeType(feeTypeId)
+    }
+  }
+
   const handleSaveSchoolInfo = async () => {
     if (!schoolInfo) return
     setIsSavingSchool(true)
@@ -1286,7 +1471,7 @@ export default function SettingsPage() {
           </PageHeader>
 
           <Tabs defaultValue="classes" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="classes" className="flex items-center space-x-2">
                 <GraduationCap className="h-4 w-4" />
                 <span>Classes</span>
@@ -1294,6 +1479,10 @@ export default function SettingsPage() {
               <TabsTrigger value="subjects" className="flex items-center space-x-2">
                 <BookOpen className="h-4 w-4" />
                 <span>Matières</span>
+              </TabsTrigger>
+              <TabsTrigger value="fee-types" className="flex items-center space-x-2">
+                <DollarSign className="h-4 w-4" />
+                <span>Types de frais</span>
               </TabsTrigger>
               <TabsTrigger value="affectations" className="flex items-center space-x-2">
                 <Users className="h-4 w-4" />
@@ -1521,6 +1710,82 @@ export default function SettingsPage() {
                     <Button onClick={() => setShowSubjectModal(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Créer une matière
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Onglet Types de frais */}
+            <TabsContent value="fee-types" className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Gestion des Types de Frais</h2>
+                  <p className="text-muted-foreground">Configurez les types de frais supplémentaires (examen, transport, assurance, etc.)</p>
+                </div>
+                <Button onClick={() => { setSelectedFeeType(null); setShowFeeTypeModal(true) }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau type de frais
+                </Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {allFeeTypes.map((ft) => (
+                  <Card key={ft.id}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{ft.name}</CardTitle>
+                        <div className="flex space-x-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditFeeType(ft)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteFeeType(ft.id)}
+                            className="h-6 w-6 p-0 text-red-600"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <CardDescription>Type de frais</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span>Montant:</span>
+                        <span className="font-medium">{ft.amount.toLocaleString()} FCFA</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Période:</span>
+                        <span className="font-medium capitalize">{ft.period}</span>
+                      </div>
+                      {ft.description && (
+                        <div className="text-sm text-muted-foreground">
+                          {ft.description}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {allFeeTypes.length === 0 && (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <DollarSign className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Aucun type de frais</h3>
+                    <p className="text-muted-foreground text-center mb-4">
+                      Créez des types de frais (examen, transport, assurance, tenue, etc.) pour pouvoir les ajouter aux classes comme frais supplémentaires.
+                    </p>
+                    <Button onClick={() => { setSelectedFeeType(null); setShowFeeTypeModal(true) }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Créer un type de frais
                     </Button>
                   </CardContent>
                 </Card>
@@ -1929,6 +2194,16 @@ export default function SettingsPage() {
             academicYears={academicYears}
             selectedAcademicYear={selectedAcademicYear}
             allFeeTypes={allFeeTypes}
+          />
+
+          <FeeTypeModal
+            isOpen={showFeeTypeModal}
+            onClose={() => {
+              setShowFeeTypeModal(false)
+              setSelectedFeeType(null)
+            }}
+            onSave={handleSaveFeeType}
+            feeTypeData={selectedFeeType}
           />
 
           <SubjectModal

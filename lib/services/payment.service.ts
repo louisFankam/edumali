@@ -1,3 +1,5 @@
+import { sql } from "drizzle-orm";
+import { db } from "@/lib/db";
 import {
   findAllFeeTypes, findFeeTypeById, createFeeType, updateFeeType, deleteFeeType,
   findAllPayments, countPayments, findPaymentById, createPayment, updatePayment, deletePayment,
@@ -69,6 +71,27 @@ export async function getPaymentById(id: string) {
 export async function addPayment(input: {
   studentId: number; feeTypeId?: number; amount: number; method: string; reference?: string; date: string; notes?: string;
 }, userId?: number) {
+  const row = db.get(sql`
+    SELECT c.total_fee, s.discount_type, s.discount_value,
+      COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0) as supplementary_fees
+    FROM students s
+    JOIN classes c ON c.id = s.class_id
+    WHERE s.id = ${input.studentId}
+  `) as { total_fee: number; discount_type: string | null; discount_value: number | null; supplementary_fees: number } | undefined;
+
+  if (row) {
+    let netFee = row.total_fee + row.supplementary_fees;
+    if (row.discount_type === "percentage") {
+      netFee -= row.total_fee * (row.discount_value ?? 0) / 100;
+    } else if (row.discount_type === "fixed") {
+      netFee -= row.discount_value ?? 0;
+    }
+    const { totalPaid } = await getStudentPaymentSummary(input.studentId);
+    if (totalPaid + input.amount > netFee) {
+      throw new Error(`Le paiement dépasserait le montant dû (${netFee.toLocaleString()} FCFA)`);
+    }
+  }
+
   const created = await createPayment(input);
   logAudit({
     tableName: "payments", recordId: created.id,

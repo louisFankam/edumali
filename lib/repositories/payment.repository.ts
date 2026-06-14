@@ -117,6 +117,8 @@ export async function findUnpaidStudents(filters?: { classId?: number; academicY
     ? sql`JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${filters.academicYearId}`
     : sql``;
 
+  const supplementSql = sql`COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0)`
+
   const countResult = db.get(sql`
     SELECT COUNT(*) as total FROM (
       SELECT s.id
@@ -128,9 +130,9 @@ export async function findUnpaidStudents(filters?: { classId?: number; academicY
       GROUP BY s.id
       HAVING COALESCE(SUM(p.amount), 0) <
         CASE
-          WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
-          WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
-          ELSE c.total_fee
+          WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0) + ${supplementSql}
+          WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value + ${supplementSql}
+          ELSE c.total_fee + ${supplementSql}
         END
     )
   `) as { total: number } | undefined;
@@ -145,12 +147,13 @@ export async function findUnpaidStudents(filters?: { classId?: number; academicY
   const rows = db.all(sql`
     SELECT s.id, s.first_name, s.last_name, s.class_id,
            c.name as class_name, c.total_fee,
+           ${supplementSql} as supplementary_fees,
            s.discount_type, s.discount_value,
            COALESCE(SUM(p.amount), 0) as total_paid,
            CASE
-             WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
-             WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
-             ELSE c.total_fee
+             WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0) + ${supplementSql}
+             WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value + ${supplementSql}
+             ELSE c.total_fee + ${supplementSql}
            END as net_fee
     FROM students s
     ${joinClause}
@@ -160,13 +163,13 @@ export async function findUnpaidStudents(filters?: { classId?: number; academicY
     GROUP BY s.id
     HAVING COALESCE(SUM(p.amount), 0) <
       CASE
-        WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
-        WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
-        ELSE c.total_fee
+        WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0) + ${supplementSql}
+        WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value + ${supplementSql}
+        ELSE c.total_fee + ${supplementSql}
       END
     ORDER BY s.last_name, s.first_name
     ${limitOffset}
-  `) as { id: number; first_name: string; last_name: string; class_id: number; class_name: string; total_fee: number; total_paid: number; discount_type: string | null; discount_value: number | null; net_fee: number }[];
+  `) as { id: number; first_name: string; last_name: string; class_id: number; class_name: string; total_fee: number; supplementary_fees: number; total_paid: number; discount_type: string | null; discount_value: number | null; net_fee: number }[];
 
   return { data: rows, total };
 }

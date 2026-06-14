@@ -68,12 +68,8 @@ export default function StudentPaymentsPage() {
     if (enrollments.length === 0) return undefined
     return [...enrollments].sort((a, b) => a.enrollmentDate.localeCompare(b.enrollmentDate))[0].enrollmentDate
   }, [enrollments])
-  const showClassPayments = classFilter !== "all" && !selectedStudent
   const { payments, isLoading: paymentsLoading, create: createPayment, update: updatePayment, remove: removePayment, refetch: refetchPayments } = usePayments(
     selectedStudent ? { studentId: selectedStudent.id, from: enrollmentFrom } : undefined
-  )
-  const { payments: classPayments, isLoading: classPaymentsLoading, total: classPaymentsTotal } = usePayments(
-    showClassPayments ? { classId: classFilter, from: currentYear?.startDate } : undefined
   )
   const { data: unpaidData, total: unpaidTotal, isLoading: unpaidLoading } = useUnpaidStudents(
     unpaidClassFilter !== "all" ? unpaidClassFilter : undefined,
@@ -88,20 +84,29 @@ export default function StudentPaymentsPage() {
   const totalPages = Math.ceil(totalStudents / LIMIT)
   const unpaidTotalPages = Math.ceil(unpaidTotal / LIMIT)
 
-  const classFee = useMemo(() => {
+  const baseFee = useMemo(() => {
     if (!selectedStudent) return 0
     const cls = classes.find(c => c.id === selectedStudent.classId)
     return cls?.totalFee ?? 0
   }, [selectedStudent, classes])
 
+  const supplementaryFees = useMemo(() => {
+    if (!selectedStudent) return 0
+    const cls = classes.find(c => c.id === selectedStudent.classId)
+    if (!cls?.feeTypes?.length) return 0
+    return cls.feeTypes.reduce((sum, ft) => sum + (ft.amount ?? ft.feeTypeAmount), 0)
+  }, [selectedStudent, classes])
+
+  const totalFeeDue = baseFee + supplementaryFees
+
   const discountAmount = useMemo(() => {
     if (!selectedStudent || !selectedStudent.discountType) return 0
-    if (selectedStudent.discountType === "percentage") return classFee * selectedStudent.discountValue / 100
+    if (selectedStudent.discountType === "percentage") return baseFee * selectedStudent.discountValue / 100
     if (selectedStudent.discountType === "fixed") return selectedStudent.discountValue
     return 0
-  }, [selectedStudent, classFee])
+  }, [selectedStudent, baseFee])
 
-  const netFee = classFee - discountAmount
+  const netFee = totalFeeDue - discountAmount
 
   const totalPaid = useMemo(() => {
     if (!payments.length) return 0
@@ -248,8 +253,9 @@ export default function StudentPaymentsPage() {
 </PageHeader>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <StatCard title="Frais de base" value={`${classFee.toLocaleString()} FCFA`} icon={DollarSign} color="text-foreground" />
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          <StatCard title="Frais de base" value={`${baseFee.toLocaleString()} FCFA`} icon={DollarSign} color="text-foreground" />
+          <StatCard title="Suppl\u00e9mentaires" value={`${supplementaryFees.toLocaleString()} FCFA`} icon={DollarSign} color="text-green-600" />
           {discountAmount > 0 && (
             <StatCard title="Réduction" value={`-${discountAmount.toLocaleString()} FCFA`} icon={DollarSign} color="text-orange-500" />
           )}
@@ -462,56 +468,7 @@ export default function StudentPaymentsPage() {
             </CardContent>
           </Card>
 
-          {showClassPayments ? (
-            <Card className="mt-4">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">
-                    Paiements — {classes.find(c => c.id === classFilter)?.name || "Classe"} ({classPaymentsTotal} paiement{classPaymentsTotal > 1 ? "s" : ""})
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {classPaymentsLoading ? (
-                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Élève</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Mode</TableHead>
-                        <TableHead>Type</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {classPayments.length === 0 ? (
-                        <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Aucun paiement pour cette classe</TableCell></TableRow>
-                      ) : (
-                        classPayments.map((p) => (
-                          <TableRow key={p.id}>
-                            <TableCell>{p.date}</TableCell>
-                            <TableCell>
-                              <button className="text-primary hover:underline" onClick={() => {
-                                const s = students.find(st => st.id === p.studentId)
-                                if (s) setSelectedStudent(s)
-                              }}>
-                                {p.studentName}
-                              </button>
-                            </TableCell>
-                            <TableCell className="font-bold">{p.amount.toLocaleString()} FCFA</TableCell>
-                            <TableCell>{p.method}</TableCell>
-                            <TableCell>{p.feeTypeName || "-"}</TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          ) : studentsLoading ? (
+          {studentsLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (
             <>
