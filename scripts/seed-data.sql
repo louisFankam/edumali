@@ -65,10 +65,12 @@ VALUES
   ('Français', 'FRAN', 4, 6, '#22c55e', 'Actif'),
   ('Anglais', 'ANGL', 2, 3, '#eab308', 'Actif'),
   ('Histoire-Géographie', 'HG', 2, 3, '#a855f7', 'Actif'),
-  ('Sciences', 'SCIE', 3, 4, '#14b8a6', 'Actif'),
-  ('Éducation Civique', 'ECR', 1, 1, '#ec4899', 'Actif'),
-  ('Éducation Physique', 'EPS', 1, 2, '#f97316', 'Actif'),
-  ('Arts', 'ARTS', 1, 1, '#ef4444', 'Actif');
+  ('Sciences d''Observation', 'SDO', 2, 3, '#14b8a6', 'Actif'),
+  ('Physique-Chimie', 'PHCH', 3, 4, '#06b6d4', 'Actif'),
+  ('Sciences de la Vie et de la Terre', 'SVT', 3, 4, '#10b981', 'Actif'),
+  ('Éducation Civique et Morale', 'ECM', 1, 1, '#ec4899', 'Actif'),
+  ('Éducation Physique et Sportive', 'EPS', 1, 2, '#f97316', 'Actif'),
+  ('Arts Plastiques', 'ARTS', 1, 1, '#ef4444', 'Actif');
 
 -- =============================================================================
 -- 4. ENSEIGNANTS (15)
@@ -97,74 +99,119 @@ VALUES
 -- 5. TEACHER_SUBJECTS
 -- =============================================================================
 -- Titulaires enseignent plusieurs matières
+-- Enseignants titulaires (1er cycle : 1ère→6ème) — enseignent plusieurs matières
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 2, id FROM subjects WHERE code IN ('MATH','FRAN','SCIE');        -- Mamadou (1ère id=2, après l'existant id=1)
+SELECT 2, id FROM subjects WHERE code IN ('FRAN','MATH','SDO','HG','ECM');   -- Mamadou (1ère)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 3, id FROM subjects WHERE code IN ('FRAN','HG','ECR');          -- Fatoumata
+SELECT 3, id FROM subjects WHERE code IN ('FRAN','MATH','SDO','HG','ECM');   -- Fatoumata (2ème)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 4, id FROM subjects WHERE code IN ('MATH','SCIE','EPS');        -- Moussa
+SELECT 4, id FROM subjects WHERE code IN ('FRAN','MATH','SDO','HG','ECM');   -- Moussa (3ème)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 5, id FROM subjects WHERE code IN ('FRAN','ARTS','ECR');        -- Aminata
+SELECT 5, id FROM subjects WHERE code IN ('FRAN','MATH','SDO','HG','ECM','ANGL');   -- Aminata (4ème)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 6, id FROM subjects WHERE code IN ('MATH','FRAN','SCIE');       -- Drissa
+SELECT 6, id FROM subjects WHERE code IN ('FRAN','MATH','SDO','HG','ECM','ANGL');   -- Drissa (5ème)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 7, id FROM subjects WHERE code IN ('HG','ECR','ARTS');          -- Rokia
+SELECT 7, id FROM subjects WHERE code IN ('FRAN','MATH','SDO','HG','ECM','ANGL');   -- Rokia (6ème)
+-- Enseignants titulaires (2nd cycle : 7ème→9ème) — HG et ECM
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 8, id FROM subjects WHERE code IN ('MATH','SCIE');              -- Sékou
+SELECT 8, id FROM subjects WHERE code IN ('HG','ECM');                          -- Sékou (7ème)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 9, id FROM subjects WHERE code IN ('FRAN','HG');                -- Mariam
+SELECT 9, id FROM subjects WHERE code IN ('HG','ECM');                          -- Mariam (8ème)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 10, id FROM subjects WHERE code IN ('MATH','SCIE','EPS');       -- Boubacar
--- Spécialistes (une matière principale)
+SELECT 10, id FROM subjects WHERE code IN ('HG','ECM');                         -- Boubacar (9ème)
+-- Spécialistes (une ou deux matières)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 11, id FROM subjects WHERE code = 'MATH';                        -- Adama (Maths)
+SELECT 11, id FROM subjects WHERE code = 'MATH';                                -- Adama (Maths)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 12, id FROM subjects WHERE code = 'FRAN';                        -- Kadiatou (Français)
+SELECT 12, id FROM subjects WHERE code = 'FRAN';                                -- Kadiatou (Français)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 13, id FROM subjects WHERE code = 'ANGL';                        -- Oumar (Anglais)
+SELECT 13, id FROM subjects WHERE code = 'ANGL';                                -- Oumar (Anglais)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 14, id FROM subjects WHERE code = 'SCIE';                        -- Assitan (Sciences)
+SELECT 14, id FROM subjects WHERE code IN ('PHCH','SVT');                       -- Assitan (Sciences collège)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 15, id FROM subjects WHERE code = 'EPS';                         -- Lassana (EPS)
+SELECT 15, id FROM subjects WHERE code = 'EPS';                                 -- Lassana (EPS)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
-SELECT 16, id FROM subjects WHERE code = 'ARTS';                        -- Hawa (Arts)
+SELECT 16, id FROM subjects WHERE code = 'ARTS';                                -- Hawa (Arts)
 
 -- =============================================================================
 -- 6. CLASS_SUBJECTS (chaque classe a des matières avec coefficients)
 -- =============================================================================
--- Classes 1ère→6ème (Primaire, level=1) : mêmes matières
+-- =============================================================================
+-- Structuration par classe (Mali — Enseignement Fondamental)
+-- 1er cycle (1ère→6ème) : FRAN, MATH, SDO, HG, ECM, EPS, ARTS (+ANGL dès 4ème)
+-- 2nd cycle (7ème→9ème) : FRAN, MATH, ANGL, HG, PHCH, SVT, ECM, EPS, ARTS
+-- =============================================================================
+-- 1ère Année : 7 matières, coeff total = 12
 INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
 SELECT c.id, s.id,
-  CASE s.code
-    WHEN 'MATH' THEN 1 WHEN 'FRAN' THEN 2 WHEN 'HG' THEN 4
-    WHEN 'SCIE' THEN 5 WHEN 'ECR' THEN 6 WHEN 'EPS' THEN 7
-    WHEN 'ARTS' THEN 16 ELSE NULL
-  END,
-  CASE s.code
-    WHEN 'MATH' THEN 4 WHEN 'FRAN' THEN 4 WHEN 'ANGL' THEN 1
-    WHEN 'HG' THEN 1 WHEN 'SCIE' THEN 2 WHEN 'ECR' THEN 1
-    WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1
-  END
+  CASE s.code WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE 2 END,
+  CASE s.code WHEN 'FRAN' THEN 3 WHEN 'MATH' THEN 3 WHEN 'SDO' THEN 2 WHEN 'HG' THEN 1 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
 FROM classes c CROSS JOIN subjects s
-WHERE c.name IN ('1ère Année','2ème Année','3ème Année','4ème Année','5ème Année','6ème Année')
-  AND s.code IN ('MATH','FRAN','SCIE','HG','ECR','EPS','ARTS');
+WHERE c.name = '1ère Année' AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS');
 
--- Classes 7ème→9ème (Collège, level=2) : mêmes matières + Anglais
+-- 2ème Année : 7 matières, coeff total = 12
 INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
 SELECT c.id, s.id,
-  CASE s.code
-    WHEN 'MATH' THEN 1 WHEN 'FRAN' THEN 2 WHEN 'ANGL' THEN 3
-    WHEN 'HG' THEN 4 WHEN 'SCIE' THEN 5 WHEN 'ECR' THEN 6
-    WHEN 'EPS' THEN 7 WHEN 'ARTS' THEN 16 ELSE NULL
-  END,
-  CASE s.code
-    WHEN 'MATH' THEN 5 WHEN 'FRAN' THEN 4 WHEN 'ANGL' THEN 3
-    WHEN 'HG' THEN 2 WHEN 'SCIE' THEN 3 WHEN 'ECR' THEN 1
-    WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1
-  END
+  CASE s.code WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE 3 END,
+  CASE s.code WHEN 'FRAN' THEN 3 WHEN 'MATH' THEN 3 WHEN 'SDO' THEN 2 WHEN 'HG' THEN 1 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
 FROM classes c CROSS JOIN subjects s
-WHERE c.name IN ('7ème Année','8ème Année','9ème Année')
-  AND s.code IN ('MATH','FRAN','ANGL','HG','SCIE','ECR','EPS','ARTS');
+WHERE c.name = '2ème Année' AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS');
+
+-- 3ème Année : 7 matières, coeff total = 13 (HG→2)
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE 4 END,
+  CASE s.code WHEN 'FRAN' THEN 3 WHEN 'MATH' THEN 3 WHEN 'SDO' THEN 2 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '3ème Année' AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS');
+
+-- 4ème Année : 8 matières (ajout ANGL), coeff total = 15
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'ANGL' THEN 13 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE 5 END,
+  CASE s.code WHEN 'FRAN' THEN 3 WHEN 'MATH' THEN 3 WHEN 'ANGL' THEN 2 WHEN 'SDO' THEN 2 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '4ème Année' AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS');
+
+-- 5ème Année : 8 matières, coeff total = 15
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'ANGL' THEN 13 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE 6 END,
+  CASE s.code WHEN 'FRAN' THEN 3 WHEN 'MATH' THEN 3 WHEN 'ANGL' THEN 2 WHEN 'SDO' THEN 2 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '5ème Année' AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS');
+
+-- 6ème Année : 8 matières, coeff total = 16 (FRAN→4)
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'ANGL' THEN 13 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE 7 END,
+  CASE s.code WHEN 'FRAN' THEN 4 WHEN 'MATH' THEN 3 WHEN 'ANGL' THEN 2 WHEN 'SDO' THEN 2 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '6ème Année' AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS');
+
+-- 7ème Année : 9 matières (PHCH+SVT remplacent SDO), coeff total = 21
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'FRAN' THEN 12 WHEN 'MATH' THEN 11 WHEN 'ANGL' THEN 13 WHEN 'PHCH' THEN 14 WHEN 'SVT' THEN 14 WHEN 'HG' THEN 8 WHEN 'ECM' THEN 8 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE NULL END,
+  CASE s.code WHEN 'FRAN' THEN 4 WHEN 'MATH' THEN 4 WHEN 'ANGL' THEN 3 WHEN 'PHCH' THEN 3 WHEN 'SVT' THEN 2 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '7ème Année' AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS');
+
+-- 8ème Année : 9 matières, coeff total = 21
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'FRAN' THEN 12 WHEN 'MATH' THEN 11 WHEN 'ANGL' THEN 13 WHEN 'PHCH' THEN 14 WHEN 'SVT' THEN 14 WHEN 'HG' THEN 9 WHEN 'ECM' THEN 9 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE NULL END,
+  CASE s.code WHEN 'FRAN' THEN 4 WHEN 'MATH' THEN 4 WHEN 'ANGL' THEN 3 WHEN 'PHCH' THEN 3 WHEN 'SVT' THEN 2 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '8ème Année' AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS');
+
+-- 9ème Année : 9 matières, coeff total = 24 (FRAN→5, MATH→5, SVT→3, PHCH→3)
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
+SELECT c.id, s.id,
+  CASE s.code WHEN 'FRAN' THEN 12 WHEN 'MATH' THEN 11 WHEN 'ANGL' THEN 13 WHEN 'PHCH' THEN 14 WHEN 'SVT' THEN 14 WHEN 'HG' THEN 10 WHEN 'ECM' THEN 10 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE NULL END,
+  CASE s.code WHEN 'FRAN' THEN 5 WHEN 'MATH' THEN 5 WHEN 'ANGL' THEN 3 WHEN 'PHCH' THEN 3 WHEN 'SVT' THEN 3 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+FROM classes c CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS');
 
 -- =============================================================================
 -- 7. TYPES DE FRAIS
@@ -587,40 +634,51 @@ CROSS JOIN (
 WHERE t.id > 1;
 
 -- =============================================================================
--- 15. ÉVALUATIONS (2 par matière, trimestre 1)
+-- 15. ÉVALUATIONS (1 Devoir + 1 Trimestrielle par matière, Trimestre 1)
 -- =============================================================================
--- Primaire (1ère→6ème) : MATHS, FRANÇAIS, SCIENCES
-INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
-SELECT 'Devoir ' || e.num || ' - ' || s.name, 'devoir', c.id, s.id, 1, ay.id,
-  CASE e.num
-    WHEN 1 THEN '2025-11-10' WHEN 2 THEN '2025-12-08'
-  END,
-  'published'
-FROM classes c
-CROSS JOIN academic_years ay
-CROSS JOIN subjects s
-CROSS JOIN (SELECT 1 AS num UNION ALL SELECT 2) e
-WHERE c.name IN ('1ère Année','2ème Année','3ème Année','4ème Année','5ème Année','6ème Année')
-  AND s.code IN ('MATH','FRAN','SCIE')
-  AND ay.is_current = 1;
+-- Unicité garantie par uniqueIndex("eval_unique_period") sur (classId,subjectId,trimester,type)
+-- → 1 devoir + 1 trimestrielle par (classe, matière, trimestre)
 
--- Collège (7ème→9ème) : toutes les matières
+-- === DEVOIR T1 ===
+-- 1ère→3ème : 7 matières
 INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
-SELECT 'Devoir ' || e.num || ' - ' || s.name, 'devoir', c.id, s.id, 1, ay.id,
-  CASE e.num
-    WHEN 1 THEN '2025-11-10' WHEN 2 THEN '2025-12-08'
-  END,
-  'published'
-FROM classes c
-CROSS JOIN academic_years ay
-CROSS JOIN subjects s
-CROSS JOIN (SELECT 1 AS num UNION ALL SELECT 2) e
-WHERE c.name IN ('7ème Année','8ème Année','9ème Année')
-  AND s.code IN ('MATH','FRAN','ANGL','HG','SCIE','ECR')
-  AND ay.is_current = 1;
+SELECT 'Devoir T1 - ' || s.name, 'devoir', c.id, s.id, 1, ay.id, '2025-11-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('1ère Année','2ème Année','3ème Année') AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 4ème→6ème : 8 matières (avec ANGL)
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T1 - ' || s.name, 'devoir', c.id, s.id, 1, ay.id, '2025-11-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('4ème Année','5ème Année','6ème Année') AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 7ème→9ème : 9 matières (PHCH, SVT)
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T1 - ' || s.name, 'devoir', c.id, s.id, 1, ay.id, '2025-11-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('7ème Année','8ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- === TRIMESTRIELLE T1 ===
+-- 1ère→3ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T1 - ' || s.name, 'trimestrielle', c.id, s.id, 1, ay.id, '2025-12-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('1ère Année','2ème Année','3ème Année') AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 4ème→6ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T1 - ' || s.name, 'trimestrielle', c.id, s.id, 1, ay.id, '2025-12-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('4ème Année','5ème Année','6ème Année') AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 7ème→9ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T1 - ' || s.name, 'trimestrielle', c.id, s.id, 1, ay.id, '2025-12-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('7ème Année','8ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
 
 -- =============================================================================
--- 16. NOTES (~3600)
+-- 16. NOTES (~2900)
 -- =============================================================================
 INSERT OR IGNORE INTO grades (evaluation_id, student_id, score, is_absent)
 SELECT ev.id, s.id,
@@ -655,11 +713,11 @@ FROM classes c
 CROSS JOIN academic_years ay
 CROSS JOIN d
 LEFT JOIN subjects s ON s.code = CASE d.day
-  WHEN 0 THEN 'MATH' WHEN 1 THEN 'FRAN' WHEN 2 THEN 'SCIE'
+  WHEN 0 THEN 'MATH' WHEN 1 THEN 'FRAN' WHEN 2 THEN 'PHCH'
   WHEN 3 THEN 'HG' WHEN 4 THEN 'EPS'
 END
 LEFT JOIN teachers tch ON tch.id = CASE d.day
-  WHEN 0 THEN 11 WHEN 1 THEN 12 WHEN 2 THEN 14 WHEN 3 THEN 4 WHEN 4 THEN 15
+  WHEN 0 THEN 11 WHEN 1 THEN 12 WHEN 2 THEN 14 WHEN 3 THEN 8 WHEN 4 THEN 15
 END
 WHERE c.name = '7ème Année' AND ay.is_current = 1
   AND NOT EXISTS (SELECT 1 FROM schedules sc
