@@ -270,7 +270,7 @@ describe("Students CRUD - Tests d'intégration", () => {
   });
 
   describe("G. editStudent - Changement de classe", () => {
-    it("devrait mettre à jour l'inscription quand la classe change", async () => {
+    it("devrait mettre à jour la classe de l'élève sans écraser l'enrollment existant", async () => {
       const { editStudent, getStudentById } = await import("@/lib/services/student.service");
       const { findAllEnrollments } = await import("@/lib/repositories/enrollment.repository");
       const { db } = await import("@/lib/db");
@@ -280,14 +280,19 @@ describe("Students CRUD - Tests d'intégration", () => {
       const cls2Num = rows[0]?.id
       if (!cls2Num) return;
 
-      // Student 2 is enrolled in class 1, change to class 2
+      // Student 2 a déjà un enrollment dans academicYearId. editStudent avec classId
+      // NE DEVRAIT PAS écraser l'enrollment existant (création-only si aucun n'existe).
       await editStudent(studentId2, { classId: String(cls2Num) });
       const updated = await getStudentById(studentId2);
       expect(updated!.classId).toBe(String(cls2Num));
 
       const enrollments = await findAllEnrollments({ studentId: Number(studentId2), academicYearId: Number(academicYearId) });
-      expect(enrollments.length).toBeGreaterThan(0);
-      expect(enrollments[0].classId).toBe(cls2Num);
+      expect(enrollments.length).toBe(1);
+      // L'enrollment existant n'a PAS été modifié (classId d'origine)
+      expect(enrollments[0].classId).not.toBe(cls2Num);
+
+      // Remettre la classe d'origine
+      await editStudent(studentId2, { classId: String(rows[0]?.id) });
     });
   });
 });

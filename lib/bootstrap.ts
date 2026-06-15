@@ -384,6 +384,7 @@ async function ensureAuthSchema(db: any) {
       updated_at integer
     )
   `);
+  try { db.run(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_student_year ON enrollments (student_id, academic_year_id)`); } catch {};
 
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS expenses (

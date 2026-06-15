@@ -312,7 +312,9 @@ export const enrollments = sqliteTable("enrollments", {
   notes: text("notes"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => ({
+  uniqueEnrollmentStudentYear: uniqueIndex("enr_student_year").on(table.studentId, table.academicYearId),
+}));
 
 export const userPreferences = sqliteTable("user_preferences", {
   id: integer("id").primaryKey({ autoIncrement: true }),

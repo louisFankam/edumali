@@ -4,16 +4,22 @@ import { seedClass, seedStudent, seedAcademicYear, seedEnrollment } from "../hel
 
 let classId1: string
 let classId2: string
+let classCapacity1: string
 let studentId1: string
 let studentId2: string
 let academicYearId: string
+let newAcademicYearId: string
+let fluxYearId: string
 
 describe("Reinscription Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
-    classId1 = await seedClass({ name: "1ère Année", totalFee: 0 })
-    classId2 = await seedClass({ name: "2ème Année", totalFee: 0 })
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 0, level: 1 })
+    classId2 = await seedClass({ name: "2ème Année", totalFee: 0, level: 2 })
+    classCapacity1 = await seedClass({ name: "Classe saturée", totalFee: 0, capacity: 1 })
     academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
+    newAcademicYearId = await seedAcademicYear({ name: "2025-2026", isCurrent: false })
+    fluxYearId = await seedAcademicYear({ name: "2026-2027", isCurrent: false })
     studentId1 = await seedStudent(classId1, {
       firstName: "Amadou", lastName: "Diallo",
       gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456",
@@ -78,12 +84,12 @@ describe("Reinscription Page - Tests d'intégration", () => {
   // ─────────── B. CRÉATION ───────────
 
   describe("B. Création - addEnrollment", () => {
-    it("devrait créer un nouvel enrollment", async () => {
+    it("devrait créer un nouvel enrollment dans une nouvelle année", async () => {
       const { addEnrollment } = await import("@/lib/services/enrollment.service");
       const created = await addEnrollment({
         studentId: Number(studentId1),
         classId: Number(classId2),
-        academicYearId: Number(academicYearId),
+        academicYearId: Number(newAcademicYearId),
         enrollmentDate: "2025-09-01",
         status: "réinscrit",
       });
@@ -91,7 +97,7 @@ describe("Reinscription Page - Tests d'intégration", () => {
       expect(created.id).toBeTruthy();
       expect(created.studentId).toBe(studentId1);
       expect(created.classId).toBe(classId2);
-      expect(created.academicYearId).toBe(academicYearId);
+      expect(created.academicYearId).toBe(newAcademicYearId);
       expect(created.status).toBe("réinscrit");
       expect(created.enrollmentDate).toBe("2025-09-01");
     });
@@ -102,56 +108,33 @@ describe("Reinscription Page - Tests d'intégration", () => {
       expect(result.total).toBeGreaterThanOrEqual(1);
     });
 
-    it("devrait créer un enrollment avec le statut 'inscrit' par défaut", async () => {
-      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
-      const created = await addEnrollment({
-        studentId: Number(studentId2),
-        classId: Number(classId2),
-        academicYearId: Number(academicYearId),
-        enrollmentDate: "2025-09-05",
-        status: "inscrit",
-      });
-
-      expect(created.status).toBe("inscrit");
-    });
-
-    it("devrait créer un enrollment avec des notes optionnelles", async () => {
+    it("devrait créer un enrollment avec le statut 'inscrit' et notes", async () => {
       const { addEnrollment } = await import("@/lib/services/enrollment.service");
       const created = await addEnrollment({
         studentId: Number(studentId2),
-        classId: Number(classId1),
-        academicYearId: Number(academicYearId),
-        enrollmentDate: "2025-09-10",
-        status: "transféré",
-        notes: "Transfert depuis une autre école",
+        classId: Number(classId2),
+        academicYearId: Number(newAcademicYearId),
+        enrollmentDate: "2025-09-05",
+        status: "inscrit",
+        notes: "Nouvel élève",
       });
 
-      expect(created.notes).toBe("Transfert depuis une autre école");
+      expect(created.status).toBe("inscrit");
+      expect(created.notes).toBe("Nouvel élève");
     });
 
-    it("[ANOMALIE] devrait permettre un doublon (studentId + academicYearId) - pas de UNIQUE", async () => {
-      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
+    it("devrait REJETER un doublon (studentId + academicYearId)", async () => {
+      const { addEnrollment } = await import("@/lib/services/enrollment.service");
 
-      const before = await getEnrollments({ studentId: studentId1, academicYearId });
-      const countBefore = before.length;
-
-      // Même studentId, même academicYearId - devrait réussir car pas de contrainte UNIQUE
-      const duplicate = await addEnrollment({
+      // studentId1 a déjà un enrollment pour academicYearId (seed)
+      // Essayer d'en créer un autre doit échouer
+      await expect(addEnrollment({
         studentId: Number(studentId1),
         classId: Number(classId1),
         academicYearId: Number(academicYearId),
         enrollmentDate: "2025-09-15",
         status: "réinscrit",
-      });
-
-      expect(duplicate.id).toBeTruthy();
-
-      const after = await getEnrollments({ studentId: studentId1, academicYearId });
-      expect(after.length).toBe(countBefore + 1);
-
-      // Nettoyage
-      const { removeEnrollment } = await import("@/lib/services/enrollment.service");
-      await removeEnrollment(duplicate.id);
+      })).rejects.toThrow(" déjà inscrit ");
     });
   });
 
@@ -195,11 +178,9 @@ describe("Reinscription Page - Tests d'intégration", () => {
       const updated = await editEnrollment(enrollmentId, { status: "sorti" });
       expect(updated.status).toBe("sorti");
 
-      // Vérifier persistance
       const reloaded = await getEnrollmentById(enrollmentId);
       expect(reloaded.status).toBe("sorti");
 
-      // Remettre pour les autres tests
       await editEnrollment(enrollmentId, { status: "inscrit" });
     });
 
@@ -233,19 +214,21 @@ describe("Reinscription Page - Tests d'intégration", () => {
   describe("E. Suppression - removeEnrollment", () => {
     it("devrait supprimer un enrollment", async () => {
       const { addEnrollment, removeEnrollment, getEnrollmentById } = await import("@/lib/services/enrollment.service");
+      const { seedStudent } = await import("../helpers/seed");
+
+      // Créer un élève temporaire avec un enrollment unique pour le test de suppression
+      const tmpStudent = await seedStudent(classId1, { firstName: "Temp", lastName: "Delete" });
 
       const created = await addEnrollment({
-        studentId: Number(studentId2),
+        studentId: Number(tmpStudent),
         classId: Number(classId2),
-        academicYearId: Number(academicYearId),
+        academicYearId: Number(newAcademicYearId),
         enrollmentDate: "2025-09-20",
         status: "inscrit",
       });
 
       expect(await getEnrollmentById(created.id)).not.toBeNull();
-
       await removeEnrollment(created.id);
-
       expect(await getEnrollmentById(created.id)).toBeNull();
     });
 
@@ -262,8 +245,8 @@ describe("Reinscription Page - Tests d'intégration", () => {
       const { getEnrollmentStats } = await import("@/lib/services/enrollment.service");
 
       const stats = await getEnrollmentStats();
-      expect(stats.total).toBeGreaterThanOrEqual(2);
-      expect(stats.inscrit).toBeGreaterThanOrEqual(2);
+      expect(stats.total).toBeGreaterThanOrEqual(4);
+      expect(stats.inscrit).toBeGreaterThanOrEqual(4);
     });
 
     it("devrait filtrer les stats par année académique", async () => {
@@ -284,90 +267,104 @@ describe("Reinscription Page - Tests d'intégration", () => {
 
   // ─────────── G. FLUX DE RÉINSCRIPTION COMPLET ───────────
 
-  describe("G. Flux réinscription - addEnrollment + editStudent", () => {
-    it("devrait réinscrire un élève dans une nouvelle classe", async () => {
+  describe("G. Flux réinscription - addEnrollment + editStudent (année 2026-2027)", () => {
+    it("devrait réinscrire un élève dans une nouvelle classe pour l'année suivante", async () => {
       const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
 
-      // Student (Amadou) était en classe 1 (1ère Année),
-      // on le réinscrit en classe 2 (2ème Année) pour la même année académique
+      // Student (Amadou) était en classe 1 (1ère Année) en 2024-2025,
+      // on le réinscrit en classe 2 (2ème Année) pour l'année 2026-2027
       const enrollment = await addEnrollment({
         studentId: Number(studentId1),
         classId: Number(classId2),
-        academicYearId: Number(academicYearId),
-        enrollmentDate: "2025-10-01",
+        academicYearId: Number(fluxYearId),
+        enrollmentDate: "2026-10-01",
         status: "réinscrit",
       });
 
       expect(enrollment.id).toBeTruthy();
       expect(enrollment.classId).toBe(classId2);
       expect(enrollment.status).toBe("réinscrit");
-      expect(enrollment.enrollmentDate).toBe("2025-10-01");
+      expect(enrollment.enrollmentDate).toBe("2026-10-01");
 
-      // Vérifier que la réinscription est persistée
       const records = await getEnrollments({ studentId: studentId1 });
       const found = records.find(r => r.id === enrollment.id);
       expect(found).toBeTruthy();
       expect(found?.className).toBe("2ème Année");
     });
 
-    it("devrait mettre à jour la classe de l'élève via editStudent après réinscription", async () => {
+    it("devrait mettre à jour la classe de l'élève via editStudent sans écraser l'enrollment", async () => {
       const { editStudent, getStudentById } = await import("@/lib/services/student.service");
+      const { getEnrollments } = await import("@/lib/services/enrollment.service");
 
       // Mettre à jour la classe de l'élève 1 vers la classe 2
       const updated = await editStudent(studentId1, { classId: classId2 });
       expect(updated.classId).toBe(classId2);
       expect(updated.className).toBe("2ème Année");
 
-      // Vérifier persistance
-      const student = await getStudentById(studentId1);
-      expect(student?.classId).toBe(classId2);
-      expect(student?.className).toBe("2ème Année");
+      // Vérifier que l'enrollment pour 2026-2027 n'a PAS été modifié par editStudent
+      const enrollmentRecords = await getEnrollments({ studentId: studentId1, academicYearId: fluxYearId });
+      expect(enrollmentRecords.length).toBe(1);
+      expect(enrollmentRecords[0].classId).toBe(classId2); // inchangé car déjà correct
 
       // Remettre pour les autres tests
       await editStudent(studentId1, { classId: classId1 });
     });
 
-    it("devrait créer une réinscription avec statut 'passage'", async () => {
-      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
+    it("devrait créer une réinscription 'passage' pour un autre élève puis passer en 'redoublement'", async () => {
+      const { addEnrollment, editEnrollment } = await import("@/lib/services/enrollment.service");
 
       const enrollment = await addEnrollment({
         studentId: Number(studentId2),
         classId: Number(classId2),
-        academicYearId: Number(academicYearId),
-        enrollmentDate: "2025-10-05",
+        academicYearId: Number(fluxYearId),
+        enrollmentDate: "2026-10-05",
         status: "réinscrit",
       });
 
       expect(enrollment.status).toBe("réinscrit");
-    });
 
-    it("devrait créer une réinscription avec statut 'redoublement'", async () => {
-      const { addEnrollment, getEnrollments } = await import("@/lib/services/enrollment.service");
-
-      const enrollment = await addEnrollment({
-        studentId: Number(studentId2),
+      // Passer en redoublement dans la même année en modifiant l'enrollment
+      const updated = await editEnrollment(enrollment.id, {
         classId: Number(classId1),
-        academicYearId: Number(academicYearId),
-        enrollmentDate: "2025-10-10",
-        status: "réinscrit",
         notes: "Redoublement",
       });
 
-      expect(enrollment.status).toBe("réinscrit");
-      expect(enrollment.notes).toBe("Redoublement");
-      expect(enrollment.classId).toBe(classId1);
+      expect(updated.classId).toBe(classId1);
+      expect(updated.notes).toBe("Redoublement");
     });
 
-    it("devrait retourner la liste des réinscriptions d'un élève pour l'année active", async () => {
+    it("devrait REJETER une inscription si la capacité de la classe est dépassée", async () => {
+      const { addEnrollment } = await import("@/lib/services/enrollment.service");
+      const { seedStudent: seedStu } = await import("../helpers/seed");
+
+      // classCapacity1 a capacity=1, déjà 0 élève inscrit pour fluxYearId
+      const st1 = await seedStu(classId1, { firstName: "Cap1", lastName: "Test" });
+      await addEnrollment({
+        studentId: Number(st1),
+        classId: Number(classCapacity1),
+        academicYearId: Number(fluxYearId),
+        enrollmentDate: "2026-10-01",
+        status: "inscrit",
+      });
+
+      // Tentative d'inscrire un 2e élève dans la même classe (capacité = 1)
+      const st2 = await seedStu(classId1, { firstName: "Cap2", lastName: "Test" });
+      await expect(addEnrollment({
+        studentId: Number(st2),
+        classId: Number(classCapacity1),
+        academicYearId: Number(fluxYearId),
+        enrollmentDate: "2026-10-02",
+        status: "inscrit",
+      })).rejects.toThrow("capacité maximale");
+    });
+
+    it("devrait retourner exactement 1 enrollment par élève pour une année donnée", async () => {
       const { getEnrollments } = await import("@/lib/services/enrollment.service");
 
-      // Student 1 a 2 enrollments dans l'année
-      const records = await getEnrollments({ studentId: studentId1, academicYearId });
-      expect(records.length).toBeGreaterThanOrEqual(2);
-
-      // La plus récente devrait être celle du 2025-10-01 (réinscrit)
-      const sorted = [...records].sort((a, b) => b.enrollmentDate.localeCompare(a.enrollmentDate));
-      expect(sorted[0].status).toBe("réinscrit");
+      // Student 1 a exactement 1 enrollment dans 2026-2027 (pas de doublon possible)
+      const records = await getEnrollments({ studentId: studentId1, academicYearId: fluxYearId });
+      expect(records.length).toBe(1);
+      expect(records[0].status).toBe("réinscrit");
     });
   });
 });

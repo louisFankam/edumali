@@ -169,14 +169,12 @@ export async function editStudent(id: string, input: Partial<{
   const updated = await updateStudent(Number(id), data);
   logAudit({ tableName: "students", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
 
-  // If classId changed, update or create enrollment for current academic year
+  // If classId changed, create an enrollment for current year if none exists (never overwrite)
   if (input.classId !== undefined) {
     const currentYear = await findCurrentAcademicYear();
     if (currentYear) {
       const existing = await findAllEnrollments({ studentId: Number(id), academicYearId: currentYear.id });
-      if (existing.length > 0) {
-        await updateEnrollment(existing[0].id, { classId: Number(input.classId) });
-      } else {
+      if (existing.length === 0) {
         await createEnrollment({
           studentId: Number(id),
           classId: Number(input.classId),

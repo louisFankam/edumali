@@ -176,6 +176,16 @@ export default function ReinscriptionPage() {
         </CardContent>
       </Card>
 
+      {!yearLoading && !currentYearId ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="text-amber-600 bg-amber-50 p-4 rounded-lg inline-block">
+              <p className="font-medium text-lg mb-1">Aucune année académique active</p>
+              <p className="text-sm">Veuillez d&apos;abord définir une année scolaire courante dans les paramètres avant de procéder aux réinscriptions.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -252,6 +262,7 @@ export default function ReinscriptionPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={open => { if (!open) resetDialog() }}>
         <DialogContent className="sm:max-w-md">

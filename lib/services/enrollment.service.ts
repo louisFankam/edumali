@@ -1,6 +1,7 @@
 import {
   findAllEnrollments, findEnrollmentById, createEnrollment, updateEnrollment, deleteEnrollment, countEnrollmentsByYear,
 } from "@/lib/repositories/enrollment.repository";
+import { findClassById } from "@/lib/repositories/class.repository";
 import { logAudit } from "@/lib/services/audit.service";
 
 function mapEnrollment(e: any) {
@@ -31,6 +32,22 @@ export async function addEnrollment(input: {
   studentId: number; classId: number; academicYearId: number;
   enrollmentDate: string; status: string; notes?: string;
 }, userId?: number) {
+  // Duplicate check
+  const existing = await findAllEnrollments({ studentId: input.studentId, academicYearId: input.academicYearId });
+  if (existing.length > 0) {
+    throw new Error("Cet élève est déjà inscrit pour cette année académique");
+  }
+
+  // Capacity check
+  const cls = await findClassById(input.classId);
+  if (cls && cls.capacity && cls.capacity > 0) {
+    const enrolled = await findAllEnrollments({ academicYearId: input.academicYearId });
+    const countInClass = enrolled.filter(e => e.classId === input.classId).length;
+    if (countInClass >= cls.capacity) {
+      throw new Error(`La classe "${cls.name}" a atteint sa capacité maximale (${cls.capacity} élèves)`);
+    }
+  }
+
   const created = await createEnrollment(input);
   logAudit({ tableName: "enrollments", recordId: created.id, action: "create", userId, newValues: input as any });
   return mapEnrollment(created);
