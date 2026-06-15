@@ -33,10 +33,11 @@ DELETE FROM fee_types;
 -- =============================================================================
 -- 1. ANNÉE SCOLAIRE
 -- =============================================================================
-UPDATE academic_years SET is_current = 0 WHERE is_current = 1;
-UPDATE academic_years SET is_current = 1 WHERE name = '2025-2026';
-INSERT OR IGNORE INTO academic_years (name, start_date, end_date, is_current)
+UPDATE academic_years SET is_current = 0;
+INSERT INTO academic_years (name, start_date, end_date, is_current)
   VALUES ('2025-2026', '2025-10-01', '2026-06-30', 1);
+UPDATE academic_years SET is_current = 1
+  WHERE id = (SELECT id FROM academic_years WHERE name = '2025-2026' ORDER BY id DESC LIMIT 1);
 
 -- =============================================================================
 -- 2. CLASSES (1ère → 9ème Année)
@@ -524,6 +525,14 @@ JOIN class_fee_types cft ON cft.class_id = s.class_id
 JOIN fee_types ft ON ft.id = cft.fee_type_id
 WHERE s.status = 'Actif' AND s.id > 1 AND ft.name != 'Scolarité'
   AND s.id % 13 != 0;
+
+-- Garantir que tous les étudiants actifs ont au moins un paiement
+INSERT INTO payments (student_id, amount, method, date, status)
+SELECT s.id, c.total_fee, 'espèces', '2025-10-01', 'payé'
+FROM students s
+JOIN classes c ON c.id = s.class_id
+WHERE s.status = 'Actif' AND s.id > 1
+  AND (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.student_id = s.id) = 0;
 
 -- =============================================================================
 -- 13. PRÉSENCES ÉLÈVES (2 semaines, oct-nov 2025)

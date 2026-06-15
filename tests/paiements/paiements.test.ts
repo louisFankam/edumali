@@ -10,7 +10,7 @@ let academicYearId: string
 describe("Paiements Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
-    classId1 = await seedClass({ name: "1ère Année", totalFee: 0 })
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 80000 })
     studentId1 = await seedStudent(classId1, { firstName: "Amadou", lastName: "Diallo", gender: "Masculin", parentName: "Moussa Diallo", parentPhone: "70123456" })
     studentId2 = await seedStudent(classId1, { firstName: "Fatoumata", lastName: "Traoré", gender: "Féminin", parentName: "Oumar Traoré", parentPhone: "66123456" })
     academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
@@ -285,9 +285,9 @@ describe("Paiements Page - Tests d'intégration", () => {
     });
 
     it("devrait retourner vide si tous les étudiants ont payé", async () => {
-      // Payer pour student 2 (50000)
+      // Student 2: 25000 déjà payé + 25000 = 50000 = totalFee
       const { addPayment } = await import("@/lib/services/payment.service");
-      await addPayment({ studentId: Number(studentId2), amount: 35000, method: "espèces", date: "2025-12-25" });
+      await addPayment({ studentId: Number(studentId2), amount: 25000, method: "espèces", date: "2025-12-25" });
 
       const { getUnpaidStudents } = await import("@/lib/services/payment.service");
       const result = await getUnpaidStudents({ academicYearId });
@@ -406,10 +406,14 @@ describe("Paiements Page - Tests d'intégration", () => {
 
   describe("K. Validation plafond - totalPaid ne dépasse pas classFee", () => {
     it("devrait permettre un paiement dans la limite des frais", async () => {
-      const { addPayment, getPayments } = await import("@/lib/services/payment.service");
+      const { db } = await import("@/lib/db");
+      const { classes } = await import("@/lib/models/schema");
+      const { eq } = await import("drizzle-orm");
+      const { addPayment } = await import("@/lib/services/payment.service");
 
-      // Student 1 n'a pas encore de classe avec totalFee défini
-      // On ajoute un paiement de 10000
+      // Restaurer totalFee après le test des impayés
+      await db.update(classes).set({ totalFee: 80000 }).where(eq(classes.id, Number(classId1)));
+
       const p = await addPayment({ studentId: Number(studentId1), amount: 10000, method: "espèces", date: "2025-12-01" });
       expect(p.amount).toBe(10000);
     });

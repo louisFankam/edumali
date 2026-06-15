@@ -1,5 +1,3 @@
-const TerserPlugin = require("terser-webpack-plugin")
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
@@ -7,14 +5,6 @@ const nextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   webpack: (config) => {
     config.stats = "errors-warnings"
-    config.optimization.minimizer = [
-      new TerserPlugin({
-        terserOptions: {
-          compress: {},
-          mangle: true,
-        },
-      }),
-    ]
     return config
   },
   images: { unoptimized: true },

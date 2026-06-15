@@ -11,8 +11,8 @@ let academicYearId: string
 describe("Student Profile Page - Tests d'intégration", () => {
   beforeAll(async () => {
     await setupTestDatabase();
-    classId1 = await seedClass({ name: "1ère Année", totalFee: 0 })
-    classId2 = await seedClass({ name: "2ème Année", totalFee: 0 })
+    classId1 = await seedClass({ name: "1ère Année", totalFee: 85000 })
+    classId2 = await seedClass({ name: "2ème Année", totalFee: 85000 })
     academicYearId = await seedAcademicYear({ name: "2024-2025", isCurrent: true })
     studentId1 = await seedStudent(classId1, {
       firstName: "Amadou", lastName: "Diallo",
