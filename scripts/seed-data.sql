@@ -541,7 +541,7 @@ INSERT INTO payments (student_id, amount, method, date, status)
 SELECT s.id, c.total_fee, 'espèces', '2025-10-01', 'payé'
 FROM students s
 JOIN classes c ON c.id = s.class_id
-WHERE s.status = 'Actif' AND s.id > 1
+WHERE s.status = 'Actif'
   AND (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.student_id = s.id) = 0;
 
 -- =============================================================================

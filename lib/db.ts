@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import * as schema from "./models/schema";
 
-export const databasePath = process.env.DB_PATH || `${process.cwd()}/ekima_db/data.db`;
+export const databasePath = process.env.DB_PATH || path.join(process.cwd(), "ekima_db", "data.db");
 const sqlite = new Database(databasePath);
 
 export const db = drizzle(sqlite, { schema });

@@ -3,7 +3,7 @@ import path from "path"
 import fs from "fs"
 import type Database from "better-sqlite3"
 
-const PROD_DB_PATH = path.join(process.cwd(), "ekima_db/data.db")
+const PROD_DB_PATH = path.join(process.cwd(), "ekima_db", "data.db")
 
 let db: Database.Database
 
