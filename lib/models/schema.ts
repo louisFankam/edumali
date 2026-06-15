@@ -231,6 +231,7 @@ export const classSubjects = sqliteTable("class_subjects", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   classId: integer("class_id").notNull().references(() => classes.id),
   subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  teacherId: integer("teacher_id").references(() => teachers.id),
   coefficient: integer("coefficient").default(1).notNull(),
 }, (table) => ({
   uniqueClassSubject: uniqueIndex("cs_class_subject").on(table.classId, table.subjectId),

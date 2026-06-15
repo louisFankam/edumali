@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { setupTestDatabase, teardownTestDatabase } from "../helpers/setup";
-import { seedClass, seedSubject } from "../helpers/seed";
+import { seedClass, seedSubject, seedTeacher } from "../helpers/seed";
 import { sql } from "drizzle-orm";
 
 let classId: string
@@ -73,5 +73,89 @@ describe("Class-Subjects - Tests d'intégration", () => {
     const assigned = await getClassSubjects(String(cls.id));
     expect(assigned.length).toBe(1);
     expect(assigned[0].subjectId).toBe(String(s2.id));
+  });
+
+  it("devrait assigner un enseignant à une matière dans une classe", async () => {
+    const { saveClassSubjects, getClassSubjects } = await import("@/lib/services/class-subject.service");
+    const { db } = await import("@/lib/db");
+
+    const teacherId = await seedTeacher({ firstName: "Jean", lastName: "Test" });
+    const [cls] = db.all(sql`SELECT id FROM classes LIMIT 1`) as { id: number }[];
+    const [subject] = db.all(sql`SELECT id FROM subjects LIMIT 1`) as { id: number }[];
+
+    const result = await saveClassSubjects(String(cls.id), [
+      { subjectId: subject.id, coefficient: 3, teacherId: Number(teacherId) },
+    ]);
+    expect(result.ok).toBe(true);
+
+    const assigned = await getClassSubjects(String(cls.id));
+    expect(assigned.length).toBe(1);
+    expect(assigned[0].teacherId).toBe(String(teacherId));
+    expect(assigned[0].teacherName).toContain("Jean");
+  });
+
+  it("devrait pouvoir modifier l'enseignant d'une matière", async () => {
+    const { saveClassSubjects, getClassSubjects, setSubjectTeacherInClass } = await import("@/lib/services/class-subject.service");
+    const { db } = await import("@/lib/db");
+
+    const t1 = await seedTeacher({ firstName: "Paul" });
+    const t2 = await seedTeacher({ firstName: "Marie" });
+    const [cls] = db.all(sql`SELECT id FROM classes LIMIT 1`) as { id: number }[];
+    const [subject] = db.all(sql`SELECT id FROM subjects LIMIT 1`) as { id: number }[];
+
+    await saveClassSubjects(String(cls.id), [
+      { subjectId: subject.id, coefficient: 2, teacherId: Number(t1) },
+    ]);
+    let assigned = await getClassSubjects(String(cls.id));
+    expect(assigned[0].teacherId).toBe(String(t1));
+
+    await setSubjectTeacherInClass(String(cls.id), String(subject.id), String(t2));
+    assigned = await getClassSubjects(String(cls.id));
+    expect(assigned[0].teacherId).toBe(String(t2));
+    expect(assigned[0].teacherName).toContain("Marie");
+  });
+
+  it("devrait pouvoir retirer l'enseignant d'une matière (mettre à null)", async () => {
+    const { saveClassSubjects, getClassSubjects, setSubjectTeacherInClass } = await import("@/lib/services/class-subject.service");
+    const { db } = await import("@/lib/db");
+
+    const t = await seedTeacher({ firstName: "Luc" });
+    const [cls] = db.all(sql`SELECT id FROM classes LIMIT 1`) as { id: number }[];
+    const [subject] = db.all(sql`SELECT id FROM subjects LIMIT 1`) as { id: number }[];
+
+    await saveClassSubjects(String(cls.id), [
+      { subjectId: subject.id, coefficient: 2, teacherId: Number(t) },
+    ]);
+    let assigned = await getClassSubjects(String(cls.id));
+    expect(assigned[0].teacherName).toBeTruthy();
+
+    await setSubjectTeacherInClass(String(cls.id), String(subject.id), null);
+    assigned = await getClassSubjects(String(cls.id));
+    expect(assigned[0].teacherId).toBeNull();
+    expect(assigned[0].teacherName).toBeNull();
+  });
+
+  it("devrait permettre des enseignants différents par classe pour une même matière", async () => {
+    const { saveClassSubjects, getClassSubjects } = await import("@/lib/services/class-subject.service");
+    const { db } = await import("@/lib/db");
+
+    const t1 = await seedTeacher({ firstName: "ClasseA" });
+    const t2 = await seedTeacher({ firstName: "ClasseB" });
+    const classId2 = await seedClass({ name: "Test 2" });
+    const [subject] = db.all(sql`SELECT id FROM subjects LIMIT 1`) as { id: number }[];
+    const [cls1] = db.all(sql`SELECT id FROM classes LIMIT 1`) as { id: number }[];
+
+    await saveClassSubjects(String(cls1.id), [
+      { subjectId: subject.id, coefficient: 2, teacherId: Number(t1) },
+    ]);
+    await saveClassSubjects(classId2, [
+      { subjectId: subject.id, coefficient: 2, teacherId: Number(t2) },
+    ]);
+
+    const a1 = await getClassSubjects(String(cls1.id));
+    const a2 = await getClassSubjects(classId2);
+    expect(a1[0].teacherId).toBe(String(t1));
+    expect(a2[0].teacherId).toBe(String(t2));
+    expect(a1[0].teacherId).not.toBe(a2[0].teacherId);
   });
 });

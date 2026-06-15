@@ -133,8 +133,13 @@ SELECT 16, id FROM subjects WHERE code = 'ARTS';                        -- Hawa 
 -- 6. CLASS_SUBJECTS (chaque classe a des matières avec coefficients)
 -- =============================================================================
 -- Classes 1ère→6ème (Primaire, level=1) : mêmes matières
-INSERT OR IGNORE INTO class_subjects (class_id, subject_id, coefficient)
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
 SELECT c.id, s.id,
+  CASE s.code
+    WHEN 'MATH' THEN 1 WHEN 'FRAN' THEN 2 WHEN 'HG' THEN 4
+    WHEN 'SCIE' THEN 5 WHEN 'ECR' THEN 6 WHEN 'EPS' THEN 7
+    WHEN 'ARTS' THEN 16 ELSE NULL
+  END,
   CASE s.code
     WHEN 'MATH' THEN 4 WHEN 'FRAN' THEN 4 WHEN 'ANGL' THEN 1
     WHEN 'HG' THEN 1 WHEN 'SCIE' THEN 2 WHEN 'ECR' THEN 1
@@ -145,8 +150,13 @@ WHERE c.name IN ('1ère Année','2ème Année','3ème Année','4ème Année','5�
   AND s.code IN ('MATH','FRAN','SCIE','HG','ECR','EPS','ARTS');
 
 -- Classes 7ème→9ème (Collège, level=2) : mêmes matières + Anglais
-INSERT OR IGNORE INTO class_subjects (class_id, subject_id, coefficient)
+INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
 SELECT c.id, s.id,
+  CASE s.code
+    WHEN 'MATH' THEN 1 WHEN 'FRAN' THEN 2 WHEN 'ANGL' THEN 3
+    WHEN 'HG' THEN 4 WHEN 'SCIE' THEN 5 WHEN 'ECR' THEN 6
+    WHEN 'EPS' THEN 7 WHEN 'ARTS' THEN 16 ELSE NULL
+  END,
   CASE s.code
     WHEN 'MATH' THEN 5 WHEN 'FRAN' THEN 4 WHEN 'ANGL' THEN 3
     WHEN 'HG' THEN 2 WHEN 'SCIE' THEN 3 WHEN 'ECR' THEN 1

@@ -9,7 +9,8 @@ export interface ClassSubject {
   coefficient: number
   subjectName: string
   subjectCode: string
-  teacherNames?: string
+  teacherId?: string | null
+  teacherName?: string | null
 }
 
 export function useClassSubjects(classId: string | undefined) {
@@ -35,7 +36,7 @@ export function useClassSubjects(classId: string | undefined) {
 
   useEffect(() => { load() }, [load])
 
-  const save = async (assignments: { subjectId: number; coefficient: number }[]) => {
+  const save = async (assignments: { subjectId: number; coefficient: number; teacherId?: number | null }[]) => {
     const res = await window.fetch("/api/class-subjects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -46,5 +47,16 @@ export function useClassSubjects(classId: string | undefined) {
     return json
   }
 
-  return { subjects, isLoading, error, save, refetch: load }
+  const assignTeacher = async (subjectId: string, teacherId: string | null) => {
+    const res = await window.fetch(`/api/class-subjects/${subjectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ classId, teacherId }),
+    })
+    const json = await res.json()
+    if (json.ok) await load()
+    return json
+  }
+
+  return { subjects, isLoading, error, save, assignTeacher, refetch: load }
 }

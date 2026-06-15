@@ -337,6 +337,8 @@ async function ensureAuthSchema(db: any) {
     )
   `);
 
+  try { await db.run(sql`ALTER TABLE class_subjects ADD COLUMN teacher_id integer REFERENCES teachers(id)`); } catch {}
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS evaluations (
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,

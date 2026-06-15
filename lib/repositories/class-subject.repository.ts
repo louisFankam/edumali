@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { classSubjects, subjects, teacherSubjects, teachers } from "@/lib/models/schema";
+import { classSubjects, subjects, teachers } from "@/lib/models/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 export async function findSubjectsByClassId(classId: number) {
@@ -8,29 +8,28 @@ export async function findSubjectsByClassId(classId: number) {
     classId: classSubjects.classId,
     subjectId: classSubjects.subjectId,
     coefficient: classSubjects.coefficient,
+    teacherId: classSubjects.teacherId,
     subjectName: subjects.name,
     subjectCode: subjects.code,
-    teacherNames: sql<string>`GROUP_CONCAT(${teachers.firstName} || ' ' || ${teachers.lastName}, ', ')`,
+    teacherName: sql<string>`${teachers.firstName} || ' ' || ${teachers.lastName}`,
   }).from(classSubjects)
     .innerJoin(subjects, eq(classSubjects.subjectId, subjects.id))
-    .leftJoin(teacherSubjects, eq(teacherSubjects.subjectId, subjects.id))
-    .leftJoin(teachers, eq(teachers.id, teacherSubjects.teacherId))
+    .leftJoin(teachers, eq(classSubjects.teacherId, teachers.id))
     .where(eq(classSubjects.classId, classId))
-    .groupBy(classSubjects.id)
     .orderBy(subjects.name);
 }
 
-export async function assignSubjectToClass(classId: number, subjectId: number, coefficient: number = 1) {
+export async function assignSubjectToClass(classId: number, subjectId: number, coefficient: number = 1, teacherId?: number | null) {
   const [created] = await db.insert(classSubjects)
-    .values({ classId, subjectId, coefficient })
+    .values({ classId, subjectId, coefficient, teacherId: teacherId ?? null })
     .returning();
   return created;
 }
 
-export async function bulkAssignSubjects(classId: number, assignments: { subjectId: number; coefficient: number }[]) {
+export async function bulkAssignSubjects(classId: number, assignments: { subjectId: number; coefficient: number; teacherId?: number | null }[]) {
   await db.delete(classSubjects).where(eq(classSubjects.classId, classId));
   if (assignments.length === 0) return [];
-  const values = assignments.map(a => ({ classId, subjectId: a.subjectId, coefficient: a.coefficient }));
+  const values = assignments.map(a => ({ classId, subjectId: a.subjectId, coefficient: a.coefficient, teacherId: a.teacherId ?? null }));
   const inserted = await db.insert(classSubjects).values(values).returning();
   return inserted;
 }
@@ -46,4 +45,22 @@ export async function hasSubjectInClass(classId: number, subjectId: number) {
     .where(and(eq(classSubjects.classId, classId), eq(classSubjects.subjectId, subjectId)))
     .limit(1);
   return rows.length > 0;
+}
+
+export async function updateClassSubjectTeacher(classSubjectId: number, teacherId: number | null) {
+  const [updated] = await db
+    .update(classSubjects)
+    .set({ teacherId })
+    .where(eq(classSubjects.id, classSubjectId))
+    .returning();
+  return updated;
+}
+
+export async function updateTeacherForSubjectInClass(classId: number, subjectId: number, teacherId: number | null) {
+  const [updated] = await db
+    .update(classSubjects)
+    .set({ teacherId })
+    .where(and(eq(classSubjects.classId, classId), eq(classSubjects.subjectId, subjectId)))
+    .returning();
+  return updated;
 }

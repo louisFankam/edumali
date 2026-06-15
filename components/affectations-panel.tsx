@@ -10,20 +10,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Save, Users, CheckCircle, XCircle } from "lucide-react"
 import { useClassSubjects } from "@/hooks/use-class-subjects"
+import { useTeachers } from "@/hooks/use-teachers"
 
 export function AffectationsPanel({ classes, allSubjects }: { classes: any[]; allSubjects: any[] }) {
   const [selectedClassId, setSelectedClassId] = useState("")
   const { subjects: assigned, isLoading, save } = useClassSubjects(selectedClassId || undefined)
-  const [assignments, setAssignments] = useState<Record<string, { checked: boolean; coefficient: number }>>({})
+  const { teachers } = useTeachers()
+  const [assignments, setAssignments] = useState<Record<string, { checked: boolean; coefficient: number; teacherId?: string | null }>>({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const map: Record<string, { checked: boolean; coefficient: number }> = {}
+    const map: Record<string, { checked: boolean; coefficient: number; teacherId?: string | null }> = {}
     for (const a of assigned) {
-      map[a.subjectId] = { checked: true, coefficient: a.coefficient }
+      map[a.subjectId] = { checked: true, coefficient: a.coefficient, teacherId: a.teacherId }
     }
     for (const s of allSubjects) {
-      if (!map[s.id]) map[s.id] = { checked: false, coefficient: s.coefficient || 1 }
+      if (!map[s.id]) map[s.id] = { checked: false, coefficient: s.coefficient || 1, teacherId: null }
     }
     setAssignments(map)
   }, [assigned, allSubjects])
@@ -43,12 +45,19 @@ export function AffectationsPanel({ classes, allSubjects }: { classes: any[]; al
     }))
   }
 
+  const handleTeacher = (subjectId: string, teacherId: string) => {
+    setAssignments(prev => ({
+      ...prev,
+      [subjectId]: { ...prev[subjectId], checked: prev[subjectId]?.checked ?? false, teacherId: teacherId || null },
+    }))
+  }
+
   const handleSave = async () => {
     if (!selectedClassId) return
     setSaving(true)
     const data = Object.entries(assignments)
       .filter(([, v]) => v.checked)
-      .map(([subjectId, v]) => ({ subjectId: Number(subjectId), coefficient: v.coefficient }))
+      .map(([subjectId, v]) => ({ subjectId: Number(subjectId), coefficient: v.coefficient, teacherId: v.teacherId ? Number(v.teacherId) : null }))
     await save(data)
     setSaving(false)
   }
@@ -56,11 +65,12 @@ export function AffectationsPanel({ classes, allSubjects }: { classes: any[]; al
   const hasChanges = () => {
     if (!selectedClassId) return false
     for (const subj of allSubjects) {
-      const state = assignments[subj.id] || { checked: false, coefficient: 1 }
+      const state = assignments[subj.id] || { checked: false, coefficient: 1, teacherId: null }
       const existing = assigned.find(a => a.subjectId === subj.id)
       const wasChecked = !!existing
       const wasCoeff = existing?.coefficient || 1
-      if (state.checked !== wasChecked || state.coefficient !== wasCoeff) return true
+      const wasTeacherId = existing?.teacherId || null
+      if (state.checked !== wasChecked || state.coefficient !== wasCoeff || state.teacherId !== wasTeacherId) return true
     }
     return false
   }
@@ -103,14 +113,15 @@ export function AffectationsPanel({ classes, allSubjects }: { classes: any[]; al
                   <TableHead className="w-12">Assignée</TableHead>
                   <TableHead>Matière</TableHead>
                   <TableHead className="w-32">Coefficient</TableHead>
+                  <TableHead>Enseignant</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {allSubjects.length === 0 ? (
-                  <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Aucune matière. Créez d'abord des matières.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Aucune matière. Créez d'abord des matières.</TableCell></TableRow>
                 ) : (
                   allSubjects.map(s => {
-                    const state = assignments[s.id] || { checked: false, coefficient: s.coefficient || 1 }
+                    const state = assignments[s.id] || { checked: false, coefficient: s.coefficient || 1, teacherId: null }
                     return (
                       <TableRow key={s.id}>
                         <TableCell>
@@ -134,6 +145,24 @@ export function AffectationsPanel({ classes, allSubjects }: { classes: any[]; al
                             onChange={e => handleCoeff(s.id, e.target.value)}
                             disabled={!state.checked}
                           />
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={state.teacherId ?? ""}
+                            onValueChange={(val) => handleTeacher(s.id, val)}
+                            disabled={!state.checked}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Non assigné" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {teachers.map(t => (
+                                <SelectItem key={t.id} value={t.id}>
+                                  {t.full_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                       </TableRow>
                     )

@@ -1,12 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { AppLayout } from "@/components/app-layout"
 import { HelpButton } from "@/components/help-button"
 import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, DollarSign, Users, GraduationCap, BookOpen, Loader2, UserCheck, Plus } from "lucide-react"
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { useClasses } from "@/hooks/use-classes"
 import { useClassSubjects } from "@/hooks/use-class-subjects"
 import { useTeachers } from "@/hooks/use-teachers"
+import { toast } from "sonner"
 
 export default function ClassDetailPage() {
   const params = useParams()
@@ -21,8 +23,9 @@ export default function ClassDetailPage() {
   const classId = params.id as string
 
   const { classes, isLoading: classesLoading } = useClasses()
-  const { subjects, isLoading: subjectsLoading } = useClassSubjects(classId)
+  const { subjects, isLoading: subjectsLoading, assignTeacher } = useClassSubjects(classId)
   const { teachers, isLoading: teachersLoading } = useTeachers()
+  const [updatingSubject, setUpdatingSubject] = useState<string | null>(null)
 
   const classData = useMemo(() => classes.find(c => c.id === classId), [classes, classId])
 
@@ -170,38 +173,52 @@ export default function ClassDetailPage() {
                   Aucune matière assignée à cette classe
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Matière</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Coefficient</TableHead>
-                      <TableHead>Enseignants</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {subjects.map(s => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-medium">{s.subjectName}</TableCell>
-                        <TableCell>{s.subjectCode || "—"}</TableCell>
-                        <TableCell>{s.coefficient}</TableCell>
-                        <TableCell>
-                          {s.teacherNames ? (
-                            <div className="flex flex-wrap gap-1">
-                              {s.teacherNames.split(", ").map((name, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {name}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Matière</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Coefficient</TableHead>
+                        <TableHead>Enseignant</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {subjects.map(s => (
+                        <TableRow key={s.id}>
+                          <TableCell className="font-medium">{s.subjectName}</TableCell>
+                          <TableCell>{s.subjectCode || "—"}</TableCell>
+                          <TableCell>{s.coefficient}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={s.teacherId ?? ""}
+                              onValueChange={async (val) => {
+                                setUpdatingSubject(s.id)
+                                try {
+                                  await assignTeacher(s.subjectId, val || null)
+                                } catch {
+                                  toast.error("Erreur lors de l'assignation")
+                                } finally {
+                                  setUpdatingSubject(null)
+                                }
+                              }}
+                              disabled={updatingSubject === s.id}
+                            >
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Non assigné" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {teachers.map(t => (
+                                  <SelectItem key={t.id} value={t.id}>
+                                    {t.full_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
               )}
             </CardContent>
           </Card>
