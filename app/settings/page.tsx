@@ -241,20 +241,18 @@ function ClassModal({
             </div>
             <div>
               <Label htmlFor="level">Niveau</Label>
-              <Select 
-                value={formData.level} 
-                onValueChange={(value) => setFormData({...formData, level: value})}
+              <Input
+                id="level"
+                type="number"
+                min={1}
+                placeholder="Ex: 1, 2, 3..."
+                value={formData.level}
+                onChange={(e) => setFormData({...formData, level: e.target.value})}
                 disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner le niveau" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Primaire</SelectItem>
-                  <SelectItem value="2">Collège</SelectItem>
-                  <SelectItem value="3">Lycée</SelectItem>
-                </SelectContent>
-              </Select>
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Ordre de progression entre les classes. Deux classes peuvent avoir le même niveau (ex: 1ère A et 1ère B).
+              </p>
             </div>
           </div>
 

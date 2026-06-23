@@ -35,9 +35,9 @@ DELETE FROM fee_types;
 -- =============================================================================
 UPDATE academic_years SET is_current = 0;
 INSERT INTO academic_years (name, start_date, end_date, is_current)
-  VALUES ('2025-2026', '2025-10-01', '2026-06-30', 1);
-UPDATE academic_years SET is_current = 1
-  WHERE id = (SELECT id FROM academic_years WHERE name = '2025-2026' ORDER BY id DESC LIMIT 1);
+  SELECT '2025-2026', '2025-10-01', '2026-06-30', 1
+  WHERE NOT EXISTS (SELECT 1 FROM academic_years WHERE name = '2025-2026');
+UPDATE academic_years SET is_current = 1 WHERE name = '2025-2026';
 
 -- =============================================================================
 -- 2. CLASSES (1ère → 9ème Année)
@@ -47,14 +47,14 @@ UPDATE academic_years SET is_current = 1
 INSERT OR IGNORE INTO classes (name, level, capacity, total_fee, color, status)
 VALUES
   ('1ère Année', 1, 30, 45000, '#22c55e', 'active'),
-  ('2ème Année', 1, 30, 45000, '#3b82f6', 'active'),
-  ('3ème Année', 1, 30, 55000, '#eab308', 'active'),
-  ('4ème Année', 1, 30, 55000, '#a855f7', 'active'),
-  ('5ème Année', 1, 30, 65000, '#ef4444', 'active'),
-  ('6ème Année', 1, 30, 75000, '#ec4899', 'active'),
-  ('7ème Année', 2, 35, 90000, '#14b8a6', 'active'),
-  ('8ème Année', 2, 35, 95000, '#f97316', 'active'),
-  ('9ème Année', 2, 35, 100000, '#6366f1', 'active');
+  ('2ème Année', 2, 30, 45000, '#3b82f6', 'active'),
+  ('3ème Année', 3, 30, 55000, '#eab308', 'active'),
+  ('4ème Année', 4, 30, 55000, '#a855f7', 'active'),
+  ('5ème Année', 5, 30, 65000, '#ef4444', 'active'),
+  ('6ème Année', 6, 30, 75000, '#ec4899', 'active'),
+  ('7ème Année', 7, 35, 90000, '#14b8a6', 'active'),
+  ('8ème Année', 8, 35, 95000, '#f97316', 'active'),
+  ('9ème Année', 9, 35, 100000, '#6366f1', 'active');
 
 -- =============================================================================
 -- 3. MATIÈRES

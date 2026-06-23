@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { AppLayout } from "@/components/app-layout"
 import { HelpButton } from "@/components/help-button"
@@ -35,6 +35,9 @@ export default function ReinscriptionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const [academicStatuses, setAcademicStatuses] = useState<Record<string, { status: string | null; average: number | null; yearName: string | null; url: string }>>({})
+  const [statusesLoading, setStatusesLoading] = useState(false)
 
   const { students, isLoading: studentsLoading, editStudent } = useStudents()
   const { classes, isLoading: classesLoading } = useClasses()
@@ -153,6 +156,21 @@ export default function ReinscriptionPage() {
 
   const activeClasses = useMemo(() => classes.filter(c => c.status !== "inactive"), [classes])
 
+  useEffect(() => {
+    const ids = unenrolled.map(s => s.id)
+    if (ids.length === 0) { setAcademicStatuses({}); return }
+    let cancelled = false
+    setStatusesLoading(true)
+    fetch("/api/students/academic-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentIds: ids }),
+    }).then(r => r.json()).then(json => {
+      if (!cancelled && json.ok) setAcademicStatuses(json.data)
+    }).catch(() => {}).finally(() => { if (!cancelled) setStatusesLoading(false) })
+    return () => { cancelled = true }
+  }, [unenrolled])
+
   return (
     <AppLayout>
       <PageHeader title="Réinscription" description="Réinscrire les anciens élèves pour la nouvelle année">
@@ -199,11 +217,14 @@ export default function ReinscriptionPage() {
                   <TableRow>
                     <TableHead>Élève</TableHead>
                     <TableHead>Classe</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginated.map(s => (
+                  {paginated.map(s => {
+                    const as = academicStatuses[s.id]
+                    return (
                     <TableRow key={s.id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -214,6 +235,19 @@ export default function ReinscriptionPage() {
                         </div>
                       </TableCell>
                       <TableCell><Badge variant="outline">{s.className}</Badge></TableCell>
+                      <TableCell>
+                        {statusesLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : as?.status ? (
+                          <Link href={as.url} className="hover:underline">
+                            <Badge variant={as.status === "Admis" ? "default" : "destructive"} className={`text-xs px-2 py-0.5 cursor-pointer ${as.status === "Admis" ? "!bg-green-600 !text-white hover:!bg-green-700" : ""}`}>
+                              {as.status} ({as.average?.toFixed(1)})
+                            </Badge>
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button size="sm" onClick={() => openDialog(s)}>
                           <UserCheck className="h-4 w-4 mr-2" />
@@ -221,9 +255,9 @@ export default function ReinscriptionPage() {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                   {!isLoading && filtered.length === 0 && (
-                    <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">Aucun élève à réinscrire</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Aucun élève à réinscrire</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

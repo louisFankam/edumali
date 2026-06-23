@@ -274,6 +274,62 @@ describe("Settings - Tests d'intégration", () => {
     expect(found).toBeUndefined();
   });
 
+  it("devrait bloquer la suppression de l'année courante", async () => {
+    const { addAcademicYear, removeAcademicYear } = await import("@/lib/services/settings.service");
+    const created = await addAcademicYear({ name: "CurrentToDelete", startDate: "2031-01-01", endDate: "2031-12-31", isCurrent: true });
+    await expect(removeAcademicYear(created.id)).rejects.toThrow("Impossible de supprimer l'année scolaire en cours");
+  });
+
+  it("devrait supprimer en cascade les données liées", async () => {
+    const { addAcademicYear, removeAcademicYear } = await import("@/lib/services/settings.service");
+    const { db } = await import("@/lib/db");
+    const { evaluations, grades, exams, schedules } = await import("@/lib/models/schema");
+    const { eq } = await import("drizzle-orm");
+    const year = await addAcademicYear({ name: "CascadeTest", startDate: "2032-01-01", endDate: "2032-12-31" });
+    const sClass = await seedClass({ name: "CascadeClass" });
+    const studentId = await seedStudent(sClass, { firstName: "Cascade", lastName: "Student" });
+    const sSubject = await seedSubject({ name: "CascadeSubject" });
+    const enrollment = await seedEnrollment(studentId, sClass, year.id);
+    const [evalRow] = await db.insert(evaluations).values({
+      name: "CascadeEval",
+      type: "devoir",
+      classId: Number(sClass),
+      subjectId: Number(sSubject),
+      trimester: 1,
+      academicYearId: Number(year.id),
+      date: "2032-06-01",
+      status: "draft",
+    }).returning();
+    await db.insert(grades).values({
+      evaluationId: evalRow.id,
+      studentId: Number(studentId),
+      score: 14,
+    });
+    await db.insert(exams).values({
+      classId: Number(sClass),
+      academicYearId: Number(year.id),
+      subjectId: Number(sSubject),
+      trimester: 1,
+      date: "2032-06-15",
+      startTime: "08:00",
+      endTime: "10:00",
+    });
+    await db.insert(schedules).values({
+      classId: Number(sClass),
+      academicYearId: Number(year.id),
+      day: 0,
+      startTime: "08:00",
+      endTime: "09:30",
+    });
+    await removeAcademicYear(year.id);
+    const afterEvals = await db.select().from(evaluations).where(eq(evaluations.academicYearId, Number(year.id)));
+    const afterExams = await db.select().from(exams).where(eq(exams.academicYearId, Number(year.id)));
+    const afterScheds = await db.select().from(schedules).where(eq(schedules.academicYearId, Number(year.id)));
+    expect(afterEvals.length).toBe(0);
+    expect(afterExams.length).toBe(0);
+    expect(afterScheds.length).toBe(0);
+  });
+
   it("devrait récupérer l'année courante", async () => {
     const { fetchCurrentAcademicYear } = await import("@/lib/services/settings.service");
     const year = await fetchCurrentAcademicYear();

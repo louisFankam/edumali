@@ -5,7 +5,7 @@ import {
   findCurrentAcademicYear,
   createAcademicYear,
   updateAcademicYear,
-  deleteAcademicYear,
+  deleteAcademicYearCascade,
 } from "@/lib/repositories/academic-year.repository";
 import {
   findAllSubjects,
@@ -105,8 +105,10 @@ export async function editAcademicYear(id: string, input: any, userId?: number) 
 
 export async function removeAcademicYear(id: string, userId?: number) {
   const old = await findAcademicYearById(Number(id));
+  if (!old) throw new Error("Année scolaire introuvable");
+  if (old.isCurrent) throw new Error("Impossible de supprimer l'année scolaire en cours");
   logAudit({ tableName: "academic_years", recordId: Number(id), action: "delete", userId, oldValues: old ?? undefined });
-  await deleteAcademicYear(Number(id));
+  await deleteAcademicYearCascade(Number(id));
 }
 
 export async function fetchSubjects() {

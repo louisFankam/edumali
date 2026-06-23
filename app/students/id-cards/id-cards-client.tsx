@@ -43,11 +43,12 @@ export function IdCardsClient() {
   const [capByClass, setCapByClass] = useState<Record<string, string>>({})
 
   const { classes, isLoading: classesLoading } = useClasses()
+  const { currentYear } = useAcademicYears()
+  const { schoolInfo } = useSchoolInfo()
   const { students, isLoading: studentsLoading, editStudent } = useStudents({
     classId: selectedClassId || undefined,
+    academicYearId: currentYear?.id,
   })
-  const { schoolInfo } = useSchoolInfo()
-  const { currentYear } = useAcademicYears()
 
   const selectedClassName = useMemo(
     () => classes.find((c) => c.id === selectedClassId)?.name ?? "",
@@ -143,8 +144,8 @@ export function IdCardsClient() {
       <>
         <style>{`
           @media print {
-            @page { margin: 8mm; size: A4 portrait; }
-            body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { margin: 0; size: A4 portrait; }
+            body { margin: 8mm; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .no-print { display: none !important; }
             .print-page { page-break-after: always; }
             .print-page:last-child { page-break-after: avoid; }

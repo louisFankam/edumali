@@ -89,7 +89,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         let totalCoeffs = 0;
         let weightedSum = 0;
-        const subjectsList: { name: string; grade: string; coefficient: number; finalAverage: number | null }[] = [];
+        const subjectsList: { name: string; grade: string; coefficient: number; finalAverage: number | null; devoirScores: number[]; trimestrielleScore: number | null }[] = [];
 
         for (const [, sd] of Object.entries(subjectData)) {
           const devoirAvg = sd.devoirScores.length > 0
@@ -114,6 +114,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             grade: finalAvg !== null ? `${finalAvg}/20` : "—",
             coefficient: sd.coeff,
             finalAverage: finalAvg,
+            devoirScores: sd.devoirScores,
+            trimestrielleScore: sd.trimestrielleScore,
           });
         }
 

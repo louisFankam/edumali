@@ -25,7 +25,7 @@ export interface StudentBulletinData {
 }
 
 export const bulletinStyles = `
-@page { size: A4 landscape; margin: 3mm; }
+@page { size: A4 landscape; margin: 0; }
 body { margin: 0; padding: 0; font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; font-size: 10pt; }
 .page { width: 297mm; min-height: 210mm; display: flex; flex-direction: row; align-items: stretch; margin: 0 auto; box-sizing: border-box; page-break-after: always; }
 .bulletin { width: 50%; border: 1px solid #000; padding: 3mm; margin: 0; box-sizing: border-box; page-break-inside: avoid; break-inside: avoid; display: flex; flex-direction: column; }
@@ -203,7 +203,7 @@ export function buildBulletinDocument(
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Bulletins - ${escHtml(className)}</title>
+  <title>${escHtml(schoolName)}</title>
   <style>${bulletinStyles}</style>
 </head>
 <body>${pagesHtml.join("")}</body>

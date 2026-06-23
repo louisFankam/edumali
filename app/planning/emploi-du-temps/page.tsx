@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useClasses } from "@/hooks/use-classes"
 import { useAcademicYears, useSchoolInfo, useSubjects } from "@/hooks/use-settings"
 import { useSchedules } from "@/hooks/use-schedules"
-import { Clock, Plus, Trash2, Download, Pencil, Save } from "lucide-react"
+import { Clock, Plus, Trash2, Download, Pencil, Save, Copy, Grid3x3 } from "lucide-react"
 
 const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]
 
@@ -39,6 +39,10 @@ export default function EmploiDuTempsPage() {
   const [editSubjectId, setEditSubjectId] = useState("")
   const [editTeacherId, setEditTeacherId] = useState("")
   const [draggedSubj, setDraggedSubj] = useState<any>(null)
+
+  const [showCopyModal, setShowCopyModal] = useState(false)
+  const [copySourceClassId, setCopySourceClassId] = useState("")
+  const [copyOverwrite, setCopyOverwrite] = useState(false)
 
   useEffect(() => {
     if (!currentYear) return
@@ -150,6 +154,54 @@ export default function EmploiDuTempsPage() {
     await update(slot.id, { subjectId: null, teacherId: null })
   }
 
+  const handleCopy = async () => {
+    if (!copySourceClassId || !classId || !selectedYear) return
+    const res = await window.fetch("/api/schedules/copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sourceClassId: Number(copySourceClassId),
+        targetClassId: Number(classId),
+        academicYearId: Number(selectedYear),
+        overwrite: copyOverwrite,
+      }),
+    })
+    const json = await res.json()
+    if (json.ok) {
+      refetch()
+      setShowCopyModal(false)
+      setCopySourceClassId("")
+      setCopyOverwrite(false)
+    }
+  }
+
+  const PRESET_SLOTS = [
+    { startTime: "08:00", endTime: "09:30" },
+    { startTime: "09:45", endTime: "11:15" },
+    { startTime: "11:30", endTime: "13:00" },
+    { startTime: "15:00", endTime: "16:30" },
+  ]
+
+  const handleAddPresets = async () => {
+    if (!classId || !selectedYear) return
+    for (const slot of PRESET_SLOTS) {
+      for (let d = 0; d < 5; d++) {
+        const existing = getSlot(slot.startTime, slot.endTime, d)
+        if (!existing) {
+          await create({
+            classId: Number(classId),
+            academicYearId: Number(selectedYear),
+            day: d,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            subjectId: null,
+            teacherId: null,
+          })
+        }
+      }
+    }
+  }
+
   const handleEditSave = async () => {
     if (!editSlot) return
     await update(editSlot.id, {
@@ -196,21 +248,21 @@ export default function EmploiDuTempsPage() {
       </tr>`
     }).join("")
 
-    return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Emploi du temps - ${className}</title>
+    return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${schoolName}</title>
     <style>
-      @page { size: A4 portrait; margin: 8mm; }
-      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 8mm; }
-      .header { text-align: center; margin-bottom: 5mm; }
+      @page { size: A4 landscape; margin: 0; }
+      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 5mm; display: flex; flex-direction: column; align-items: center; }
+      .header { text-align: center; margin-bottom: 5mm; width: 100%; }
       .header .logo { text-align: center; margin-bottom: 2mm; }
       .header .logo img { max-height: 18mm; object-fit: contain; }
       .header .school { font-size: 12pt; font-weight: bold; text-transform: uppercase; }
       .header .detail { font-size: 9pt; color: #333; }
       .header .title { font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 3mm 0; }
       .header .subtitle { font-size: 10pt; margin-bottom: 3mm; }
-      table { width: 100%; border-collapse: collapse; }
-      th { border: 1px solid #000; padding: 2mm; font-size: 9pt; background: #f0f0f0; }
-      td { border: 1px solid #000; padding: 2mm; text-align: center; font-size: 8pt; }
-      .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; }
+      table { width: auto; border-collapse: collapse; margin: 0 auto; }
+      th { border: 1px solid #000; padding: 2mm; font-size: 9pt; background: #f0f0f0; white-space: nowrap; }
+      td { border: 1px solid #000; padding: 2mm; text-align: center; font-size: 8pt; white-space: nowrap; }
+      .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; width: 100%; }
     </style></head><body>
       <div class="header">
         ${logo ? `<div class="logo"><img src="${logo}" alt="Logo" /></div>` : ""}
@@ -244,6 +296,7 @@ export default function EmploiDuTempsPage() {
       <PageHeader title="Emploi du temps" description="Gérer les emplois du temps par classe">
         <HelpButton section="planning" />
         <Button variant="outline" onClick={handlePrint}><Download className="h-4 w-4 mr-2" /> Télécharger</Button>
+        {classId && <Button variant="outline" onClick={() => setShowCopyModal(true)}><Copy className="h-4 w-4 mr-2" /> Copier</Button>}
       </PageHeader>
 
       <Card>
@@ -271,6 +324,9 @@ export default function EmploiDuTempsPage() {
             </div>
             <Button onClick={() => { setNewRowStart("08:00"); setNewRowEnd("09:00"); setShowAddRow(true) }} disabled={!classId}>
               <Plus className="h-4 w-4 mr-2" /> Ajouter ligne
+            </Button>
+            <Button variant="outline" onClick={handleAddPresets} disabled={!classId}>
+              <Grid3x3 className="h-4 w-4 mr-2" /> Créneaux types
             </Button>
           </div>
         </CardContent>
@@ -431,6 +487,35 @@ export default function EmploiDuTempsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Copy timetable dialog */}
+      <Dialog open={showCopyModal} onOpenChange={setShowCopyModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Copier l&apos;emploi du temps</DialogTitle>
+          <DialogDescription>Copier les créneaux depuis une autre classe</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium">Classe source</label>
+              <Select value={copySourceClassId} onValueChange={setCopySourceClassId}>
+                <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
+                <SelectContent>
+                  {classes.filter(c => c.id !== classId).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input type="checkbox" id="copyOverwrite" checked={copyOverwrite} onChange={e => setCopyOverwrite(e.target.checked)} className="h-4 w-4" />
+              <label htmlFor="copyOverwrite" className="text-xs">Remplacer les créneaux existants</label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowCopyModal(false)}>Annuler</Button>
+              <Button onClick={handleCopy} disabled={!copySourceClassId}><Copy className="h-4 w-4 mr-2" /> Copier</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </AppLayout>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
+import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
 import { fetchAcademicYear, editAcademicYear, removeAcademicYear } from "@/lib/services/settings.service";
 
 export const runtime = "nodejs";
@@ -31,11 +32,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { error, userId } = await requireApiAdmin();
+    if (error) return error;
     const { id } = await params;
-    const userId = await getSessionUserId();
     await removeAcademicYear(id, userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ ok: false, message: String(error) }, { status: 500 });
+    const message = String(error);
+    if (message.includes("Impossible de supprimer") || message.includes("Année scolaire introuvable")) {
+      return NextResponse.json({ ok: false, message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }

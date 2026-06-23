@@ -27,6 +27,7 @@ import { useClasses } from "@/hooks/use-classes"
 import { useMedicalInfo } from "@/hooks/use-medical-info"
 import { useFamilyInfo } from "@/hooks/use-family-info"
 import { useAcademicHistory } from "@/hooks/use-academic-history"
+import { useStudentGrades } from "@/hooks/use-student-grades"
 import { useAcademicYears, useSchoolInfo } from "@/hooks/use-settings"
 import { useEnrollments } from "@/hooks/use-enrollments"
 import { format } from "date-fns"
@@ -54,6 +55,7 @@ export default function StudentProfilePage() {
   const { data: medicalData, isLoading: medicalLoading, save: saveMedical } = useMedicalInfo(id)
   const { data: familyData, isLoading: familyLoading, save: saveFamily } = useFamilyInfo(id)
   const { records: academicRecords, isLoading: academicLoading, add: addAcademic, update: updateAcademic, remove: removeAcademic } = useAcademicHistory(id)
+  const { data: gradesData, isLoading: gradesLoading, currentYearResults, annualAverage } = useStudentGrades(id)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showAddPayment, setShowAddPayment] = useState(false)
   const [payAmount, setPayAmount] = useState("")
@@ -370,7 +372,81 @@ export default function StudentProfilePage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="academic">
+        <TabsContent value="academic" className="space-y-4">
+
+          {gradesLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : currentYearResults.length > 0 ? (
+            <>
+              <Card>
+                <CardHeader><CardTitle>Notes & Résultats — {currentYearResults[0]?.year || ""}</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                  {annualAverage !== null && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Moyenne annuelle</CardTitle></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{annualAverage.toFixed(2)} / 20</div></CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Statut annuel</CardTitle></CardHeader>
+                        <CardContent>
+                          <Badge variant="default" className={`text-sm px-3 py-1 ${annualAverage >= 10 ? "!bg-green-600 !text-white" : "!bg-destructive !text-white"}`}>
+                            {annualAverage >= 10 ? "Admis" : "Redoublant"}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
+
+                  {currentYearResults.map((trimester) => (
+                    <div key={`${trimester.trimester}-${trimester.year}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-lg">Trimestre {trimester.trimester}</h4>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-muted-foreground">Moyenne : <strong>{trimester.average}</strong></span>
+                          <Badge variant={trimester.status === "Admis" ? "default" : "destructive"} className={`text-sm px-3 py-1 ${trimester.status === "Admis" ? "!bg-green-600 !text-white" : ""}`}>
+                            {trimester.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Matière</TableHead>
+                            <TableHead className="text-center">Coeff</TableHead>
+                            <TableHead className="text-center">Notes Devoirs</TableHead>
+                            <TableHead className="text-center">Note Trimestrielle</TableHead>
+                            <TableHead className="text-center">Moyenne Finale</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {trimester.subjects.map((subj, i) => (
+                            <TableRow key={subj.name + i}>
+                              <TableCell className="font-medium">{subj.name}</TableCell>
+                              <TableCell className="text-center">{subj.coefficient}</TableCell>
+                              <TableCell className="text-center">{subj.devoirScores?.length > 0 ? subj.devoirScores.join(", ") : "—"}</TableCell>
+                              <TableCell className="text-center">{subj.trimestrielleScore !== null && subj.trimestrielleScore !== undefined ? `${subj.trimestrielleScore}/20` : "—"}</TableCell>
+                              <TableCell className="text-center font-semibold">{subj.grade}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardHeader><CardTitle>Notes & Résultats</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Aucune note disponible pour cette année</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Historique scolaire</CardTitle>

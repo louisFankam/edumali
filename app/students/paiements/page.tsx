@@ -206,9 +206,9 @@ export default function StudentPaymentsPage() {
 
     const w = window.open("", "_blank")
     if (!w) return
-    w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Impayés</title>
+    w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${schoolName}</title>
     <style>
-      @page { size: A4 portrait; margin: 8mm; }
+      @page { size: A4 portrait; margin: 0; }
       body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 8mm; }
       .header { text-align: center; margin-bottom: 5mm; }
       .header .logo { text-align: center; margin-bottom: 2mm; }

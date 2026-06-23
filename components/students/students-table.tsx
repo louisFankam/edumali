@@ -1,16 +1,13 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, Edit, Trash2, ChevronLeft, Loader2, ChevronRight } from "lucide-react"
+import { Eye, Edit, Trash2, Loader2 } from "lucide-react"
 import { Student } from "@/types/student"
-
-const ITEMS_PER_PAGE = 10
 
 interface StudentsTableProps {
   students: Student[]
@@ -21,8 +18,6 @@ interface StudentsTableProps {
 }
 
 export function StudentsTable({ students, onViewDetails, onEdit, onDelete, isLoading }: StudentsTableProps) {
-  const [currentPage, setCurrentPage] = useState(1)
-
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -30,11 +25,6 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete, isLoa
       </div>
     )
   }
-
-  const totalPages = Math.ceil(students.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const endIndex = startIndex + ITEMS_PER_PAGE
-  const currentStudents = students.slice(startIndex, endIndex)
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`
@@ -73,14 +63,14 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete, isLoa
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentStudents.length === 0 ? (
+              {students.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Aucun élève trouvé
                   </TableCell>
                 </TableRow>
               ) : (
-                currentStudents.map((student) => (
+                students.map((student) => (
                   <TableRow key={student.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -133,50 +123,6 @@ export function StudentsTable({ students, onViewDetails, onEdit, onDelete, isLoa
             </TableBody>
           </Table>
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between space-x-2 py-4">
-            <div className="text-sm text-muted-foreground">
-              Affichage de {startIndex + 1} à {Math.min(endIndex, students.length)} sur {students.length} élèves
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="bg-transparent"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Précédent
-              </Button>
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className={currentPage === page ? "" : "bg-transparent"}
-                  >
-                    {page}
-                  </Button>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="bg-transparent"
-              >
-                Suivant
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

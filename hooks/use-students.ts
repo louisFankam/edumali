@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 export interface StudentData {
   id: string
@@ -9,6 +9,7 @@ export interface StudentData {
   gender: string
   birthDate: string
   nationality?: string
+  address?: string
   photo?: string
   parentName: string
   parentPhone: string
@@ -39,8 +40,10 @@ export function useStudents(filters?: StudentFilters) {
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const requestIdRef = useRef(0)
 
   const load = useCallback(async () => {
+    const id = ++requestIdRef.current
     setIsLoading(true)
     setError(null)
     try {
@@ -52,13 +55,15 @@ export function useStudents(filters?: StudentFilters) {
       if (filters?.limit) params.set("limit", String(filters.limit))
       const res = await window.fetch(`/api/students?${params.toString()}`, { cache: "no-store" })
       const json = await res.json()
+      if (id !== requestIdRef.current) return
       if (!json.ok) throw new Error(json.message)
       setStudents(json.data)
       if (json.pagination) setTotal(json.pagination.total)
     } catch (e) {
+      if (id !== requestIdRef.current) return
       setError(String(e))
     } finally {
-      setIsLoading(false)
+      if (id === requestIdRef.current) setIsLoading(false)
     }
   }, [filters?.search, filters?.classId, filters?.academicYearId, filters?.page, filters?.limit])
 

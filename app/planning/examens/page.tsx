@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useClasses } from "@/hooks/use-classes"
 import { useAcademicYears, useSubjects, useSchoolInfo } from "@/hooks/use-settings"
 import { useExams } from "@/hooks/use-exams"
-import { Plus, Trash2, Download, Save } from "lucide-react"
+import { Plus, Trash2, Download, Save, Zap, Pencil } from "lucide-react"
 
 export default function ExamensPage() {
   const { classes } = useClasses()
@@ -34,6 +34,20 @@ export default function ExamensPage() {
   const [formStart, setFormStart] = useState("08:00")
   const [formEnd, setFormEnd] = useState("10:00")
   const [formRoom, setFormRoom] = useState("")
+
+  const [showBulk, setShowBulk] = useState(false)
+  const [bulkSubjectIds, setBulkSubjectIds] = useState<string[]>([])
+  const [bulkStartDate, setBulkStartDate] = useState("")
+  const [bulkStartTime, setBulkStartTime] = useState("08:00")
+  const [bulkEndTime, setBulkEndTime] = useState("10:00")
+  const [bulkRoom, setBulkRoom] = useState("")
+  const [bulkDaysGap, setBulkDaysGap] = useState(1)
+
+  const [editExam, setEditExam] = useState<any>(null)
+  const [editDate, setEditDate] = useState("")
+  const [editStart, setEditStart] = useState("")
+  const [editEnd, setEditEnd] = useState("")
+  const [editRoom, setEditRoom] = useState("")
 
   useEffect(() => {
     if (!currentYear) return
@@ -86,6 +100,61 @@ export default function ExamensPage() {
     await remove(id)
   }
 
+  const handleBulkCreate = async () => {
+    if (!classId || !selectedYear || !bulkStartDate || bulkSubjectIds.length === 0) return
+    const res = await window.fetch("/api/exams/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        classId: Number(classId),
+        academicYearId: Number(selectedYear),
+        trimester: Number(trimester),
+        subjectIds: bulkSubjectIds.map(Number),
+        startDate: bulkStartDate,
+        daysGap: bulkDaysGap,
+        startTime: bulkStartTime,
+        endTime: bulkEndTime,
+        room: bulkRoom,
+      }),
+    })
+    const json = await res.json()
+    if (json.ok) {
+      refetch()
+      setShowBulk(false)
+      setBulkSubjectIds([])
+      setBulkStartDate("")
+      setBulkStartTime("08:00")
+      setBulkEndTime("10:00")
+      setBulkRoom("")
+      setBulkDaysGap(1)
+    }
+  }
+
+  const toggleBulkSubject = (subjectId: string) => {
+    setBulkSubjectIds(prev =>
+      prev.includes(subjectId) ? prev.filter(id => id !== subjectId) : [...prev, subjectId]
+    )
+  }
+
+  const handleEditOpen = (exam: any) => {
+    setEditExam(exam)
+    setEditDate(exam.date || "")
+    setEditStart(exam.startTime?.slice(0, 5) || "08:00")
+    setEditEnd(exam.endTime?.slice(0, 5) || "10:00")
+    setEditRoom(exam.room || "")
+  }
+
+  const handleEditSave = async () => {
+    if (!editExam) return
+    await update(editExam.id, {
+      date: editDate,
+      startTime: editStart,
+      endTime: editEnd,
+      room: editRoom,
+    })
+    setEditExam(null)
+  }
+
   function buildPrintHTML() {
     const logo = schoolInfo?.logoUrl || ""
     const schoolName = schoolInfo?.name || "Établissement"
@@ -104,21 +173,21 @@ export default function ExamensPage() {
       </tr>`
     }).join("")
 
-    return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Programme des examens - ${className}</title>
+    return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${schoolName}</title>
     <style>
-      @page { size: A4 portrait; margin: 8mm; }
-      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 8mm; }
-      .header { text-align: center; margin-bottom: 5mm; }
+      @page { size: A4 landscape; margin: 0; }
+      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 5mm; display: flex; flex-direction: column; align-items: center; }
+      .header { text-align: center; margin-bottom: 5mm; width: 100%; }
       .header .logo { text-align: center; margin-bottom: 2mm; }
       .header .logo img { max-height: 18mm; object-fit: contain; }
       .header .school { font-size: 12pt; font-weight: bold; text-transform: uppercase; }
       .header .detail { font-size: 9pt; color: #333; }
       .header .title { font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 3mm 0; }
       .header .subtitle { font-size: 10pt; margin-bottom: 3mm; }
-      table { width: 100%; border-collapse: collapse; }
-      th { border: 1px solid #000; padding: 2mm; font-size: 10pt; background: #f0f0f0; }
-      td { border: 1px solid #000; padding: 2mm; font-size: 9pt; }
-      .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; }
+      table { width: auto; border-collapse: collapse; margin: 0 auto; }
+      th { border: 1px solid #000; padding: 2mm; font-size: 10pt; background: #f0f0f0; white-space: nowrap; }
+      td { border: 1px solid #000; padding: 2mm; font-size: 9pt; white-space: nowrap; }
+      .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; width: 100%; }
     </style></head><body>
       <div class="header">
         ${logo ? `<div class="logo"><img src="${logo}" alt="Logo" /></div>` : ""}
@@ -153,6 +222,9 @@ export default function ExamensPage() {
         <HelpButton section="planning" />
         <Button variant="outline" onClick={handlePrint} disabled={exams.length === 0}>
           <Download className="h-4 w-4 mr-2" /> Télécharger
+        </Button>
+        <Button variant="outline" onClick={() => { setBulkSubjectIds(classSubjectList.map((cs: any) => String(cs.subjectId))); setShowBulk(true) }} disabled={classSubjectList.length === 0}>
+          <Zap className="h-4 w-4 mr-2" /> Générer
         </Button>
         <Button onClick={() => { setFormDate(""); setFormRoom(""); setShowAdd(true) }} disabled={!classId}>
           <Plus className="h-4 w-4 mr-2" /> Ajouter
@@ -225,9 +297,14 @@ export default function ExamensPage() {
                       <TableCell>{e.startTime?.slice(0, 5)} – {e.endTime?.slice(0, 5)}</TableCell>
                       <TableCell>{e.room || "—"}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(e.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditOpen(e)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(e.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -279,6 +356,99 @@ export default function ExamensPage() {
               <Button onClick={handleCreate}><Save className="h-4 w-4 mr-2" /> Ajouter</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk generate dialog */}
+      <Dialog open={showBulk} onOpenChange={setShowBulk}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Générer le planning d&apos;examens</DialogTitle>
+          <DialogDescription>Créer des examens pour toutes les matières sélectionnées en une fois</DialogDescription></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium mb-1 block">Matières</label>
+              <div className="max-h-40 overflow-y-auto border rounded p-2 space-y-1">
+                {classSubjectList.map((cs: any) => (
+                  <label key={cs.subjectId} className="flex items-center space-x-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={bulkSubjectIds.includes(String(cs.subjectId))}
+                      onChange={() => toggleBulkSubject(String(cs.subjectId))}
+                      className="h-4 w-4"
+                    />
+                    <span>{cs.subject?.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium">Date de début</label>
+              <Input type="date" value={bulkStartDate} onChange={e => setBulkStartDate(e.target.value)} />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs font-medium">Début</label>
+                <Input type="time" value={bulkStartTime} onChange={e => setBulkStartTime(e.target.value)} />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium">Fin</label>
+                <Input type="time" value={bulkEndTime} onChange={e => setBulkEndTime(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs font-medium">Salle</label>
+                <Input value={bulkRoom} onChange={e => setBulkRoom(e.target.value)} placeholder="ex: Salle 1" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium">Intervalle (jours)</label>
+                <Input type="number" min={1} value={bulkDaysGap} onChange={e => setBulkDaysGap(Number(e.target.value))} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowBulk(false)}>Annuler</Button>
+              <Button onClick={handleBulkCreate} disabled={bulkSubjectIds.length === 0 || !bulkStartDate}>
+                <Zap className="h-4 w-4 mr-2" /> Générer ({bulkSubjectIds.length} examens)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit exam dialog */}
+      <Dialog open={!!editExam} onOpenChange={() => setEditExam(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Modifier l&apos;examen</DialogTitle></DialogHeader>
+          {editExam && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium">Matière</label>
+                <p className="text-sm py-1.5">{subjectMap.get(Number(editExam.subjectId))?.name || "—"}</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Date</label>
+                <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="text-xs font-medium">Début</label>
+                  <Input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs font-medium">Fin</label>
+                  <Input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium">Salle</label>
+                <Input value={editRoom} onChange={e => setEditRoom(e.target.value)} placeholder="ex: Salle 1" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditExam(null)}>Annuler</Button>
+                <Button onClick={handleEditSave}><Save className="h-4 w-4 mr-2" /> Enregistrer</Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>

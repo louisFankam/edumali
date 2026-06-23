@@ -308,7 +308,7 @@ export default function BulletinPrint({ students, className, trimester, schoolNa
         @media print {
           @page {
             size: A4 landscape;
-            margin: 3mm;
+            margin: 0;
           }
           body { margin: 0; padding: 0; }
           .a4-page {

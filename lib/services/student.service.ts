@@ -29,6 +29,7 @@ function mapStudent(s: any) {
     gender: s.gender,
     birthDate: s.birthDate,
     nationality: s.nationality ?? "",
+    address: s.address ?? "",
     photo: s.photo,
     parentName: s.parentName,
     parentPhone: s.parentPhone,
