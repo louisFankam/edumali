@@ -6,6 +6,7 @@ import * as schema from "./models/schema";
 
 export const databasePath = process.env.DB_PATH || path.join(process.cwd(), "ekima_db", "data.db");
 const sqlite = new Database(databasePath);
+sqlite.pragma("journal_mode = WAL");
 
 export const db = drizzle(sqlite, { schema });
 

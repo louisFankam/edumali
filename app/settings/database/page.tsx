@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Database, Download, Upload, Trash2, HardDrive, RefreshCw, AlertTriangle, Server, CheckCircle2, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Database, Download, Upload, Trash2, HardDrive, Save, RefreshCw, AlertTriangle, Server, CheckCircle2, X, RotateCcw } from "lucide-react"
 
 interface TableInfo {
   name: string
@@ -24,7 +24,14 @@ interface DbInfo {
   tables: TableInfo[]
 }
 
+interface BackupInfo {
+  filename: string
+  sizeBytes: number
+  createdAt: string
+}
+
 const PROTECTED_TABLES = ["users", "academic_years", "school_info"]
+const BACKUPS_PER_PAGE = 10
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`
@@ -48,6 +55,14 @@ export default function DatabasePage() {
   const [deletePassword, setDeletePassword] = useState("")
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
   const [deleting, setDeleting] = useState(false)
+
+  const [backups, setBackups] = useState<BackupInfo[]>([])
+  const [backupsLoading, setBackupsLoading] = useState(false)
+  const [creatingBackup, setCreatingBackup] = useState(false)
+  const [restoreFilename, setRestoreFilename] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  const [backupMessage, setBackupMessage] = useState<{ ok: boolean; message: string } | null>(null)
+  const [backupPage, setBackupPage] = useState(1)
 
   const loadInfo = useCallback(async () => {
     setIsLoading(true)
@@ -118,6 +133,75 @@ export default function DatabasePage() {
       setDeleting(false)
     }
   }
+
+  const loadBackups = useCallback(async () => {
+    setBackupsLoading(true)
+    try {
+      const res = await fetch("/api/database/backups")
+      const json = await res.json()
+      if (json.ok) { setBackups(json.data); setBackupPage(1) }
+    } finally {
+      setBackupsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadBackups() }, [loadBackups])
+
+  const handleCreateBackup = async () => {
+    setCreatingBackup(true)
+    try {
+      const res = await fetch("/api/database/backups", { method: "POST" })
+      const json = await res.json()
+      if (json.ok) {
+        await loadBackups()
+        setBackupMessage({ ok: true, message: `Sauvegarde créée : ${json.data.filename}` })
+      } else {
+        setBackupMessage({ ok: false, message: json.message })
+      }
+    } catch (e) {
+      setBackupMessage({ ok: false, message: String(e) })
+    } finally {
+      setCreatingBackup(false)
+    }
+  }
+
+  const handleDeleteBackup = async (filename: string) => {
+    try {
+      const res = await fetch(`/api/database/backups/${encodeURIComponent(filename)}`, { method: "DELETE" })
+      const json = await res.json()
+      if (json.ok) {
+        await loadBackups()
+      } else {
+        alert(json.message)
+      }
+    } catch (e) {
+      alert(String(e))
+    }
+  }
+
+  const handleRestoreBackup = async () => {
+    if (!restoreFilename) return
+    setRestoring(true)
+    try {
+      const res = await fetch(`/api/database/backups/${encodeURIComponent(restoreFilename)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      })
+      const json = await res.json()
+      setBackupMessage(json)
+      if (json.ok) setRestoreFilename(null)
+    } catch (e) {
+      setBackupMessage({ ok: false, message: String(e) })
+    } finally {
+      setRestoring(false)
+    }
+  }
+
+  const backupStartIndex = (backupPage - 1) * BACKUPS_PER_PAGE
+  const backupEndIndex = backupStartIndex + BACKUPS_PER_PAGE
+  const pagedBackups = backups.slice(backupStartIndex, backupEndIndex)
+  const backupTotalPages = Math.ceil(backups.length / BACKUPS_PER_PAGE)
 
   return (
     <AppLayout>
@@ -260,6 +344,132 @@ export default function DatabasePage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Save className="h-5 w-5" />
+              Sauvegardes automatiques
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Une sauvegarde est créée automatiquement chaque jour au démarrage ou à 18h.
+              Les {backups.length} plus récentes sont conservées.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleCreateBackup} disabled={creatingBackup}>
+                {creatingBackup ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Créer une sauvegarde
+              </Button>
+              <Button variant="outline" onClick={loadBackups} disabled={backupsLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${backupsLoading ? "animate-spin" : ""}`} />
+                Actualiser
+              </Button>
+            </div>
+            {backups.length > 0 ? (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fichier</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Taille</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedBackups.map(b => (
+                      <TableRow key={b.filename}>
+                        <TableCell className="font-mono text-sm">{b.filename}</TableCell>
+                        <TableCell className="text-sm">{formatDate(b.createdAt)}</TableCell>
+                        <TableCell className="text-sm">{formatSize(b.sizeBytes)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setRestoreFilename(b.filename)}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                              Restaurer
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteBackup(b.filename)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {backupTotalPages > 1 && (
+                  <div className="flex items-center justify-between space-x-2 py-2">
+                    <div className="text-sm text-muted-foreground">
+                      Affichage de {backupStartIndex + 1} à {Math.min(backupEndIndex, backups.length)} sur {backups.length} sauvegardes
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setBackupPage(backupPage - 1)}
+                        disabled={backupPage === 1}
+                        className="bg-transparent"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Précédent
+                      </Button>
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: Math.min(backupTotalPages, 5) }, (_, i) => {
+                          let page
+                          if (backupTotalPages <= 5) {
+                            page = i + 1
+                          } else if (backupPage <= 3) {
+                            page = i + 1
+                          } else if (backupPage >= backupTotalPages - 2) {
+                            page = backupTotalPages - 4 + i
+                          } else {
+                            page = backupPage - 2 + i
+                          }
+                          return (
+                            <Button
+                              key={page}
+                              variant={backupPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setBackupPage(page)}
+                              className={backupPage === page ? "" : "bg-transparent"}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setBackupPage(backupPage + 1)}
+                        disabled={backupPage === backupTotalPages}
+                        className="bg-transparent"
+                      >
+                        Suivant
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                {backupsLoading ? "Chargement..." : "Aucune sauvegarde pour le moment"}
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={showImportConfirm} onOpenChange={setShowImportConfirm}>
@@ -354,6 +564,61 @@ export default function DatabasePage() {
                 {deleting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Vider la table
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!restoreFilename} onOpenChange={o => { if (!o) setRestoreFilename(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Restaurer une sauvegarde
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              Vous êtes sur le point de <strong>remplacer</strong> la base de données actuelle par la sauvegarde :
+            </p>
+            {restoreFilename && (
+              <p className="text-sm font-mono bg-muted p-2 rounded">{restoreFilename}</p>
+            )}
+            <p className="text-sm text-destructive font-medium">
+              Cette action est irréversible. L'application devra être redémarrée.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setRestoreFilename(null)}>Annuler</Button>
+              <Button variant="destructive" onClick={handleRestoreBackup} disabled={restoring}>
+                {restoring ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Restaurer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!backupMessage} onOpenChange={() => setBackupMessage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {backupMessage?.ok ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              ) : (
+                <X className="h-5 w-5 text-destructive" />
+              )}
+              {backupMessage?.ok ? "Succès" : "Erreur"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">{backupMessage?.message}</p>
+            {backupMessage?.ok && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                Si vous avez restauré une sauvegarde, veuillez redémarrer l'application.
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button onClick={() => setBackupMessage(null)}>Fermer</Button>
             </div>
           </div>
         </DialogContent>

@@ -571,5 +571,12 @@ export async function initializeApp() {
     }
   }
 
+  try {
+    const { startDailyBackupScheduler } = await import("@/lib/backup");
+    startDailyBackupScheduler();
+  } catch (e) {
+    console.error("[EduMali] Erreur demarrage planificateur de sauvegarde:", e);
+  }
+
   initialized = true;
 }
