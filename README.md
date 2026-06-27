@@ -17,7 +17,8 @@ Stack : Next.js 15, Tailwind CSS v4, shadcn/ui, Drizzle ORM + SQLite.
 git clone https://github.com/louisFankam/edumali.git
 cd edumali
 pnpm install
-pnpm build && pnpm start
+cp .env.example .env   # puis éditer SESSION_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD
+npx next build && pnpm start
 ```
 
 L'application est accessible sur http://localhost:3000
@@ -30,7 +31,13 @@ La base de données SQLite (`ekima_db/data.db`) est créée automatiquement au p
 - Utilisateur : `admin`
 - Mot de passe : `admin`
 
-Modifiables via les variables d'environnement (voir `Configuration`).
+**⚠️ À changer impérativement en production** via les variables d'environnement (voir `Configuration`).
+
+### Sécurité
+
+- **Rate limiting** : 5 tentatives par minute sur `/api/auth/login` (protection brute-force)
+- **Headers HTTP** : `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` appliqués sur toutes les pages
+- **Cookie session** : `httpOnly`, `sameSite: "lax"`, `secure` uniquement si `COOKIE_SECURE=true`
 
 ### Développement
 
@@ -42,20 +49,24 @@ pnpm dev
 
 Créez un fichier `.env` à la racine :
 
-```
+```env
 SESSION_SECRET=<64 caractères hexadécimaux>
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin
+COOKIE_SECURE=false
 ```
 
-`SESSION_SECRET` est obligatoire. Un `.env` par défaut est fourni avec le projet.
+`SESSION_SECRET` est obligatoire (min 32 caractères). Un `.env` par défaut est fourni avec le projet.
+
+`COOKIE_SECURE` : mettre à `true` uniquement si le site est servi en HTTPS. En local (HTTP), laisser `false`.
 
 ## Scripts
 
 | Commande | Usage |
 |---|---|
 | `pnpm dev` | Serveur de développement (Turbo) |
-| `pnpm build` | Build production |
+| `pnpm build` | **Ne pas utiliser** (pnpm store corrompu) |
+| `npx next build` | Build production (alternative recommandée) |
 | `pnpm start` | Lancement production |
 | `pnpm test` | Tests (vitest) |
 | `pnpm db:generate` | Générer une migration Drizzle |
@@ -86,9 +97,10 @@ hooks/                 Hooks custom (auth, préférences, etc.)
 lib/
   bootstrap.ts         Initialisation : création des tables + admin
   db.ts                Connexion SQLite (better-sqlite3 + Drizzle)
-  models/schema.ts     Schéma Drizzle (26 tables)
+  models/schema.ts     Schéma Drizzle (27 tables)
   services/            Logique métier
   repositories/        Accès DB
+  rate-limit.ts        Rate limiter in-memory (login)
   auth/                Session, hash, etc.
   guards/              Contrôle d'accès
 drizzle/               Migrations versionnées (développement uniquement)

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
+import path from "path";
+import os from "os";
 import { databasePath, rawDb } from "@/lib/db";
 import { requireApiAdmin } from "@/lib/guards/api-admin.guard";
 
@@ -15,8 +17,7 @@ export async function GET(request: Request) {
     const excludeAudit = searchParams.get("excludeAudit") === "true";
 
     if (excludeAudit) {
-      const tempDir = require("os").tmpdir();
-      const tempPath = `${tempDir}/edumali-export-${Date.now()}.db`;
+      const tempPath = path.join(os.tmpdir(), `edumali-export-${Date.now()}.db`);
       fs.copyFileSync(databasePath, tempPath);
       const sqlite = require("better-sqlite3");
       const tempDb = new sqlite(tempPath);
