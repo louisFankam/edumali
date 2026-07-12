@@ -92,11 +92,17 @@ export default function StudentProfilePage() {
     return 0
   }, [student, classFee])
 
-  const netFee = classFee - discountAmount
+  const supplementaryTotal = useMemo(() => {
+    if (!student) return 0
+    const cls = classes.find(c => c.id === student.classId)
+    return cls?.feeTypes?.reduce((sum, ft) => sum + (ft.amount ?? ft.feeTypeAmount), 0) ?? 0
+  }, [student, classes])
+
+  const netFee = classFee + supplementaryTotal - discountAmount
 
   const totalPaid = useMemo(() => {
     if (!payments.length) return 0
-    return payments.reduce((s, p) => s + p.amount, 0)
+    return payments.reduce((s, p) => s + (p.status === "payé" ? p.amount : 0), 0)
   }, [payments])
 
   const remaining = netFee - totalPaid
@@ -513,7 +519,7 @@ export default function StudentProfilePage() {
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Reste à Payer</CardTitle></CardHeader>
-              <CardContent><div className={`text-2xl font-bold ${remaining > 0 ? "text-red-600" : "text-green-600"}`}>{remaining.toLocaleString()} FCFA</div></CardContent>
+              <CardContent><div className={`text-2xl font-bold ${Math.max(0, remaining) > 0 ? "text-red-600" : "text-green-600"}`}>{Math.max(0, remaining).toLocaleString()} FCFA</div></CardContent>
             </Card>
           </div>
 

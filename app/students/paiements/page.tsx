@@ -110,7 +110,7 @@ export default function StudentPaymentsPage() {
 
   const totalPaid = useMemo(() => {
     if (!payments.length) return 0
-    return payments.reduce((sum, p) => sum + p.amount, 0)
+    return payments.reduce((sum, p) => sum + (p.status === "payé" ? p.amount : 0), 0)
   }, [payments])
 
   const remaining = netFee - totalPaid

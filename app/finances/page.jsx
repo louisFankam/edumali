@@ -143,7 +143,7 @@ export default function FinancesPage() {
   // Computed
   const paymentsByStudent = useMemo(() => {
     const map = {}
-    payments.forEach(p => { map[p.studentId] = (map[p.studentId] || 0) + p.amount })
+    payments.forEach(p => { if (p.status === "payé") map[p.studentId] = (map[p.studentId] || 0) + p.amount })
     return map
   }, [payments])
 
@@ -829,10 +829,12 @@ export default function FinancesPage() {
           <DialogHeader><DialogTitle>Facture</DialogTitle></DialogHeader>
           {selectedStudent && (() => {
             const s = selectedStudent; const cls = classes.find(c => c.id === s.classId)
-            const totalFee = cls?.totalFee ?? 0; const paid = paymentsByStudent[s.id] || 0
+            const totalFee = cls?.totalFee ?? 0
+            const supplementaryTotal = cls?.feeTypes?.reduce((sum, ft) => sum + (ft.amount ?? ft.feeTypeAmount), 0) ?? 0
+            const paid = paymentsByStudent[s.id] || 0
             const discountAmt = s.discountType === "percentage" ? totalFee * s.discountValue / 100
                               : s.discountType === "fixed" ? (s.discountValue ?? 0) : 0
-            const netFee = Math.max(0, totalFee - discountAmt)
+            const netFee = Math.max(0, totalFee + supplementaryTotal - discountAmt)
             const remaining = Math.max(0, netFee - paid)
             const sp = payments.filter(p => p.studentId === s.id)
             return (
