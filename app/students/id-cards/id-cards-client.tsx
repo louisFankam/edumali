@@ -18,6 +18,8 @@ import { useStudents } from "@/hooks/use-students"
 import { useSchoolInfo } from "@/hooks/use-school-info"
 import { useAcademicYears } from "@/hooks/use-settings"
 import { cn } from "@/lib/utils"
+import { buildIdCardHTML, idCardStyles } from "@/lib/id-card/template"
+import { IdCard } from "@/components/id-card"
 
 function getInitials(firstName: string, lastName: string) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase()
@@ -147,44 +149,7 @@ export function IdCardsClient() {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-        .id-card {
-          width: 85mm;
-          border: 1mm solid #111;
-          border-radius: 2mm;
-          background: white;
-          font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-        .id-card-country-bar {
-          display: flex; align-items: center; justify-content: center;
-          padding: 1.5mm 2mm 1mm; position: relative;
-        }
-        .id-card-flag {
-          position: absolute; left: 2mm; top: 1.5mm;
-          display: flex; flex-direction: row; width: 15mm; height: 10mm;
-          border: 0.3mm solid #333;
-        }
-        .id-card-flag-green { flex: 1; background: #14b53a; }
-        .id-card-flag-yellow { flex: 1; background: #fcd116; }
-        .id-card-flag-red { flex: 1; background: #ce1126; }
-        .id-card-country { font-size: 11pt; font-weight: 800; letter-spacing: 0.5px; color: #000; }
-        .id-card-devise { font-size: 7.5pt; color: #555; font-style: italic; text-align: center; padding-bottom: 0.5mm; }
-        .id-card-title-bar { background: #b3e5fc; text-align: center; padding: 1.5mm 2mm; position: relative; }
-        .id-card-title { font-size: 11pt; font-weight: 800; color: #c62828; text-transform: uppercase; letter-spacing: 0.3px; }
-        .id-card-year { position: absolute; right: 2mm; top: 50%; transform: translateY(-50%); font-size: 9pt; font-weight: 700; color: #c62828; }
-        .id-card-school-bar { text-align: center; padding: 1.5mm 2mm; border-bottom: 0.5mm solid #111; }
-        .id-card-school-name { font-size: 9pt; font-weight: 700; color: #1f2937; }
-        .id-card-body { display: flex; flex: 1; padding: 2.5mm; gap: 2mm; }
-        .id-card-info { flex: 1; display: flex; flex-direction: column; gap: 0.8mm; justify-content: center; }
-        .id-card-row { display: flex; font-size: 8.5pt; line-height: 1.4; }
-        .id-card-label { font-weight: 700; color: #1e40af; white-space: nowrap; margin-right: 2px; min-width: 24mm; }
-        .id-card-value { color: #000; font-weight: 500; word-break: break-word; }
-        .id-card-director { margin-top: 1mm; font-size: 7.5pt; font-weight: 600; color: #1e40af; }
-        .id-card-photo-wrapper { flex-shrink: 0; display: flex; align-items: center; }
-        .id-card-photo { width: 24mm; height: 32mm; object-fit: cover; border: 0.3mm solid #999; background: #f5f5f5; }
-        .id-card-photo-placeholder { width: 24mm; height: 32mm; border: 0.3mm dashed #999; background: #f5f5f5; }
+        ${idCardStyles}
       `
 
       printWin.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Carte d'identité - ${student.firstName} ${student.lastName}</title><style>${styles}</style></head><body>${cardHtml}</body></html>`)
@@ -219,6 +184,11 @@ export function IdCardsClient() {
             .print-page { page-break-after: always; }
             .print-page:last-child { page-break-after: avoid; }
           }
+          .id-card {
+            height: 65mm;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
           .id-cards-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -226,154 +196,10 @@ export function IdCardsClient() {
             padding: 2mm;
           }
           .print-page { padding: 3mm 0; }
-
-          .id-card {
-            border: 1mm solid #111;
-            border-radius: 2mm;
-            background: white;
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            height: 68mm;
-            display: flex;
-            flex-direction: column;
-            page-break-inside: avoid;
-            break-inside: avoid;
-            overflow: hidden;
-          }
-
-          /* En-tête pays */
-          .id-card-country-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5mm 2mm 1mm;
-            position: relative;
-          }
-          .id-card-flag {
-            position: absolute;
-            left: 2mm;
-            top: 1.5mm;
-            display: flex;
-            flex-direction: row;
-            width: 15mm;
-            height: 10mm;
-            border: 0.3mm solid #333;
-          }
-          .id-card-flag-green { flex: 1; background: #14b53a; }
-          .id-card-flag-yellow { flex: 1; background: #fcd116; }
-          .id-card-flag-red { flex: 1; background: #ce1126; }
-          .id-card-country {
-            font-size: 11pt;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            color: #000;
-          }
-          .id-card-devise {
-            font-size: 7.5pt;
-            color: #555;
-            font-style: italic;
-            text-align: center;
-            padding-bottom: 0.5mm;
-          }
-
-          /* Bannière titre */
-          .id-card-title-bar {
-            background: #b3e5fc;
-            text-align: center;
-            padding: 1.5mm 2mm;
-            position: relative;
-          }
-          .id-card-title {
-            font-size: 11pt;
-            font-weight: 800;
-            color: #c62828;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-          }
-          .id-card-year {
-            position: absolute;
-            right: 2mm;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 9pt;
-            font-weight: 700;
-            color: #c62828;
-          }
-
-          /* Bloc CAP */
-          .id-card-school-bar {
-            text-align: center;
-            padding: 1.5mm 2mm;
-            border-bottom: 0.5mm solid #111;
-          }
-          .id-card-school-name {
-            font-size: 9pt;
-            font-weight: 700;
-            color: #1f2937;
-          }
-
-          /* Corps */
-          .id-card-body {
-            display: flex;
-            flex: 1;
-            padding: 2.5mm;
-            gap: 2mm;
-          }
-
-          /* Colonne infos */
-          .id-card-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8mm;
-            justify-content: center;
-          }
-          .id-card-row {
-            display: flex;
-            font-size: 8.5pt;
-            line-height: 1.4;
-          }
-          .id-card-label {
-            font-weight: 700;
-            color: #1e40af;
-            white-space: nowrap;
-            margin-right: 2px;
-            min-width: 24mm;
-          }
-          .id-card-value {
-            color: #000;
-            font-weight: 500;
-            word-break: break-word;
-          }
-          .id-card-director {
-            margin-top: 1mm;
-            font-size: 7.5pt;
-            font-weight: 600;
-            color: #1e40af;
-          }
-
-          /* Photo */
-          .id-card-photo-wrapper {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-          }
-          .id-card-photo {
-            width: 24mm;
-            height: 32mm;
-            object-fit: cover;
-            border: 0.3mm solid #999;
-            background: #f5f5f5;
-          }
-          .id-card-photo-placeholder {
-            width: 24mm;
-            height: 32mm;
-            border: 0.3mm dashed #999;
-            background: #f5f5f5;
-          }
-
           @media screen {
             .id-cards-grid { max-width: 210mm; margin: 0 auto; }
           }
+          ${idCardStyles}
         `}</style>
 
         <div className="no-print flex items-center justify-between p-4 border-b bg-white sticky top-0 z-50">
@@ -412,84 +238,6 @@ export function IdCardsClient() {
         </div>
       </>
   )
-}
-
-function buildIdCardHTML(
-  student: {
-    id: string
-    firstName: string
-    lastName: string
-    gender: string
-    birthDate: string
-    parentName: string
-    parentPhone: string
-    address?: string
-  },
-  schoolInfo: { name: string; director: string } | null,
-  photo: string,
-  selectedClassName: string,
-  currentYearName: string,
-  capName: string,
-): string {
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "-"
-    const d = new Date(dateStr)
-    const dd = String(d.getDate()).padStart(2, "0")
-    const mm = String(d.getMonth() + 1).padStart(2, "0")
-    const yyyy = d.getFullYear()
-    return `${dd}/${mm}/${yyyy}`
-  }
-
-  const photoHtml = photo
-    ? `<img src="${photo}" alt="${student.firstName} ${student.lastName}" class="id-card-photo" />`
-    : `<div class="id-card-photo-placeholder"></div>`
-
-  return `
-    <div class="id-card">
-      <div class="id-card-country-bar">
-        <span class="id-card-flag">
-          <span class="id-card-flag-green"></span>
-          <span class="id-card-flag-yellow"></span>
-          <span class="id-card-flag-red"></span>
-        </span>
-        <div class="id-card-country">RÉPUBLIQUE DU MALI</div>
-      </div>
-      <div class="id-card-devise">Un Peuple – Un But – Une Foi</div>
-      <div class="id-card-title-bar">
-        <span class="id-card-title">CARTE D'IDENTITÉ SCOLAIRE</span>
-        <span class="id-card-year">${currentYearName || ""}</span>
-      </div>
-      <div class="id-card-school-bar">
-        <div class="id-card-school-name">CAP : ${capName || schoolInfo?.name || "Établissement"}</div>
-      </div>
-      <div class="id-card-body">
-        <div class="id-card-info">
-          <div class="id-card-row">
-            <span class="id-card-label">Nom :</span>
-            <span class="id-card-value">${student.lastName}</span>
-          </div>
-          <div class="id-card-row">
-            <span class="id-card-label">Prénoms :</span>
-            <span class="id-card-value">${student.firstName}</span>
-          </div>
-          <div class="id-card-row">
-            <span class="id-card-label">Né(e) le :</span>
-            <span class="id-card-value">${formatDate(student.birthDate)}</span>
-          </div>
-          <div class="id-card-row">
-            <span class="id-card-label">Classe :</span>
-            <span class="id-card-value">${selectedClassName}</span>
-          </div>
-          <div class="id-card-row">
-            <span class="id-card-label">Domicile :</span>
-            <span class="id-card-value">${student.address || "—"}</span>
-          </div>
-          <div class="id-card-director">Le Directeur<br/>${schoolInfo?.director || ""}</div>
-        </div>
-        <div class="id-card-photo-wrapper">${photoHtml}</div>
-      </div>
-    </div>
-  `
 }
 
   return (
@@ -595,7 +343,6 @@ function buildIdCardHTML(
             )}
             <Button
               onClick={() => setShowPrintView(true)}
-              disabled={!allHavePhotos}
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Printer className="h-4 w-4 mr-2" />
@@ -708,98 +455,4 @@ function buildIdCardHTML(
   )
 }
 
-function IdCard({
-  student,
-  schoolInfo,
-  photo,
-  selectedClassName,
-  currentYearName,
-  capName,
-}: {
-  student: {
-    id: string
-    firstName: string
-    lastName: string
-    gender: string
-    birthDate: string
-    parentName: string
-    parentPhone: string
-    address?: string
-  }
-  schoolInfo: { name: string; director: string } | null
-  photo: string
-  selectedClassName: string
-  currentYearName: string
-  capName: string
-}) {
-  return (
-    <div className="id-card">
-      {/* En-tête pays */}
-      <div className="id-card-country-bar">
-        <span className="id-card-flag">
-          <span className="id-card-flag-green" />
-          <span className="id-card-flag-yellow" />
-          <span className="id-card-flag-red" />
-        </span>
-        <div className="id-card-country">RÉPUBLIQUE DU MALI</div>
-      </div>
-      <div className="id-card-devise">Un Peuple – Un But – Une Foi</div>
 
-      {/* Bannière titre */}
-      <div className="id-card-title-bar">
-        <span className="id-card-title">CARTE D&apos;IDENTITÉ SCOLAIRE</span>
-        <span className="id-card-year">{currentYearName || ""}</span>
-      </div>
-
-      {/* Nom du CAP */}
-      <div className="id-card-school-bar">
-        <div className="id-card-school-name">
-          CAP : {capName || schoolInfo?.name || "Établissement"}
-        </div>
-      </div>
-
-      {/* Corps */}
-      <div className="id-card-body">
-        <div className="id-card-info">
-          <div className="id-card-row">
-            <span className="id-card-label">Nom :</span>
-            <span className="id-card-value">{student.lastName}</span>
-          </div>
-          <div className="id-card-row">
-            <span className="id-card-label">Prénoms :</span>
-            <span className="id-card-value">{student.firstName}</span>
-          </div>
-          <div className="id-card-row">
-            <span className="id-card-label">Né(e) le :</span>
-            <span className="id-card-value">
-              {formatDateDDMMYYYY(student.birthDate)}
-            </span>
-          </div>
-          <div className="id-card-row">
-            <span className="id-card-label">Classe :</span>
-            <span className="id-card-value">{selectedClassName}</span>
-          </div>
-          <div className="id-card-row">
-            <span className="id-card-label">Domicile :</span>
-            <span className="id-card-value">{student.address || "—"}</span>
-          </div>
-          <div className="id-card-director">
-            Le Directeur<br/>
-            {schoolInfo?.director || ""}
-          </div>
-        </div>
-        <div className="id-card-photo-wrapper">
-          {photo ? (
-            <img
-              src={photo}
-              alt={`${student.firstName} ${student.lastName}`}
-              className="id-card-photo"
-            />
-          ) : (
-            <div className="id-card-photo-placeholder" />
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
