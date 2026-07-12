@@ -2,9 +2,14 @@
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["better-sqlite3", "xlsx"],
   webpack: (config) => {
     config.stats = "errors-warnings"
+    if (config.optimization?.minimizer) {
+      config.optimization.minimizer = config.optimization.minimizer.filter(
+        (plugin) => plugin.constructor.name !== "TerserPlugin"
+      )
+    }
     return config
   },
   images: { unoptimized: true },
