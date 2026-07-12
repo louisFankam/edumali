@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { escHtml, fmt } from "@/lib/reports/helpers"
-import { buildBulletinHTML, buildBulletinDocument, bulletinStyles, previewStyles } from "@/lib/reports/bulletin"
+import { buildBulletinHTML, buildBulletinDocument, bulletinStyles, previewStyles, buildAnnualBulletinHTML, annualBulletinStyles, annualPreviewStyles } from "@/lib/reports/bulletin"
 import { buildClassReportHTML } from "@/lib/reports/class-report"
 import { buildAttendanceHTML } from "@/lib/reports/attendance"
 import { buildCertificateHTML } from "@/lib/reports/certificate"
@@ -115,7 +115,7 @@ describe("bulletins", () => {
     const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
     expect(html).toContain("REPUBLIQUE DU MALI")
     expect(html).toContain("Un Peuple")
-    expect(html).toContain("BULLETIN SCOLAIRE")
+    expect(html).toContain("BULLETIN DE NOTES DE LA 1ÈME PERIODE")
   })
 
   it("inclut les infos école", () => {
@@ -127,8 +127,8 @@ describe("bulletins", () => {
 
   it("inclut les signatures parent et directeur", () => {
     const html = buildBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", 1, "")
-    expect(html).toContain("Parent")
-    expect(html).toContain("Le Directeur")
+    expect(html).toContain("PARENTS")
+    expect(html).toContain("DIRECTEUR")
     expect(html).toContain("M. le Directeur")
   })
 
@@ -242,6 +242,66 @@ describe("buildBulletinDocument", () => {
   })
 })
 
+describe("bulletins annuels", () => {
+  const baseStudent = {
+    lastName: "Diallo",
+    firstName: "Amadou",
+    subjects: [
+      {
+        subjectName: "Mathématiques",
+        coefficient: 4,
+        trimesterAverages: { 1: 14.5, 2: 13, 3: 15 },
+        annualAverage: 14.17,
+        points: 56.68,
+      },
+      {
+        subjectName: "Français",
+        coefficient: 3,
+        trimesterAverages: { 1: 12, 2: 11.5, 3: 13 },
+        annualAverage: 12.17,
+        points: 36.51,
+      },
+    ],
+    annualGeneralAverage: 13.29,
+    annualRank: 5,
+    totalStudents: 30,
+    totalPoints: 93.19,
+    totalCoeffs: 7,
+    admis: true,
+  }
+
+  it("génère le HTML du bulletin annuel avec le tableau récapitulatif", () => {
+    const html = buildAnnualBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", [1, 2, 3], "")
+    expect(html).toContain("BULLETIN ANNUEL")
+    expect(html).toContain("RÉCAPITULATIF")
+    expect(html).toContain("13,29")
+    expect(html).toContain("93,19")
+    expect(html).toContain("5/30")
+    expect(html).toContain("ADMIS")
+  })
+
+  it("affiche le tableau récapitulatif après le tableau des notes", () => {
+    const html = buildAnnualBulletinHTML(baseStudent, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", [1, 2, 3], "")
+    const notesIndex = html.indexOf('class="notes"')
+    const recapIndex = html.indexOf('class="recap"')
+    expect(recapIndex).toBeGreaterThan(notesIndex)
+  })
+
+  it("affiche ÉCHOUÉ en rouge si non admis", () => {
+    const student = { ...baseStudent, admis: false, annualGeneralAverage: 9.5 }
+    const html = buildAnnualBulletinHTML(student, "École Test", "Bamako", "70123456", "M. le Directeur", "2024-2025", "6e A", [1, 2, 3], "")
+    expect(html).toContain("ÉCHOUÉ")
+    expect(html).toContain("#dc2626")
+  })
+
+  it("inclut le style recap dans annualBulletinStyles", () => {
+    expect(annualBulletinStyles).toContain("table.recap")
+  })
+
+  it("inclut le style recap dans annualPreviewStyles", () => {
+    expect(annualPreviewStyles).toContain("table.recap")
+  })
+})
 describe("bulletinStyles et previewStyles", () => {
   it("bulletinStyles définit Times New Roman et bordures noires", () => {
     expect(bulletinStyles).toContain("Times New Roman")
@@ -249,8 +309,8 @@ describe("bulletinStyles et previewStyles", () => {
     expect(bulletinStyles).toContain("A4 landscape")
   })
 
-  it("previewStyles est préfixé par .preview-bulletin", () => {
-    expect(previewStyles).toContain(".preview-bulletin")
+  it("previewStyles utilise la classe .bulletin comme bulletinStyles", () => {
+    expect(previewStyles).toContain(".bulletin")
     expect(previewStyles).toContain("Times New Roman")
     expect(previewStyles).toContain("border: 1px solid #000")
   })

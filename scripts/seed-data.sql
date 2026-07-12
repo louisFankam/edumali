@@ -29,6 +29,7 @@ DELETE FROM students WHERE id NOT IN (SELECT id FROM students LIMIT 1);
 DELETE FROM subjects WHERE id > 1;
 DELETE FROM teachers WHERE id > 1;
 DELETE FROM fee_types;
+DELETE FROM school_info;
 
 -- =============================================================================
 -- 1. ANNÉE SCOLAIRE
@@ -57,7 +58,13 @@ VALUES
   ('9ème Année', 9, 35, 100000, '#6366f1', 'active');
 
 -- =============================================================================
--- 3. MATIÈRES
+-- 3. INFORMATIONS ÉCOLE
+-- =============================================================================
+INSERT OR IGNORE INTO school_info (name, address, phone, email, website, director, founded_year, logo_url)
+VALUES ('École de Démonstration EduMali', 'Bamako, Mali', '+223 70 12 34 56', 'contact@edumali.edu.ml', 'https://edumali.edu.ml', 'M. le Directeur', 2010, 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzE5NzRiMiIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0id2hpdGUiIGZvbnQtc2l6ZT0iMzIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmb250LWZhbWlseT0ic2VyaWYiPkVNPC90ZXh0Pjwvc3ZnPg==');
+
+-- =============================================================================
+-- 4. MATIÈRES
 -- =============================================================================
 INSERT OR IGNORE INTO subjects (name, code, coefficient, hours_per_week, color, status)
 VALUES
@@ -70,7 +77,11 @@ VALUES
   ('Sciences de la Vie et de la Terre', 'SVT', 3, 4, '#10b981', 'Actif'),
   ('Éducation Civique et Morale', 'ECM', 1, 1, '#ec4899', 'Actif'),
   ('Éducation Physique et Sportive', 'EPS', 1, 2, '#f97316', 'Actif'),
-  ('Arts Plastiques', 'ARTS', 1, 1, '#ef4444', 'Actif');
+  ('Arts Plastiques', 'ARTS', 1, 1, '#ef4444', 'Actif'),
+  ('Technologies de l''Information', 'TIC', 2, 2, '#6366f1', 'Actif'),
+  ('Allemand', 'ALLEMAND', 2, 2, '#8b5cf6', 'Actif'),
+  ('Technologie', 'TECHNO', 2, 2, '#0ea5e9', 'Actif'),
+  ('Arabe', 'ARABE', 2, 2, '#d946ef', 'Actif');
 
 -- =============================================================================
 -- 4. ENSEIGNANTS (15)
@@ -132,6 +143,14 @@ INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
 SELECT 15, id FROM subjects WHERE code = 'EPS';                                 -- Lassana (EPS)
 INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
 SELECT 16, id FROM subjects WHERE code = 'ARTS';                                -- Hawa (Arts)
+INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
+SELECT 11, id FROM subjects WHERE code = 'TIC';                                -- Adama (TIC)
+INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
+SELECT 13, id FROM subjects WHERE code = 'ALLEMAND';                           -- Oumar (Allemand)
+INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
+SELECT 14, id FROM subjects WHERE code = 'TECHNO';                            -- Assitan (Technologie)
+INSERT OR IGNORE INTO teacher_subjects (teacher_id, subject_id)
+SELECT 12, id FROM subjects WHERE code = 'ARABE';                             -- Kadiatou (Arabe)
 
 -- =============================================================================
 -- 6. CLASS_SUBJECTS (chaque classe a des matières avec coefficients)
@@ -205,13 +224,13 @@ SELECT c.id, s.id,
 FROM classes c CROSS JOIN subjects s
 WHERE c.name = '8ème Année' AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS');
 
--- 9ème Année : 9 matières, coeff total = 24 (FRAN→5, MATH→5, SVT→3, PHCH→3)
+-- 9ème Année : 13 matières, coeff total = 32 (FRAN→5, MATH→5, SVT→3, PHCH→3)
 INSERT OR IGNORE INTO class_subjects (class_id, subject_id, teacher_id, coefficient)
 SELECT c.id, s.id,
-  CASE s.code WHEN 'FRAN' THEN 12 WHEN 'MATH' THEN 11 WHEN 'ANGL' THEN 13 WHEN 'PHCH' THEN 14 WHEN 'SVT' THEN 14 WHEN 'HG' THEN 10 WHEN 'ECM' THEN 10 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 ELSE NULL END,
-  CASE s.code WHEN 'FRAN' THEN 5 WHEN 'MATH' THEN 5 WHEN 'ANGL' THEN 3 WHEN 'PHCH' THEN 3 WHEN 'SVT' THEN 3 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 ELSE 1 END
+  CASE s.code WHEN 'FRAN' THEN 12 WHEN 'MATH' THEN 11 WHEN 'ANGL' THEN 13 WHEN 'PHCH' THEN 14 WHEN 'SVT' THEN 14 WHEN 'HG' THEN 10 WHEN 'ECM' THEN 10 WHEN 'EPS' THEN 15 WHEN 'ARTS' THEN 16 WHEN 'TIC' THEN 11 WHEN 'ALLEMAND' THEN 13 WHEN 'TECHNO' THEN 14 WHEN 'ARABE' THEN 12 ELSE NULL END,
+  CASE s.code WHEN 'FRAN' THEN 5 WHEN 'MATH' THEN 5 WHEN 'ANGL' THEN 3 WHEN 'PHCH' THEN 3 WHEN 'SVT' THEN 3 WHEN 'HG' THEN 2 WHEN 'ECM' THEN 1 WHEN 'EPS' THEN 1 WHEN 'ARTS' THEN 1 WHEN 'TIC' THEN 2 WHEN 'ALLEMAND' THEN 2 WHEN 'TECHNO' THEN 2 WHEN 'ARABE' THEN 2 ELSE 1 END
 FROM classes c CROSS JOIN subjects s
-WHERE c.name = '9ème Année' AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS');
+WHERE c.name = '9ème Année' AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS','TIC','ALLEMAND','TECHNO','ARABE');
 
 -- =============================================================================
 -- 7. TYPES DE FRAIS
@@ -585,9 +604,10 @@ WHERE s.status = 'Actif' AND s.id > 1 AND ft.name != 'Scolarité'
 
 -- Garantir que tous les étudiants actifs ont au moins un paiement
 INSERT INTO payments (student_id, amount, method, date, status)
-SELECT s.id, c.total_fee, 'espèces', '2025-10-01', 'payé'
+SELECT s.id, COALESCE(c.total_fee, 75000), 'espèces', COALESCE(e.enrollment_date, '2025-10-01'), 'payé'
 FROM students s
-JOIN classes c ON c.id = s.class_id
+LEFT JOIN classes c ON c.id = s.class_id
+LEFT JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = (SELECT id FROM academic_years WHERE is_current = 1)
 WHERE s.status = 'Actif'
   AND (SELECT COALESCE(SUM(p.amount), 0) FROM payments p WHERE p.student_id = s.id) = 0;
 
@@ -657,6 +677,11 @@ INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, 
 SELECT 'Devoir T1 - ' || s.name, 'devoir', c.id, s.id, 1, ay.id, '2025-11-10', 'published'
 FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
 WHERE c.name IN ('7ème Année','8ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+-- 9ème Année : matières supplémentaires (TIC, ALLEMAND, TECHNO, ARABE)
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T1 - ' || s.name, 'devoir', c.id, s.id, 1, ay.id, '2025-11-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('TIC','ALLEMAND','TECHNO','ARABE') AND ay.is_current = 1;
 
 -- === TRIMESTRIELLE T1 ===
 -- 1ère→3ème
@@ -676,6 +701,111 @@ INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, 
 SELECT 'Trimestre T1 - ' || s.name, 'trimestrielle', c.id, s.id, 1, ay.id, '2025-12-15', 'published'
 FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
 WHERE c.name IN ('7ème Année','8ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+-- 9ème Année : matières supplémentaires
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T1 - ' || s.name, 'trimestrielle', c.id, s.id, 1, ay.id, '2025-12-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('TIC','ALLEMAND','TECHNO','ARABE') AND ay.is_current = 1;
+
+-- =============================================================================
+-- 15b. ÉVALUATIONS - Trimestre 2
+-- =============================================================================
+
+-- === DEVOIR T2, 1ère→3ème ===
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T2 - ' || s.name, 'devoir', c.id, s.id, 2, ay.id, '2026-02-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('1ère Année','2ème Année','3ème Année') AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 4ème→6ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T2 - ' || s.name, 'devoir', c.id, s.id, 2, ay.id, '2026-02-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('4ème Année','5ème Année','6ème Année') AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 7ème→9ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T2 - ' || s.name, 'devoir', c.id, s.id, 2, ay.id, '2026-02-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('7ème Année','8ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+-- 9ème Année : matières supplémentaires
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T2 - ' || s.name, 'devoir', c.id, s.id, 2, ay.id, '2026-02-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('TIC','ALLEMAND','TECHNO','ARABE') AND ay.is_current = 1;
+
+-- === TRIMESTRIELLE T2, 1ère→3ème ===
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T2 - ' || s.name, 'trimestrielle', c.id, s.id, 2, ay.id, '2026-03-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('1ère Année','2ème Année','3ème Année') AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 4ème→6ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T2 - ' || s.name, 'trimestrielle', c.id, s.id, 2, ay.id, '2026-03-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('4ème Année','5ème Année','6ème Année') AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 7ème→9ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T2 - ' || s.name, 'trimestrielle', c.id, s.id, 2, ay.id, '2026-03-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('7ème Année','8ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+-- 9ème Année : matières supplémentaires
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T2 - ' || s.name, 'trimestrielle', c.id, s.id, 2, ay.id, '2026-03-15', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('TIC','ALLEMAND','TECHNO','ARABE') AND ay.is_current = 1;
+
+-- =============================================================================
+-- 15c. ÉVALUATIONS - Trimestre 3 (sauf 8ème Année)
+-- =============================================================================
+
+-- === DEVOIR T3, 1ère→3ème ===
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T3 - ' || s.name, 'devoir', c.id, s.id, 3, ay.id, '2026-04-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('1ère Année','2ème Année','3ème Année') AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 4ème→6ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T3 - ' || s.name, 'devoir', c.id, s.id, 3, ay.id, '2026-04-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('4ème Année','5ème Année','6ème Année') AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 7ème→9ème (sauf 8ème Année)
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T3 - ' || s.name, 'devoir', c.id, s.id, 3, ay.id, '2026-04-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('7ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+-- 9ème Année : matières supplémentaires
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Devoir T3 - ' || s.name, 'devoir', c.id, s.id, 3, ay.id, '2026-04-10', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('TIC','ALLEMAND','TECHNO','ARABE') AND ay.is_current = 1;
+
+-- === TRIMESTRIELLE T3, 1ère→3ème ===
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T3 - ' || s.name, 'trimestrielle', c.id, s.id, 3, ay.id, '2026-06-01', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('1ère Année','2ème Année','3ème Année') AND s.code IN ('FRAN','MATH','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 4ème→6ème
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T3 - ' || s.name, 'trimestrielle', c.id, s.id, 3, ay.id, '2026-06-01', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('4ème Année','5ème Année','6ème Année') AND s.code IN ('FRAN','MATH','ANGL','SDO','HG','ECM','EPS','ARTS') AND ay.is_current = 1;
+
+-- 7ème→9ème (sauf 8ème Année)
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T3 - ' || s.name, 'trimestrielle', c.id, s.id, 3, ay.id, '2026-06-01', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name IN ('7ème Année','9ème Année') AND s.code IN ('FRAN','MATH','ANGL','HG','PHCH','SVT','ECM','EPS','ARTS') AND ay.is_current = 1;
+-- 9ème Année : matières supplémentaires
+INSERT OR IGNORE INTO evaluations (name, type, class_id, subject_id, trimester, academic_year_id, date, status)
+SELECT 'Trimestre T3 - ' || s.name, 'trimestrielle', c.id, s.id, 3, ay.id, '2026-06-01', 'published'
+FROM classes c CROSS JOIN academic_years ay CROSS JOIN subjects s
+WHERE c.name = '9ème Année' AND s.code IN ('TIC','ALLEMAND','TECHNO','ARABE') AND ay.is_current = 1;
 
 -- =============================================================================
 -- 16. NOTES (~2900)
@@ -696,6 +826,48 @@ JOIN students s ON s.class_id = c.id AND s.status = 'Actif' AND s.id > 1
 WHERE NOT EXISTS (
   SELECT 1 FROM grades g WHERE g.evaluation_id = ev.id AND g.student_id = s.id
 );
+
+-- =============================================================================
+-- 16b. NOTES - Trimestre 2
+-- =============================================================================
+INSERT OR IGNORE INTO grades (evaluation_id, student_id, score, is_absent)
+SELECT ev.id, s.id,
+  ROUND(
+    CASE
+      WHEN s.id % 15 = 0 THEN 5 + ABS(RANDOM() % 6)
+      WHEN s.id % 9 = 0 THEN 15 + ABS(RANDOM() % 5)
+      ELSE 8 + ABS(RANDOM() % 10)
+    END, 1
+  ),
+  CASE WHEN s.id % 29 = 0 AND ev.id % 5 = 0 THEN 1 ELSE 0 END
+FROM evaluations ev
+JOIN classes c ON c.id = ev.class_id
+JOIN students s ON s.class_id = c.id AND s.status = 'Actif' AND s.id > 1
+WHERE ev.trimester = 2
+  AND NOT EXISTS (
+    SELECT 1 FROM grades g WHERE g.evaluation_id = ev.id AND g.student_id = s.id
+  );
+
+-- =============================================================================
+-- 16c. NOTES - Trimestre 3 (aucune note pour 8ème Année — pas d'évaluations T3)
+-- =============================================================================
+INSERT OR IGNORE INTO grades (evaluation_id, student_id, score, is_absent)
+SELECT ev.id, s.id,
+  ROUND(
+    CASE
+      WHEN s.id % 15 = 0 THEN 5 + ABS(RANDOM() % 6)
+      WHEN s.id % 9 = 0 THEN 15 + ABS(RANDOM() % 5)
+      ELSE 8 + ABS(RANDOM() % 10)
+    END, 1
+  ),
+  CASE WHEN s.id % 29 = 0 AND ev.id % 5 = 0 THEN 1 ELSE 0 END
+FROM evaluations ev
+JOIN classes c ON c.id = ev.class_id
+JOIN students s ON s.class_id = c.id AND s.status = 'Actif' AND s.id > 1
+WHERE ev.trimester = 3
+  AND NOT EXISTS (
+    SELECT 1 FROM grades g WHERE g.evaluation_id = ev.id AND g.student_id = s.id
+  );
 
 -- =============================================================================
 -- 17. EMPLOI DU TEMPS (30 créneaux)

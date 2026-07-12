@@ -146,6 +146,10 @@ export async function createPayroll(input: {
   return created;
 }
 
+export async function findPayrollById(id: number) {
+  return db.query.payroll.findFirst({ where: eq(payroll.id, id), with: { teacher: true } });
+}
+
 export async function updatePayrollRecord(id: number, data: Partial<typeof payroll.$inferInsert>) {
   await db.update(payroll).set(data).where(eq(payroll.id, id));
 }

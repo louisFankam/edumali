@@ -126,6 +126,75 @@ export function IdCardsClient() {
     [pendingStudentId, editStudent],
   )
 
+  const handlePrintSingle = useCallback(
+    (student: (typeof visibleStudents)[number]) => {
+      const photo = localPhotos[student.id] || student.photo || ""
+      const capName = capByClass[selectedClassId] || ""
+      const printWin = window.open("", "_blank")
+      if (!printWin) return
+
+      const cardHtml = buildIdCardHTML(student, schoolInfo, photo, selectedClassName, currentYear?.name || "", capName)
+      const styles = `
+        @page { margin: 0; size: A4 portrait; }
+        body {
+          margin: 0;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          background: white;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .id-card {
+          width: 85mm;
+          border: 1mm solid #111;
+          border-radius: 2mm;
+          background: white;
+          font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .id-card-country-bar {
+          display: flex; align-items: center; justify-content: center;
+          padding: 1.5mm 2mm 1mm; position: relative;
+        }
+        .id-card-flag {
+          position: absolute; left: 2mm; top: 1.5mm;
+          display: flex; flex-direction: row; width: 15mm; height: 10mm;
+          border: 0.3mm solid #333;
+        }
+        .id-card-flag-green { flex: 1; background: #14b53a; }
+        .id-card-flag-yellow { flex: 1; background: #fcd116; }
+        .id-card-flag-red { flex: 1; background: #ce1126; }
+        .id-card-country { font-size: 11pt; font-weight: 800; letter-spacing: 0.5px; color: #000; }
+        .id-card-devise { font-size: 7.5pt; color: #555; font-style: italic; text-align: center; padding-bottom: 0.5mm; }
+        .id-card-title-bar { background: #b3e5fc; text-align: center; padding: 1.5mm 2mm; position: relative; }
+        .id-card-title { font-size: 11pt; font-weight: 800; color: #c62828; text-transform: uppercase; letter-spacing: 0.3px; }
+        .id-card-year { position: absolute; right: 2mm; top: 50%; transform: translateY(-50%); font-size: 9pt; font-weight: 700; color: #c62828; }
+        .id-card-school-bar { text-align: center; padding: 1.5mm 2mm; border-bottom: 0.5mm solid #111; }
+        .id-card-school-name { font-size: 9pt; font-weight: 700; color: #1f2937; }
+        .id-card-body { display: flex; flex: 1; padding: 2.5mm; gap: 2mm; }
+        .id-card-info { flex: 1; display: flex; flex-direction: column; gap: 0.8mm; justify-content: center; }
+        .id-card-row { display: flex; font-size: 8.5pt; line-height: 1.4; }
+        .id-card-label { font-weight: 700; color: #1e40af; white-space: nowrap; margin-right: 2px; min-width: 24mm; }
+        .id-card-value { color: #000; font-weight: 500; word-break: break-word; }
+        .id-card-director { margin-top: 1mm; font-size: 7.5pt; font-weight: 600; color: #1e40af; }
+        .id-card-photo-wrapper { flex-shrink: 0; display: flex; align-items: center; }
+        .id-card-photo { width: 24mm; height: 32mm; object-fit: cover; border: 0.3mm solid #999; background: #f5f5f5; }
+        .id-card-photo-placeholder { width: 24mm; height: 32mm; border: 0.3mm dashed #999; background: #f5f5f5; }
+      `
+
+      printWin.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Carte d'identité - ${student.firstName} ${student.lastName}</title><style>${styles}</style></head><body>${cardHtml}</body></html>`)
+      printWin.document.close()
+      printWin.focus()
+      setTimeout(() => printWin.print(), 300)
+    },
+    [localPhotos, capByClass, selectedClassId, schoolInfo, selectedClassName, currentYear],
+  )
+
   const handlePrint = () => {
     window.print()
   }
@@ -342,8 +411,86 @@ export function IdCardsClient() {
           ))}
         </div>
       </>
-    )
+  )
+}
+
+function buildIdCardHTML(
+  student: {
+    id: string
+    firstName: string
+    lastName: string
+    gender: string
+    birthDate: string
+    parentName: string
+    parentPhone: string
+    address?: string
+  },
+  schoolInfo: { name: string; director: string } | null,
+  photo: string,
+  selectedClassName: string,
+  currentYearName: string,
+  capName: string,
+): string {
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "-"
+    const d = new Date(dateStr)
+    const dd = String(d.getDate()).padStart(2, "0")
+    const mm = String(d.getMonth() + 1).padStart(2, "0")
+    const yyyy = d.getFullYear()
+    return `${dd}/${mm}/${yyyy}`
   }
+
+  const photoHtml = photo
+    ? `<img src="${photo}" alt="${student.firstName} ${student.lastName}" class="id-card-photo" />`
+    : `<div class="id-card-photo-placeholder"></div>`
+
+  return `
+    <div class="id-card">
+      <div class="id-card-country-bar">
+        <span class="id-card-flag">
+          <span class="id-card-flag-green"></span>
+          <span class="id-card-flag-yellow"></span>
+          <span class="id-card-flag-red"></span>
+        </span>
+        <div class="id-card-country">RÉPUBLIQUE DU MALI</div>
+      </div>
+      <div class="id-card-devise">Un Peuple – Un But – Une Foi</div>
+      <div class="id-card-title-bar">
+        <span class="id-card-title">CARTE D'IDENTITÉ SCOLAIRE</span>
+        <span class="id-card-year">${currentYearName || ""}</span>
+      </div>
+      <div class="id-card-school-bar">
+        <div class="id-card-school-name">CAP : ${capName || schoolInfo?.name || "Établissement"}</div>
+      </div>
+      <div class="id-card-body">
+        <div class="id-card-info">
+          <div class="id-card-row">
+            <span class="id-card-label">Nom :</span>
+            <span class="id-card-value">${student.lastName}</span>
+          </div>
+          <div class="id-card-row">
+            <span class="id-card-label">Prénoms :</span>
+            <span class="id-card-value">${student.firstName}</span>
+          </div>
+          <div class="id-card-row">
+            <span class="id-card-label">Né(e) le :</span>
+            <span class="id-card-value">${formatDate(student.birthDate)}</span>
+          </div>
+          <div class="id-card-row">
+            <span class="id-card-label">Classe :</span>
+            <span class="id-card-value">${selectedClassName}</span>
+          </div>
+          <div class="id-card-row">
+            <span class="id-card-label">Domicile :</span>
+            <span class="id-card-value">${student.address || "—"}</span>
+          </div>
+          <div class="id-card-director">Le Directeur<br/>${schoolInfo?.director || ""}</div>
+        </div>
+        <div class="id-card-photo-wrapper">${photoHtml}</div>
+      </div>
+    </div>
+  `
+}
 
   return (
     <AppLayout>
@@ -524,19 +671,29 @@ export function IdCardsClient() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openFilePicker(student.id)}
-                            disabled={isSaving}
-                          >
-                            {isSaving ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                            ) : (
-                              <ImageIcon className="h-4 w-4 mr-1" />
-                            )}
-                            {photoUrl ? "Changer" : "Choisir"}
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openFilePicker(student.id)}
+                              disabled={isSaving}
+                            >
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <ImageIcon className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePrintSingle(student)}
+                              disabled={!photoUrl}
+                              title="Imprimer la carte"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

@@ -166,28 +166,28 @@ export default function ExamensPage() {
     let rows = exams.map(e => {
       const subj = subjectMap.get(Number(e.subjectId))
       return `<tr>
-        <td style="border:1px solid #000;padding:2mm;text-align:center;font-size:9pt">${subj?.name || "—"}</td>
-        <td style="border:1px solid #000;padding:2mm;text-align:center;font-size:9pt">${e.date || "—"}</td>
-        <td style="border:1px solid #000;padding:2mm;text-align:center;font-size:9pt">${e.startTime?.slice(0, 5)} – ${e.endTime?.slice(0, 5)}</td>
-        <td style="border:1px solid #000;padding:2mm;text-align:center;font-size:9pt">${e.room || "—"}</td>
+        <td style="border:1px solid #000;padding:4mm 6mm;text-align:center;font-size:10pt">${subj?.name || "—"}</td>
+        <td style="border:1px solid #000;padding:4mm 6mm;text-align:center;font-size:10pt">${e.date || "—"}</td>
+        <td style="border:1px solid #000;padding:4mm 6mm;text-align:center;font-size:10pt">${e.startTime?.slice(0, 5)} – ${e.endTime?.slice(0, 5)}</td>
+        <td style="border:1px solid #000;padding:4mm 6mm;text-align:center;font-size:10pt">${e.room || "—"}</td>
       </tr>`
     }).join("")
 
     return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${schoolName}</title>
     <style>
       @page { size: A4 landscape; margin: 0; }
-      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 5mm; display: flex; flex-direction: column; align-items: center; }
-      .header { text-align: center; margin-bottom: 5mm; width: 100%; }
+      body { font-family: 'Times New Roman', Times, serif; color: #000; background: #fff; margin: 0; padding: 8mm; display: flex; flex-direction: column; align-items: center; }
+      .header { text-align: center; margin-bottom: 6mm; width: 100%; }
       .header .logo { text-align: center; margin-bottom: 2mm; }
       .header .logo img { max-height: 18mm; object-fit: contain; }
-      .header .school { font-size: 12pt; font-weight: bold; text-transform: uppercase; }
-      .header .detail { font-size: 9pt; color: #333; }
-      .header .title { font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 3mm 0; }
-      .header .subtitle { font-size: 10pt; margin-bottom: 3mm; }
-      table { width: auto; border-collapse: collapse; margin: 0 auto; }
-      th { border: 1px solid #000; padding: 2mm; font-size: 10pt; background: #f0f0f0; white-space: nowrap; }
-      td { border: 1px solid #000; padding: 2mm; font-size: 9pt; white-space: nowrap; }
-      .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; width: 100%; }
+      .header .school { font-size: 13pt; font-weight: bold; text-transform: uppercase; }
+      .header .detail { font-size: 10pt; color: #333; }
+      .header .title { font-size: 15pt; font-weight: bold; text-decoration: underline; margin: 4mm 0; }
+      .header .subtitle { font-size: 11pt; margin-bottom: 4mm; }
+      table { width: auto; min-width: 65%; border-collapse: collapse; margin: 0 auto; }
+      th { border: 1px solid #000; padding: 4mm 6mm; font-size: 11pt; background: #f0f0f0; }
+      td { border: 1px solid #000; padding: 4mm 6mm; font-size: 10pt; }
+      .footer { margin-top: 8mm; display: flex; justify-content: space-between; font-size: 10pt; width: 100%; }
     </style></head><body>
       <div class="header">
         ${logo ? `<div class="logo"><img src="${logo}" alt="Logo" /></div>` : ""}

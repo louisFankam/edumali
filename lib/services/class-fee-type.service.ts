@@ -4,6 +4,7 @@ import {
   setClassFeeTypes,
 } from "@/lib/repositories/class-fee-type.repository";
 import { logAudit } from "@/lib/services/audit.service";
+import { validateAmount } from "./amount.validation";
 
 export interface ClassFeeTypeData {
   id: string;
@@ -40,6 +41,11 @@ export async function saveClassFeeTypes(
   items: { feeTypeId: string; amount: number | null }[],
   userId?: number
 ) {
+  for (const item of items) {
+    if (item.amount !== null) {
+      validateAmount(item.amount, `Montant du frais supplémentaire (feeTypeId: ${item.feeTypeId})`);
+    }
+  }
   const parsed = items.map(item => ({
     feeTypeId: Number(item.feeTypeId),
     amount: item.amount,

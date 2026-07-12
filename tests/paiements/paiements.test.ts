@@ -392,13 +392,13 @@ describe("Paiements Page - Tests d'intégration", () => {
       const before = await getPayments({ studentId: studentId1 });
       const p = before.data[0];
 
-      await editPayment(p.id, { amount: 40000, method: "virement", feeTypeId: Number(feeType.id) });
+      await editPayment(p.id, { amount: 10000, method: "virement", feeTypeId: Number(feeType.id) });
 
       const after = await getPayments({ studentId: studentId1 });
       const updated = after.data.find(r => r.id === p.id);
-      expect(updated?.amount).toBe(40000);
+      expect(updated?.amount).toBe(10000);
       expect(updated?.method).toBe("virement");
-      expect(updated?.feeTypeName).toBeTruthy();
+      expect(updated?.feeTypeName).toBe("Scolarité");
     });
   });
 

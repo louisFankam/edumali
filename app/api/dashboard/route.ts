@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split("T")[0];
 
     const dateFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
-    const yearFilter = from && to ? sql`AND a.date >= ${from} AND a.date <= ${to}` : sql``;
     const evalFilter = from && to ? sql`AND e.date >= ${from} AND e.date <= ${to}` : sql``;
 
     // Get academic year date range for filtering attendance/payments by date
@@ -79,11 +78,11 @@ export async function GET(req: NextRequest) {
       SELECT
         (SELECT COUNT(*) FROM attendance a WHERE 1=1 ${dateFilter} ${attendanceYearFilter}) as att_total,
         (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE 1=1 ${dateFilter} ${attendanceYearFilter}) as att_present,
-        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as week_total,
-        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as week_present,
-        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as last_week_total,
-        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${yearFilter} ${attendanceYearFilter}) as last_week_present,
-        (SELECT COUNT(*) FROM attendance a WHERE status = 'absent' AND date >= date('now','-7 days') ${yearFilter} ${attendanceYearFilter}) as recent_absences
+        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${attendanceYearFilter}) as week_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-7 days') ${attendanceYearFilter}) as week_present,
+        (SELECT COUNT(*) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${attendanceYearFilter}) as last_week_total,
+        (SELECT SUM(CASE WHEN status IN ('présent','congé') THEN 1 ELSE 0 END) FROM attendance a WHERE date >= date('now','weekday 0','-14 days') AND date < date('now','weekday 0','-7 days') ${attendanceYearFilter}) as last_week_present,
+        (SELECT COUNT(*) FROM attendance a WHERE status = 'absent' AND date >= date('now','-7 days') ${attendanceYearFilter}) as recent_absences
     `) as any;
 
     const absRow = absRows[0];
@@ -124,16 +123,24 @@ export async function GET(req: NextRequest) {
       : 0;
 
     // Outstanding payments — total unpaid amount for enrolled students
+    // Includes supplementary fees (class_fee_types) and discounts
+    const supplementSql = sql`COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0)`
     const [finData] = db.all(sql`
       SELECT
         COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total
       FROM (
-        SELECT c.total_fee - COALESCE(SUM(p.amount), 0) as due
+        SELECT
+          CASE
+            WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
+            WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
+            ELSE c.total_fee
+          END + ${supplementSql}
+          - COALESCE(SUM(p.amount), 0) as due
         FROM students s
-        JOIN classes c ON s.class_id = c.id
+        JOIN enrollments e ON e.student_id = s.id ${academicYearId ? sql`AND e.academic_year_id = ${academicYearId}` : sql``}
+        LEFT JOIN classes c ON c.id = e.class_id
         LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
-        ${enrollmentJoin}
-        WHERE s.status = 'Actif' AND c.total_fee > 0
+        WHERE s.status = 'Actif' ${academicYearId ? sql`AND e.academic_year_id = ${academicYearId}` : sql``}
         GROUP BY s.id
       )
     `) as any;

@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, rawDb } from "@/lib/db";
 import { classFeeTypes } from "@/lib/models/schema";
 
 export async function findClassFeeTypes(classId: number) {
@@ -48,8 +48,12 @@ export async function deleteClassFeeTypesByClass(classId: number) {
 }
 
 export async function setClassFeeTypes(classId: number, items: { feeTypeId: number; amount: number | null }[]) {
-  await deleteClassFeeTypesByClass(classId);
-  if (items.length === 0) return;
-  await db.insert(classFeeTypes)
-    .values(items.map(item => ({ classId, feeTypeId: item.feeTypeId, amount: item.amount })));
+  rawDb.transaction(() => {
+    rawDb.prepare("DELETE FROM class_fee_types WHERE class_id = ?").run(classId);
+    for (const item of items) {
+      rawDb.prepare(
+        "INSERT INTO class_fee_types (class_id, fee_type_id, amount, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+      ).run(classId, item.feeTypeId, item.amount, Date.now(), Date.now());
+    }
+  })();
 }

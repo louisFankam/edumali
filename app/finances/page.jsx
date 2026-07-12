@@ -304,28 +304,28 @@ export default function FinancesPage() {
   }
 
   const exportPaymentsCSV = () => {
-    const h = ["Date", "Élève", "Montant", "Mode", "Type"]
-    const r = filteredPayments.map(p => [p.date, p.studentName || "N/A", p.amount, p.method, p.feeTypeName || "-"])
+    const h = ["Date", "Élève", "Montant", "Mode", "Type"].map(escCSV)
+    const r = filteredPayments.map(p => [p.date, p.studentName || "N/A", p.amount, p.method, p.feeTypeName || "-"].map(escCSV))
     const csv = [h.join(","), ...r.map(r => r.join(","))].join("\n")
-    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const b = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
     const a = document.createElement("a"); a.href = URL.createObjectURL(b)
     a.download = `paiements-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
   }
 
   const exportExpensesCSV = () => {
-    const h = ["Date", "Description", "Catégorie", "Montant", "Notes"]
-    const r = filteredExpenses.map(e => [e.date, e.description, e.categoryLabel, e.amount, e.notes || ""])
+    const h = ["Date", "Description", "Catégorie", "Montant", "Notes"].map(escCSV)
+    const r = filteredExpenses.map(e => [e.date, e.description, e.categoryLabel, e.amount, e.notes || ""].map(escCSV))
     const csv = [h.join(","), ...r.map(r => r.join(","))].join("\n")
-    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const b = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
     const a = document.createElement("a"); a.href = URL.createObjectURL(b)
     a.download = `depenses-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
   }
 
   const exportCashFlowCSV = () => {
-    const h = ["Date", "Description", "Type", "Montant", "Solde"]
-    const r = cashFlow.map(f => [f.date, f.desc, f.type, Math.abs(f.amount), f.balance])
+    const h = ["Date", "Description", "Type", "Montant", "Solde"].map(escCSV)
+    const r = cashFlow.map(f => [f.date, f.desc, f.type, Math.abs(f.amount), f.balance].map(escCSV))
     const csv = [h.join(","), ...r.map(r => r.join(","))].join("\n")
-    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const b = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
     const a = document.createElement("a"); a.href = URL.createObjectURL(b)
     a.download = `flux-tresorerie-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
   }
@@ -346,13 +346,21 @@ export default function FinancesPage() {
       ["Mois", "Revenus", "Dépenses"],
       ...monthlyChartData.map(m => [m.month, m.Revenus, m.Dépenses]),
     ]
-    const csv = rows.map(r => r.join(",")).join("\n")
-    const b = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const csv = rows.map(r => r.map(escCSV).join(",")).join("\n")
+    const b = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
     const a = document.createElement("a"); a.href = URL.createObjectURL(b)
     a.download = `rapport-mensuel-${today}.csv`; a.click(); URL.revokeObjectURL(a.href)
   }
 
-  const fmt = (n) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA"
+  const fmt = (n) => new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + " FCFA"
+
+  const escCSV = (v) => {
+    const s = String(v ?? "")
+    if (s.includes(",") || s.includes('"') || s.includes("\n") || s.startsWith("=") || s.startsWith("+") || s.startsWith("-") || s.startsWith("@")) {
+      return '"' + s.replace(/"/g, '""') + '"'
+    }
+    return s
+  }
 
   const isLoading = studentsLoading || paymentsLoading
 
@@ -619,7 +627,7 @@ export default function FinancesPage() {
                                       <Pencil className="h-4 w-4" />
                                     </Button>
                                   )}
-                                  {!closed && (
+                                  {!e._payroll && !closed && (
                                     <Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { if (confirm("Supprimer cette dépense ?")) { await removeExpense(e.id); refetchDashboard() } }}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>

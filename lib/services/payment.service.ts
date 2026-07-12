@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db, rawDb } from "@/lib/db";
 import {
   findAllFeeTypes, findFeeTypeById, createFeeType, updateFeeType, deleteFeeType,
   findAllPayments, countPayments, findPaymentById, createPayment, updatePayment, deletePayment,
@@ -7,6 +7,7 @@ import {
 } from "@/lib/repositories/payment.repository";
 import { checkPeriodClosed } from "@/lib/services/period.service";
 import { logAudit } from "@/lib/services/audit.service";
+import { validateAmount } from "./amount.validation";
 
 function mapFeeType(f: any) {
   if (!f) return null;
@@ -71,30 +72,58 @@ export async function getPaymentById(id: string) {
 export async function addPayment(input: {
   studentId: number; feeTypeId?: number; amount: number; method: string; reference?: string; date: string; notes?: string;
 }, userId?: number) {
-  const row = db.get(sql`
-    SELECT c.total_fee, s.discount_type, s.discount_value,
-      COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0) as supplementary_fees
-    FROM students s
-    JOIN classes c ON c.id = s.class_id
-    WHERE s.id = ${input.studentId}
-  `) as { total_fee: number; discount_type: string | null; discount_value: number | null; supplementary_fees: number } | undefined;
+  validateAmount(input.amount);
 
-  if (row) {
-    let netFee = row.total_fee + row.supplementary_fees;
-    if (row.discount_type === "percentage") {
-      netFee -= row.total_fee * (row.discount_value ?? 0) / 100;
-    } else if (row.discount_type === "fixed") {
-      netFee -= row.discount_value ?? 0;
-    }
-    const { totalPaid } = await getStudentPaymentSummary(input.studentId);
-    if (totalPaid + input.amount > netFee) {
-      throw new Error(`Le paiement dépasserait le montant dû (${netFee.toLocaleString()} FCFA)`);
-    }
+  if (await checkPeriodClosed(input.date)) {
+    throw new Error("Cette période est clôturée, ajout de paiement impossible");
   }
 
-  const created = await createPayment(input);
+  const createdId = rawDb.transaction(() => {
+    const row = rawDb.prepare(`
+      SELECT c.total_fee, s.discount_type, s.discount_value,
+        COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0) as supplementary_fees
+      FROM students s
+      JOIN classes c ON c.id = s.class_id
+      WHERE s.id = ?
+    `).get(input.studentId) as { total_fee: number; discount_type: string | null; discount_value: number | null; supplementary_fees: number } | undefined;
+
+    if (row) {
+      let netFee = row.total_fee + row.supplementary_fees;
+      if (row.discount_type === "percentage") {
+        netFee -= row.total_fee * (row.discount_value ?? 0) / 100;
+      } else if (row.discount_type === "fixed") {
+        netFee -= row.discount_value ?? 0;
+      }
+      const totalPaid = (rawDb.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total_paid FROM payments WHERE student_id = ? AND status = 'payé'
+      `).get(input.studentId) as { total_paid: number }).total_paid;
+
+      if (totalPaid + input.amount > netFee) {
+        throw new Error(`Le paiement dépasserait le montant dû (${netFee.toLocaleString()} FCFA)`);
+      }
+    }
+
+    const info = rawDb.prepare(`
+      INSERT INTO payments (student_id, fee_type_id, amount, method, reference, date, notes, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'payé', ?, ?)
+    `).run(
+      input.studentId,
+      input.feeTypeId ?? null,
+      input.amount,
+      input.method,
+      input.reference ?? null,
+      input.date,
+      input.notes ?? null,
+      Date.now(),
+      Date.now(),
+    );
+
+    return Number(info.lastInsertRowid);
+  })();
+
+  const created = await findPaymentById(createdId);
   logAudit({
-    tableName: "payments", recordId: created.id,
+    tableName: "payments", recordId: createdId,
     action: "create", userId, newValues: input,
   });
   return mapPayment(created);
@@ -106,6 +135,35 @@ export async function editPayment(id: string, input: Partial<{ amount: number; m
   if (await checkPeriodClosed(existing.date)) {
     throw new Error("Cette période est clôturée, modification impossible");
   }
+
+  if (input.amount !== undefined) {
+    validateAmount(input.amount);
+
+    const row = rawDb.prepare(`
+      SELECT c.total_fee, s.discount_type, s.discount_value,
+        COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0) as supplementary_fees
+      FROM students s
+      JOIN classes c ON c.id = s.class_id
+      WHERE s.id = ?
+    `).get(existing.studentId) as { total_fee: number; discount_type: string | null; discount_value: number | null; supplementary_fees: number } | undefined;
+
+    if (row) {
+      let netFee = row.total_fee + row.supplementary_fees;
+      if (row.discount_type === "percentage") {
+        netFee -= row.total_fee * (row.discount_value ?? 0) / 100;
+      } else if (row.discount_type === "fixed") {
+        netFee -= row.discount_value ?? 0;
+      }
+      const totalPaid = (rawDb.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total_paid FROM payments WHERE student_id = ? AND status = 'payé' AND id != ?
+      `).get(existing.studentId, Number(id)) as { total_paid: number }).total_paid;
+
+      if (totalPaid + input.amount > netFee) {
+        throw new Error(`Le nouveau montant dépasserait le total dû (${netFee.toLocaleString()} FCFA)`);
+      }
+    }
+  }
+
   const updated = await updatePayment(Number(id), input);
   logAudit({
     tableName: "payments", recordId: Number(id),

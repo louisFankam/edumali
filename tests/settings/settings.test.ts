@@ -223,6 +223,43 @@ describe("Settings - Tests d'intégration", () => {
     expect(found).toBeUndefined();
   });
 
+  // ─── Class Fee Types (saveClassFeeTypes) ───
+
+  it("devrait rejeter un montant négatif sur saveClassFeeTypes", async () => {
+    const { addFeeType } = await import("@/lib/services/payment.service");
+    const { saveClassFeeTypes } = await import("@/lib/services/class-fee-type.service");
+
+    const ft = await addFeeType({ name: "Test neg", amount: 5000, period: "annuel" });
+    await expect(saveClassFeeTypes(classId, [
+      { feeTypeId: ft.id, amount: -1000 },
+    ])).rejects.toThrow("doit être un nombre positif");
+  });
+
+  it("devrait rejeter un montant zero sur saveClassFeeTypes", async () => {
+    const { addFeeType } = await import("@/lib/services/payment.service");
+    const { saveClassFeeTypes } = await import("@/lib/services/class-fee-type.service");
+
+    const ft = await addFeeType({ name: "Test zero", amount: 5000, period: "annuel" });
+    await expect(saveClassFeeTypes(classId, [
+      { feeTypeId: ft.id, amount: 0 },
+    ])).rejects.toThrow("doit être un nombre positif");
+  });
+
+  it("devrait accepter un montant null sur saveClassFeeTypes", async () => {
+    const { addFeeType } = await import("@/lib/services/payment.service");
+    const { saveClassFeeTypes, getClassFeeTypes } = await import("@/lib/services/class-fee-type.service");
+
+    const ft = await addFeeType({ name: "Test null", amount: 5000, period: "annuel" });
+    await saveClassFeeTypes(classId, [
+      { feeTypeId: ft.id, amount: null },
+    ]);
+
+    const items = await getClassFeeTypes(classId);
+    const found = items.find((i: any) => i.feeTypeId === ft.id);
+    expect(found).toBeTruthy();
+    expect(found.amount).toBeNull();
+  });
+
   // ─── Academic Years ───
 
   it("devrait lister les années scolaires", async () => {

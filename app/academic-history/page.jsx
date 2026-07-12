@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { DataTable } from "@/components/ui/data-table"
-import { StatsGrid } from "@/components/ui/stats-grid"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AcademicRecordModal } from "@/components/academic-history/academic-record-modal"
 import { BulletinModal } from "@/components/academic-history/bulletin-modal"
@@ -477,7 +476,22 @@ export default function AcademicHistoryPage() {
         </Card>
       ) : (
         <>
-          <StatsGrid stats={stats} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {stats.map((s, i) => {
+              const Icon = s.icon
+              return (
+                <Card key={i}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`${s.iconColor}`}><Icon className="h-6 w-6" /></div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{s.title}</p>
+                      <p className="text-xl font-bold">{s.value}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
 
           <Tabs defaultValue="bulletins" className="space-y-4">
             <TabsList className="grid w-full grid-cols-4">

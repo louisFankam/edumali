@@ -199,3 +199,182 @@ export async function computeClassBulletin(classId: number, trimester: number, a
     studentCount: bulletins.length,
   };
 }
+
+// ─── Bulletin Annuel ───────────────────────────────────────────
+
+export interface AnnualSubjectRow {
+  subjectId: string;
+  subjectName: string;
+  coefficient: number;
+  trimesterAverages: Record<number, number | null>;
+  annualAverage: number | null;
+  points: number | null;
+}
+
+export interface AnnualStudentResult {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  subjects: AnnualSubjectRow[];
+  annualGeneralAverage: number | null;
+  annualRank: number | null;
+  totalStudents: number;
+  totalPoints: number;
+  totalCoeffs: number;
+  admis: boolean;
+}
+
+export interface AnnualBulletinData {
+  className: string;
+  academicYearId: number;
+  trimesters: number[];
+  students: AnnualStudentResult[];
+  subjectCount: number;
+  studentCount: number;
+}
+
+export async function computeAnnualBulletin(
+  classId: number,
+  academicYearId: number,
+  trimesters: number[],
+): Promise<AnnualBulletinData> {
+  if (!trimesters.includes(1) || !trimesters.includes(2)) {
+    throw new Error("Le bulletin annuel nécessite au moins les trimestres 1 et 2");
+  }
+
+  const classRow = await db.select().from(classes).where(eq(classes.id, classId)).limit(1);
+  if (!classRow[0]) throw new Error("Classe introuvable");
+
+  const subjectRows = await db.select().from(subjects);
+  const subjectMap = new Map(subjectRows.map(s => [s.id, s]));
+
+  const classSubjectRows = await db.select().from(classSubjects)
+    .where(and(eq(classSubjects.classId, classId)));
+  const classSubjCoeff = new Map(classSubjectRows.map(cs => [cs.subjectId, cs.coefficient]));
+  const subjectIds = classSubjectRows.map(cs => cs.subjectId);
+
+  const studentRows = await db.select({
+    id: students.id, firstName: students.firstName, lastName: students.lastName,
+  }).from(students)
+    .innerJoin(enrollments, and(
+      eq(enrollments.studentId, students.id),
+      eq(enrollments.classId, classId),
+      eq(enrollments.academicYearId, academicYearId),
+      eq(enrollments.status, "inscrit"),
+    ))
+    .orderBy(students.lastName, students.firstName);
+
+  const trimesterBulletins: StudentBulletin[][] = [];
+  for (const t of trimesters) {
+    try {
+      const bulletin = await computeClassBulletin(classId, t, academicYearId, false);
+      trimesterBulletins.push(bulletin.students);
+    } catch {
+      trimesterBulletins.push([]);
+    }
+  }
+
+  const studentMap = new Map<string, Map<number, Map<string, SubjectBulletin>>>();
+  for (let i = 0; i < trimesters.length; i++) {
+    const t = trimesters[i];
+    for (const student of trimesterBulletins[i]) {
+      if (!studentMap.has(student.studentId)) {
+        studentMap.set(student.studentId, new Map());
+      }
+      const trimesterMap = studentMap.get(student.studentId)!;
+      if (!trimesterMap.has(t)) {
+        trimesterMap.set(t, new Map());
+      }
+      const subjMap = trimesterMap.get(t)!;
+      for (const subj of student.subjects) {
+        subjMap.set(subj.subjectId, subj);
+      }
+    }
+  }
+
+  const results: AnnualStudentResult[] = [];
+
+  for (const student of studentRows) {
+    const sid = String(student.id);
+    const trimesterData = studentMap.get(sid);
+    if (!trimesterData) continue;
+
+    const subjects: AnnualSubjectRow[] = [];
+    let totalPoints = 0;
+    let totalCoeffs = 0;
+
+    for (const subjId of subjectIds) {
+      const subj = subjectMap.get(subjId);
+      if (!subj) continue;
+      const coeff = classSubjCoeff.get(subjId) ?? subj.coefficient ?? 1;
+
+      const trimesterAverages: Record<number, number | null> = {};
+      let sumAvgs = 0;
+      let countAvgs = 0;
+
+      for (const t of trimesters) {
+        const subjData = trimesterData.get(t)?.get(String(subjId));
+        const avg = subjData?.finalAverage ?? null;
+        trimesterAverages[t] = avg;
+        if (avg !== null && !subjData?.absent) {
+          sumAvgs += avg;
+          countAvgs++;
+        }
+      }
+
+      const annualAverage = countAvgs > 0
+        ? Math.round((sumAvgs / countAvgs) * 100) / 100
+        : null;
+
+      const points = annualAverage !== null
+        ? Math.round(annualAverage * coeff * 100) / 100
+        : null;
+
+      if (points !== null) {
+        totalPoints += points;
+        totalCoeffs += coeff;
+      }
+
+      subjects.push({
+        subjectId: String(subjId),
+        subjectName: subj.name,
+        coefficient: coeff,
+        trimesterAverages,
+        annualAverage,
+        points,
+      });
+    }
+
+    const annualGeneralAverage = totalCoeffs > 0
+      ? Math.round((totalPoints / totalCoeffs) * 100) / 100
+      : null;
+
+    const admis = annualGeneralAverage !== null && annualGeneralAverage >= 10;
+
+    results.push({
+      studentId: sid,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      subjects,
+      annualGeneralAverage,
+      annualRank: null,
+      totalStudents: 0,
+      totalPoints: Math.round(totalPoints * 100) / 100,
+      totalCoeffs,
+      admis,
+    });
+  }
+
+  const ranked = results.filter(r => r.annualGeneralAverage !== null);
+  ranked.sort((a, b) => b.annualGeneralAverage! - a.annualGeneralAverage!);
+  ranked.forEach((r, i) => { r.annualRank = i + 1; r.totalStudents = ranked.length; });
+
+  return {
+    className: classRow[0].name,
+    academicYearId,
+    trimesters,
+    students: results,
+    subjectCount: subjectIds.length,
+    studentCount: results.length,
+  };
+}

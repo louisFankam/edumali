@@ -237,13 +237,13 @@ export default function EmploiDuTempsPage() {
         if (!slot || !slot.subjectId) return "<td></td>"
         const subj = subjectMap.get(Number(slot.subjectId))
         const tch = teachers.find((t: any) => Number(t.id) === slot.teacherId)
-        return `<td style="border:1px solid #000;padding:2mm;text-align:center;font-size:8pt">
+        return `<td style="border:1px solid #000;padding:2mm;text-align:center;font-size:9pt">
           <strong>${subj?.name || ""}</strong><br/>
-          <span style="font-size:7pt">${tch ? tch.first_name + " " + tch.last_name : ""}</span>
+          <span style="font-size:8pt">${tch ? tch.first_name + " " + tch.last_name : ""}</span>
         </td>`
       })
       return `<tr>
-        <td style="border:1px solid #000;padding:2mm;font-weight:bold;font-size:8pt;background:#f0f0f0">${fmtTime(row.startTime)} – ${fmtTime(row.endTime)}</td>
+        <td style="border:1px solid #000;padding:2mm;font-weight:bold;font-size:9pt;background:#f0f0f0">${fmtTime(row.startTime)} – ${fmtTime(row.endTime)}</td>
         ${cells.join("")}
       </tr>`
     }).join("")
@@ -260,8 +260,8 @@ export default function EmploiDuTempsPage() {
       .header .title { font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 3mm 0; }
       .header .subtitle { font-size: 10pt; margin-bottom: 3mm; }
       table { width: auto; border-collapse: collapse; margin: 0 auto; }
-      th { border: 1px solid #000; padding: 2mm; font-size: 9pt; background: #f0f0f0; white-space: nowrap; }
-      td { border: 1px solid #000; padding: 2mm; text-align: center; font-size: 8pt; white-space: nowrap; }
+      th { border: 1px solid #000; padding: 2mm; font-size: 10pt; background: #f0f0f0; white-space: nowrap; }
+      td { border: 1px solid #000; padding: 2mm; text-align: center; font-size: 9pt; white-space: nowrap; }
       .footer { margin-top: 5mm; display: flex; justify-content: space-between; font-size: 9pt; width: 100%; }
     </style></head><body>
       <div class="header">
@@ -333,7 +333,7 @@ export default function EmploiDuTempsPage() {
       </Card>
 
       {classId && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 mt-6">
           {/* Subject palette */}
           <div className="lg:col-span-1">
             <Card>
@@ -343,13 +343,13 @@ export default function EmploiDuTempsPage() {
                 {classSubjectList.map((cs: any) => (
                   <div
                     key={cs.subjectId}
-                    className="p-2 rounded border cursor-grab hover:bg-accent text-xs"
+                    className="p-2 rounded border cursor-grab hover:bg-accent text-sm"
                     draggable
                     onDragStart={() => setDraggedSubj({ subjectId: cs.subjectId, name: cs.subject?.name })}
                   >
                     <strong>{cs.subject?.name || cs.subjectName}</strong>
                     {cs.teacherNames && (
-                      <div className="text-muted-foreground mt-0.5 text-[9px]">{cs.teacherNames}</div>
+                      <div className="text-muted-foreground mt-0.5 text-xs">{cs.teacherNames}</div>
                     )}
                   </div>
                 ))}
@@ -358,7 +358,7 @@ export default function EmploiDuTempsPage() {
           </div>
 
           {/* Grid */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-5">
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Grille horaire</CardTitle>
@@ -367,60 +367,69 @@ export default function EmploiDuTempsPage() {
                 {timeRows.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-8 text-center">Cliquez sur "Ajouter ligne" pour créer des créneaux</p>
                 ) : (
-                  <table className="w-full border-collapse border border-gray-300" style={{ minWidth: 600 }}>
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border border-gray-300 p-2 text-xs font-medium" style={{ width: 100 }}>Heure</th>
-                        {DAYS.map(d => <th key={d} className="border border-gray-300 p-2 text-xs font-medium">{d}</th>)}
-                        <th className="border border-gray-300 p-2 text-xs font-medium" style={{ width: 40 }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {timeRows.map(row => (
-                        <tr key={row.startTime + row.endTime}>
-                          <td className="border border-gray-300 p-1.5 text-xs font-medium text-center bg-gray-50">
-                            {fmtTime(row.startTime)}<br/>{fmtTime(row.endTime)}
-                          </td>
-                          {DAYS.map((_, di) => {
-                            const slot = getSlot(row.startTime, row.endTime, di)
-                            const subj = slot?.subjectId ? subjectMap.get(Number(slot.subjectId)) : null
-                            const tch = slot?.teacherId ? teachers.find((t: any) => Number(t.id) === slot.teacherId) : null
-                            return (
-                              <td
-                                key={di}
-                                className="border border-gray-300 p-1 text-center text-xs min-h-[48px] cursor-pointer hover:bg-blue-50"
-                                onDragOver={e => { e.preventDefault() }}
-                                onDrop={e => {
-                                  e.preventDefault()
-                                  if (draggedSubj) handleDrop(row.startTime, row.endTime, di, draggedSubj)
-                                }}
-                                onClick={() => slot && openEdit(slot)}
-                                style={{ minWidth: 80, height: 48 }}
-                              >
-                                {subj ? (
-                                  <div className="flex flex-col items-center">
-                                    <span className="font-medium">{subj.name}</span>
-                                    {tch && <span className="text-[9px] text-muted-foreground">{tch.first_name} {tch.last_name}</span>}
-                                    <div className="flex gap-1 mt-1">
-                                      <button className="text-[9px] text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); openEdit(slot!) }}><Pencil className="h-3 w-3" /></button>
-                                      <button className="text-[9px] text-red-600 hover:underline" onClick={e => { e.stopPropagation(); handleClearSlot(slot!) }}>×</button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-300 text-[9px]">+</span>
-                                )}
-                              </td>
-                            )
-                          })}
-                          <td className="border border-gray-300 p-1 text-center">
-                            <button className="text-red-500 hover:text-red-700" onClick={() => handleDeleteRow(row.startTime, row.endTime)} title="Supprimer la ligne">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
+                  <>
+                    <table className="w-full border-collapse border border-gray-300" style={{ minWidth: 600 }}>
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border border-gray-300 p-2 text-sm font-medium" style={{ width: 100 }}>Heure</th>
+                          {DAYS.map(d => <th key={d} className="border border-gray-300 p-2 text-sm font-medium">{d}</th>)}
+                          <th className="border border-gray-300 p-2 text-sm font-medium" style={{ width: 40 }}></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {timeRows.map(row => (
+                          <tr key={row.startTime + row.endTime}>
+                            <td className="border border-gray-300 p-2 text-sm font-medium text-center bg-gray-50">
+                              {fmtTime(row.startTime)}<br/>{fmtTime(row.endTime)}
+                            </td>
+                            {DAYS.map((_, di) => {
+                              const slot = getSlot(row.startTime, row.endTime, di)
+                              const subj = slot?.subjectId ? subjectMap.get(Number(slot.subjectId)) : null
+                              const tch = slot?.teacherId ? teachers.find((t: any) => Number(t.id) === slot.teacherId) : null
+                              return (
+                                <td
+                                  key={di}
+                                  className="border border-gray-300 p-1.5 text-center text-sm min-h-[56px] cursor-pointer hover:bg-blue-50"
+                                  onDragOver={e => { e.preventDefault() }}
+                                  onDrop={e => {
+                                    e.preventDefault()
+                                    if (draggedSubj) handleDrop(row.startTime, row.endTime, di, draggedSubj)
+                                  }}
+                                  onClick={() => slot && openEdit(slot)}
+                                  style={{ minWidth: 100, height: 56 }}
+                                >
+                                  {subj ? (
+                                    <div className="flex flex-col items-center">
+                                      <span className="font-medium">{subj.name}</span>
+                                      {tch && <span className="text-xs text-muted-foreground">{tch.first_name} {tch.last_name}</span>}
+                                      <div className="flex gap-1 mt-1">
+                                        <button className="text-xs text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); openEdit(slot!) }}><Pencil className="h-3.5 w-3.5" /></button>
+                                        <button className="text-xs text-red-600 hover:underline" onClick={e => { e.stopPropagation(); handleClearSlot(slot!) }}>×</button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">+</span>
+                                  )}
+                                </td>
+                              )
+                            })}
+                            <td className="border border-gray-300 p-1 text-center">
+                              <button className="text-red-500 hover:text-red-700" onClick={() => handleDeleteRow(row.startTime, row.endTime)} title="Supprimer la ligne">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="flex justify-between items-center mt-6 text-sm text-muted-foreground">
+                      <div>Fait à Bamako, le ................</div>
+                      <div className="text-center">
+                        <div>Le Directeur</div>
+                        <div className="font-semibold text-foreground">{schoolInfo?.director || ""}</div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>

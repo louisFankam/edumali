@@ -3,6 +3,7 @@ import {
 } from "@/lib/repositories/expense.repository";
 import { checkPeriodClosed } from "@/lib/services/period.service";
 import { logAudit } from "@/lib/services/audit.service";
+import { validateAmount } from "./amount.validation";
 
 const categoryLabels: Record<string, string> = {
   eau: "Eau", electricite: "Électricité", fournitures: "Fournitures",
@@ -37,35 +38,45 @@ export async function getExpenseById(id: string) {
 
 export async function addExpense(input: {
   description: string; amount: number; category: string; categoryCustom?: string; date: string; notes?: string;
-}) {
+}, userId?: number) {
+  validateAmount(input.amount, "Montant de la dépense");
+
+  if (await checkPeriodClosed(input.date)) {
+    throw new Error("Cette période est clôturée, ajout de dépense impossible");
+  }
+
   const created = await createExpense(input);
   logAudit({
     tableName: "expenses", recordId: created.id,
-    action: "create", newValues: input,
+    action: "create", userId, newValues: input,
   });
   return mapExpense(created);
 }
 
 export async function editExpense(id: string, input: Partial<{
   description: string; amount: number; category: string; categoryCustom?: string; date: string; notes: string;
-}>) {
+}>, userId?: number) {
   const existing = await findExpenseById(Number(id));
   if (!existing) throw new Error("Dépense introuvable");
-  if (input.date && await checkPeriodClosed(input.date)) {
+
+  if (input.amount !== undefined) {
+    validateAmount(input.amount, "Montant de la dépense");
+  }
+
+  const dateToCheck = input.date || existing.date;
+  if (await checkPeriodClosed(dateToCheck)) {
     throw new Error("Cette période est clôturée, modification impossible");
   }
-  if (!input.date && await checkPeriodClosed(existing.date)) {
-    throw new Error("Cette période est clôturée, modification impossible");
-  }
+
   const updated = await updateExpense(Number(id), input);
   logAudit({
     tableName: "expenses", recordId: Number(id),
-    action: "update", oldValues: existing, newValues: { ...existing, ...input },
+    action: "update", userId, oldValues: existing, newValues: { ...existing, ...input },
   });
   return mapExpense(updated);
 }
 
-export async function removeExpense(id: string) {
+export async function removeExpense(id: string, userId?: number) {
   const existing = await findExpenseById(Number(id));
   if (!existing) throw new Error("Dépense introuvable");
   if (await checkPeriodClosed(existing.date)) {
@@ -74,6 +85,6 @@ export async function removeExpense(id: string) {
   await deleteExpense(Number(id));
   logAudit({
     tableName: "expenses", recordId: Number(id),
-    action: "delete", oldValues: existing,
+    action: "delete", userId, oldValues: existing,
   });
 }

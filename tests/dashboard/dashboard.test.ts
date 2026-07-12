@@ -211,4 +211,97 @@ describe("Dashboard", () => {
 
     expect(result.cnt).toBe(1);
   });
+
+  it("devrait calculer le total impayé avec les frais supplémentaires et les remises", async () => {
+    const { db } = await import("@/lib/db");
+    const { addFeeType } = await import("@/lib/services/payment.service");
+    const { saveClassFeeTypes } = await import("@/lib/services/class-fee-type.service");
+    const { addPayment } = await import("@/lib/services/payment.service");
+
+    // Créer une classe et un étudiant dédiés (pas contaminés par les tests précédents)
+    const cls = await seedClass({ name: "Suppl Class", totalFee: 50000 })
+    const yr = await seedAcademicYear({ name: "2025-2026", isCurrent: false })
+    const stu = await seedStudent(cls, {
+      firstName: "Test", lastName: "Suppl",
+      gender: "Masculin", parentName: "Parent", parentPhone: "70000000",
+    })
+    await seedEnrollment(stu, cls, yr)
+
+    // Créer un frais supplémentaire pour la classe
+    const suppFeeType = await addFeeType({ name: "Assurance", amount: 10000, period: "annuel" });
+    await saveClassFeeTypes(cls, [{ feeTypeId: suppFeeType.id, amount: null }]);
+
+    // totalFee = 50000, supplementary = 10000, netFee = 60000, no payments → due = 60000
+    const supplementSql = sql`COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0)`
+    const [result] = db.all(sql`
+      SELECT COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total
+      FROM (
+        SELECT c.total_fee + ${supplementSql} - COALESCE(SUM(p.amount), 0) as due
+        FROM students s
+        JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${Number(yr)}
+        LEFT JOIN classes c ON c.id = e.class_id
+        LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+        WHERE s.status = 'Actif' AND e.academic_year_id = ${Number(yr)}
+        GROUP BY s.id
+      )
+    `) as { outstanding_total: number }[];
+
+    expect(result.outstanding_total).toBe(60000);
+
+    // Ajouter un paiement partiel → due = 60000 - 20000 = 40000
+    await addPayment({ studentId: Number(stu), amount: 20000, method: "espèces", date: "2026-06-01" });
+
+    const [result2] = db.all(sql`
+      SELECT COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total
+      FROM (
+        SELECT c.total_fee + ${supplementSql} - COALESCE(SUM(p.amount), 0) as due
+        FROM students s
+        JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${Number(yr)}
+        LEFT JOIN classes c ON c.id = e.class_id
+        LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+        WHERE s.status = 'Actif' AND e.academic_year_id = ${Number(yr)}
+        GROUP BY s.id
+      )
+    `) as { outstanding_total: number }[];
+
+    expect(result2.outstanding_total).toBe(40000);
+  });
+
+  it("devrait calculer le total impayé avec remise pourcentage", async () => {
+    const { db } = await import("@/lib/db");
+
+    // Créer une classe, un étudiant avec remise 20%, aucun paiement
+    const cls2 = await seedClass({ name: "2ème Année B", totalFee: 100000 })
+    const yr2 = await seedAcademicYear({ name: "2025-2026", isCurrent: false })
+    const stu2 = await seedStudent(cls2, {
+      firstName: "Kadiatou", lastName: "Sow",
+      gender: "Féminin", parentName: "Moussa Sow", parentPhone: "71234567",
+      discountType: "percentage", discountValue: 20,
+    })
+    await seedEnrollment(stu2, cls2, yr2)
+
+    // netFee = 100000 - 20% = 80000, due = 80000
+    const supplementSql = sql`COALESCE((SELECT SUM(COALESCE(cft.amount, ft.amount)) FROM class_fee_types cft JOIN fee_types ft ON ft.id = cft.fee_type_id WHERE cft.class_id = c.id), 0)`
+    const [result] = db.all(sql`
+      SELECT COALESCE(SUM(CASE WHEN due > 0 THEN due ELSE 0 END), 0) as outstanding_total
+      FROM (
+        SELECT
+          CASE
+            WHEN s.discount_type = 'percentage' THEN c.total_fee * (1 - s.discount_value / 100.0)
+            WHEN s.discount_type = 'fixed' THEN c.total_fee - s.discount_value
+            ELSE c.total_fee
+          END + ${supplementSql}
+          - COALESCE(SUM(p.amount), 0) as due
+        FROM students s
+        JOIN enrollments e ON e.student_id = s.id AND e.academic_year_id = ${Number(yr2)}
+        LEFT JOIN classes c ON c.id = e.class_id
+        LEFT JOIN payments p ON p.student_id = s.id AND p.status = 'payé'
+        WHERE s.status = 'Actif' AND e.academic_year_id = ${Number(yr2)}
+        GROUP BY s.id
+      )
+    `) as { outstanding_total: number }[];
+
+    // 100000 - 20% = 80000
+    expect(result.outstanding_total).toBe(80000);
+  });
 });

@@ -1,7 +1,7 @@
 import {
   findAllTeachers, findTeacherById, createTeacher, updateTeacher, deleteTeacher, countTeachers, setTeacherSubjects,
   findTeacherAttendance, findTeacherAttendanceByDate, upsertTeacherAttendance,
-  findAllPayroll, createPayroll, updatePayrollRecord, deletePayrollRecord,
+  findAllPayroll, findPayrollById, createPayroll, updatePayrollRecord, deletePayrollRecord,
   type NewTeacher,
 } from "@/lib/repositories/teacher.repository";
 import { findAllSubjects } from "@/lib/repositories/subject.repository";
@@ -259,7 +259,9 @@ export async function addPayroll(input: {
 }
 
 export async function updatePayroll(id: string, input: any, userId?: number) {
-  const old = await findTeacherById(Number(id));
+  const existing = await findPayrollById(Number(id));
+  if (!existing) throw new Error("Paie introuvable");
+
   const data: any = {};
   if (input.amount !== undefined) data.amount = input.amount;
   if (input.bonus !== undefined) data.bonus = input.bonus;
@@ -268,16 +270,16 @@ export async function updatePayroll(id: string, input: any, userId?: number) {
   if (input.notes !== undefined) data.notes = input.notes;
   if (input.month !== undefined) data.month = input.month;
   if (input.year !== undefined) data.year = input.year;
-  const month = input.month;
-  const year = input.year;
-  if (month && year) {
-    const dateStr = `${year}-${String(month).padStart(2, "0")}-01`;
-    if (await checkPeriodClosed(dateStr)) {
-      throw new Error("Impossible de modifier une paie : la période est clôturée");
-    }
+
+  const checkMonth = input.month ?? existing.month;
+  const checkYear = input.year ?? existing.year;
+  const dateStr = `${checkYear}-${String(checkMonth).padStart(2, "0")}-01`;
+  if (await checkPeriodClosed(dateStr)) {
+    throw new Error("Impossible de modifier une paie : la période est clôturée");
   }
+
   await updatePayrollRecord(Number(id), data);
-  logAudit({ tableName: "payroll", recordId: Number(id), action: "update", userId, oldValues: old ?? undefined, newValues: input as any });
+  logAudit({ tableName: "payroll", recordId: Number(id), action: "update", userId, oldValues: existing, newValues: input as any });
 }
 
 export async function removePayroll(id: string, userId?: number) {

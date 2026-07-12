@@ -35,8 +35,40 @@ export interface BulletinData {
   studentCount: number
 }
 
+export interface AnnualSubjectRow {
+  subjectId: string
+  subjectName: string
+  coefficient: number
+  trimesterAverages: Record<number, number | null>
+  annualAverage: number | null
+  points: number | null
+}
+
+export interface AnnualStudentResult {
+  studentId: string
+  firstName: string
+  lastName: string
+  subjects: AnnualSubjectRow[]
+  annualGeneralAverage: number | null
+  annualRank: number | null
+  totalStudents: number
+  totalPoints: number
+  totalCoeffs: number
+  admis: boolean
+}
+
+export interface AnnualBulletinData {
+  className: string
+  academicYearId: number
+  trimesters: number[]
+  students: AnnualStudentResult[]
+  subjectCount: number
+  studentCount: number
+}
+
 export function useBulletins() {
   const [data, setData] = useState<BulletinData | null>(null)
+  const [annualData, setAnnualData] = useState<AnnualBulletinData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -45,20 +77,31 @@ export function useBulletins() {
     trimester: string
     academicYearId: string
     includeAbsentCoeff?: boolean
+    annual?: boolean
+    trimesters?: number[]
   }) => {
     setIsLoading(true)
     setError(null)
+    setData(null)
+    setAnnualData(null)
     try {
       const params = new URLSearchParams({
         classId: filters.classId,
-        trimester: filters.trimester,
         academicYearId: filters.academicYearId,
       })
+      if (filters.annual) {
+        params.set("annual", "true")
+        if (filters.trimesters) params.set("trimesters", filters.trimesters.join(","))
+      } else {
+        params.set("trimester", filters.trimester)
+      }
       if (filters.includeAbsentCoeff) params.set("includeAbsentCoeff", "true")
       const res = await window.fetch(`/api/bulletins?${params}`)
       const json = await res.json()
-      if (json.ok) setData(json.data)
-      else setError(json.message)
+      if (json.ok) {
+        if (filters.annual) setAnnualData(json.data)
+        else setData(json.data)
+      } else setError(json.message)
     } catch (e: any) {
       setError(String(e))
     } finally {
@@ -66,5 +109,5 @@ export function useBulletins() {
     }
   }, [])
 
-  return { data, isLoading, error, generate }
+  return { data, annualData, isLoading, error, generate }
 }

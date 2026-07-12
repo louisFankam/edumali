@@ -31,3 +31,9 @@ next-env.d.ts
 /ekima_db/data.db
 /ekima_db/data.db-shm
 /ekima_db/data.db-wal
+
+# database backups
+/ekima_db/backups/
+
+# pre-seed database copy
+/ekima_db/data.db.pre_seed
