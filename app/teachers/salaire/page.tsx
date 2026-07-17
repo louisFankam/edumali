@@ -23,20 +23,30 @@ import {
 } from "lucide-react"
 import { useTeachers, usePayroll, PayrollRecord } from "@/hooks/use-teachers"
 import { useAcademicYears } from "@/hooks/use-settings"
+import { toast } from "sonner"
 
 export default function SalairesPage() {
   const { teachers, isLoading: teachersLoading } = useTeachers()
   const { currentYear } = useAcademicYears()
   const { records: payrolls, isLoading: payrollLoading, addPayroll, deletePayroll, refetch } = usePayroll(
-    currentYear ? { from: currentYear.startDate } : undefined
+    currentYear ? { from: currentYear.startDate, to: currentYear.endDate } : undefined
   )
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  })
   const [selectedSalary, setSelectedSalary] = useState<any>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [hoursInput, setHoursInput] = useState<Record<string, number>>({})
   const [attendanceLoading, setAttendanceLoading] = useState(true)
+
+  useEffect(() => {
+    if (currentYear) {
+      setSelectedMonth(currentYear.startDate.substring(0, 7))
+    }
+  }, [currentYear])
 
   const [year, month] = selectedMonth.split("-").map(Number)
 
@@ -139,21 +149,31 @@ export default function SalairesPage() {
   const handleMarkPaid = async (teacherId: string) => {
     const teacher = teachers.find(t => t.id === teacherId)
     if (!teacher) return
-    const calc = calculateSalary(salaryData.find(s => s.id === teacherId))
-    await addPayroll({
-      teacher_id: teacherId,
-      month,
-      year,
-      amount: calc.total,
-      bonus: 0,
-      deductions: 0,
-      paid_at: new Date().toISOString(),
-      notes: "",
-    } as any)
+    try {
+      const calc = calculateSalary(salaryData.find(s => s.id === teacherId))
+      await addPayroll({
+        teacher_id: teacherId,
+        month,
+        year,
+        amount: calc.total,
+        bonus: 0,
+        deductions: 0,
+        paid_at: new Date().toISOString(),
+        notes: "",
+      } as any)
+      toast.success(`${teacher.first_name} ${teacher.last_name} marqué comme payé`)
+    } catch (e) {
+      toast.error(String(e) || "Erreur lors du paiement")
+    }
   }
 
   const handleUnmarkPaid = async (payrollId: string) => {
-    await deletePayroll(payrollId)
+    try {
+      await deletePayroll(payrollId)
+      toast.success("Paiement annulé")
+    } catch (e) {
+      toast.error(String(e) || "Erreur lors de l'annulation")
+    }
   }
 
   const handleExportCSV = () => {

@@ -1,10 +1,10 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Download, Printer } from "lucide-react"
-import { ReceiptContentProps, buildReceiptHTML, receiptStyles } from "./receipt-content"
+import { ReceiptContentProps, buildReceiptHTML, receiptStyles, formatReceiptDate, formatReceiptAmount } from "./receipt-content"
 import { downloadHTMLAsPDF } from "@/lib/reports/pdf-renderer"
 
 interface ReceiptModalProps {
@@ -18,7 +18,7 @@ export function ReceiptModal({ open, onOpenChange, data }: ReceiptModalProps) {
 
   const handleDownload = async () => {
     const html = buildReceiptHTML(data)
-    await downloadHTMLAsPDF(html, `recu-${data.receiptNumber}.pdf`, true, "a5")
+    await downloadHTMLAsPDF(html, `recu-${data.receiptNumber}.pdf`, true, "a4")
   }
 
   const handlePrint = () => {
@@ -33,7 +33,7 @@ export function ReceiptModal({ open, onOpenChange, data }: ReceiptModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between">
           <DialogTitle>Facture</DialogTitle>
           <div className="flex gap-2">
@@ -53,8 +53,19 @@ export function ReceiptModal({ open, onOpenChange, data }: ReceiptModalProps) {
   )
 }
 
+const methodLabels: Record<string, string> = {
+  espèces: "Espèces",
+  mobile_money: "Mobile Money",
+  virement: "Virement bancaire",
+  chèque: "Chèque",
+}
+
 function ReceiptView(props: ReceiptContentProps) {
-  const { payment, student, schoolInfo, receiptNumber } = props
+  const { payment, student, schoolInfo, receiptNumber, academicYear, feeBreakdown, totalDue, alreadyPaid, paymentHistory } = props
+
+  const historyTotal = paymentHistory && paymentHistory.length > 0
+    ? paymentHistory.reduce((sum, p) => sum + p.amount, 0)
+    : 0
 
   return (
     <div className="receipt-preview">
@@ -66,7 +77,7 @@ function ReceiptView(props: ReceiptContentProps) {
               <img
                 src={schoolInfo.logoUrl}
                 alt="Logo"
-                style={{ height: 50, maxWidth: 120, objectFit: "contain" }}
+                style={{ height: 45, maxWidth: 110, objectFit: "contain" }}
               />
             </div>
           )}
@@ -76,69 +87,126 @@ function ReceiptView(props: ReceiptContentProps) {
             {schoolInfo.phone && `Tel: ${schoolInfo.phone}`}
             {schoolInfo.email && ` — Email: ${schoolInfo.email}`}
           </div>
+          <div className="school-detail">
+            {schoolInfo.rccm && `RCCM: ${schoolInfo.rccm}`}
+            {schoolInfo.nif && ` — NIF: ${schoolInfo.nif}`}
+          </div>
         </div>
 
         <div className="receipt-title">REÇU DE PAIEMENT</div>
         <div className="receipt-number">N° {receiptNumber}</div>
+        {academicYear && <div className="receipt-academic-year">Année scolaire: {academicYear}</div>}
 
-        <table className="receipt-info-table">
-          <tbody>
-            <tr><td>Élève</td><td>{student.lastName} {student.firstName}</td></tr>
-            {student.className && <tr><td>Classe</td><td>{student.className}</td></tr>}
-            {student.parentName && <tr><td>Parent</td><td>{student.parentName}</td></tr>}
-            {student.parentPhone && <tr><td>Téléphone</td><td>{student.parentPhone}</td></tr>}
-          </tbody>
-        </table>
+        <div className="receipt-info-block">
+          <div className="block">
+            <div className="receipt-col-title">INFORMATIONS ÉLÈVE</div>
+            <table className="receipt-info-table">
+              <tbody>
+                <tr><td>Élève</td><td><strong>{student.lastName} {student.firstName}</strong></td></tr>
+                {student.className && <tr><td>Classe</td><td>{student.className}</td></tr>}
+                {student.matricule && <tr><td>Matricule</td><td><strong>{student.matricule}</strong></td></tr>}
+                {student.parentName && <tr><td>Parent</td><td>{student.parentName}</td></tr>}
+                {student.parentPhone && <tr><td>Tél. parent</td><td>{student.parentPhone}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="block">
+            <div className="receipt-col-title">INFORMATIONS PAIEMENT</div>
+            <table className="receipt-info-table">
+              <tbody>
+                <tr><td>Date</td><td><strong>{formatReceiptDate(payment.date)}</strong></td></tr>
+                {payment.feeTypeName && <tr><td>Type de frais</td><td>{payment.feeTypeName}</td></tr>}
+                <tr><td>Mode</td><td>{methodLabels[payment.method] || payment.method}</td></tr>
+                {payment.reference && <tr><td>Référence</td><td>{payment.reference}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-        <div className="receipt-divider" />
+        {feeBreakdown && feeBreakdown.length > 0 && (
+          <>
+            <div className="receipt-section-title">DÉTAIL DU PAIEMENT</div>
+            <table className="receipt-detail-table">
+              <thead>
+                <tr><th>Désignation</th><th>Montant</th><th>Échéancier</th></tr>
+              </thead>
+              <tbody>
+                {feeBreakdown.map((f, i) => (
+                  <tr key={i}>
+                    <td>{f.name}</td>
+                    <td>{f.amount.toLocaleString("fr-FR")} FCFA</td>
+                    <td>{f.period}</td>
+                  </tr>
+                ))}
+                {totalDue !== undefined && (
+                  <tr className="total-row"><td>TOTAL DÛ</td><td>{totalDue.toLocaleString("fr-FR")} FCFA</td><td></td></tr>
+                )}
+                {alreadyPaid !== undefined && (
+                  <tr><td>Déjà payé</td><td>-{alreadyPaid.toLocaleString("fr-FR")} FCFA</td><td></td></tr>
+                )}
+                <tr className="highlight-row"><td>CE PAIEMENT</td><td>{payment.amount.toLocaleString("fr-FR")} FCFA</td><td></td></tr>
+                {totalDue !== undefined && alreadyPaid !== undefined && (
+                  <tr className="total-row"><td>RESTE À PAYER</td><td>{Math.max(0, totalDue - alreadyPaid - payment.amount).toLocaleString("fr-FR")} FCFA</td><td></td></tr>
+                )}
+              </tbody>
+            </table>
+          </>
+        )}
 
-        <table className="receipt-info-table">
-          <tbody>
-            <tr><td>Date paiement</td><td>{formatReceiptDate(payment.date)}</td></tr>
-            {payment.feeTypeName && <tr><td>Type de frais</td><td>{payment.feeTypeName}</td></tr>}
-            <tr><td>Mode</td><td>{methodLabels[payment.method] || payment.method}</td></tr>
-            {payment.reference && <tr><td>Référence</td><td>{payment.reference}</td></tr>}
-          </tbody>
-        </table>
+        <div className="receipt-amount-box">
+          MONTANT PAYÉ : {formatReceiptAmount(payment.amount)}
+        </div>
 
-        <div className="receipt-amount">{formatReceiptAmount(payment.amount)}</div>
+        {paymentHistory && paymentHistory.length > 0 && (
+          <>
+            <div className="receipt-section-title">HISTORIQUE DES PAIEMENTS</div>
+            <table className="receipt-detail-table">
+              <thead>
+                <tr><th>N°</th><th>Date</th><th>Type</th><th>Montant</th><th>Statut</th></tr>
+              </thead>
+              <tbody>
+                {paymentHistory.map((p) => (
+                  <tr key={p.id} style={p.id == payment.id ? { fontWeight: "bold" } : undefined}>
+                    <td>{String(p.id).padStart(3, "0")}</td>
+                    <td>{formatReceiptDate(p.date)}</td>
+                    <td>{p.feeTypeName || "-"}</td>
+                    <td>{p.amount.toLocaleString("fr-FR")} FCFA</td>
+                    <td>{p.status === "payé" ? "Payé" : p.status === "en_attente" ? "En attente" : "Annulé"}</td>
+                  </tr>
+                ))}
+                <tr className="total-row">
+                  <td colSpan={3} style={{ textAlign: "right", fontWeight: "bold" }}>TOTAL</td>
+                  <td><strong>{historyTotal.toLocaleString("fr-FR")} FCFA</strong></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+        )}
 
         <div className="receipt-stamp">
-          {schoolInfo.director && (
-            <>
-              <p>Le Directeur</p>
-              <div className="line" />
-              <p style={{ margin: "4px 0 0", fontWeight: 600, fontSize: "9pt" }}>{schoolInfo.director}</p>
-            </>
-          )}
+          <div className="signature-block">
+            <div className="signature-label">L&apos;Élève / Le Parent</div>
+            <div className="line"></div>
+          </div>
+          <div className="signature-block">
+            <div className="signature-label">Le Directeur</div>
+            <div className="line"></div>
+            {schoolInfo.director && (
+              <div className="signature-label" style={{ fontWeight: 600 }}>{schoolInfo.director}</div>
+            )}
+          </div>
         </div>
 
         <div className="receipt-footer">
-          Reçu généré électroniquement le {new Date().toLocaleDateString("fr-FR")}
+          Document généré le {new Date().toLocaleDateString("fr-FR")} à {new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
         </div>
         <div className="receipt-legal">
-          Ce document fait office de reçu officiel. Conservez-le comme preuve de paiement.
+          Ce reçu fait office de preuve de paiement officiel. Conservez-le précieusement.
         </div>
       </div>
     </div>
   )
-}
-
-function formatReceiptDate(dateStr: string): string {
-  if (!dateStr) return ""
-  const [y, m, d] = dateStr.split("-")
-  return `${d}/${m}/${y}`
-}
-
-function formatReceiptAmount(n: number): string {
-  return n.toLocaleString("fr-FR") + " FCFA"
-}
-
-const methodLabels: Record<string, string> = {
-  espèces: "Espèces",
-  mobile_money: "Mobile Money",
-  virement: "Virement bancaire",
-  chèque: "Chèque",
 }
 
 export type { ReceiptModalProps }
