@@ -173,6 +173,19 @@ export default function StudentPaymentsPage() {
   const openReceipt = (payment: any, student: any) => {
     const feeTypeName = payment.feeTypeName || (payment.feeTypeId ? feeTypes.find((ft: any) => ft.id === payment.feeTypeId)?.name : null) || null
     const cls = classes.find(c => c.id === student.classId)
+
+    const matricule = `EDM-${currentYear?.name?.split("-")[0] || ""}-${String(student.id).padStart(4, "0")}`
+
+    const feeBreakdown = cls?.feeTypes?.map((ft: any) => ({
+      name: ft.feeTypeName,
+      amount: ft.amount ?? ft.feeTypeAmount,
+      period: ft.feeTypePeriod || "annuel",
+    })) || []
+
+    if (baseFee > 0) {
+      feeBreakdown.unshift({ name: "Frais de scolarité", amount: baseFee, period: "annuel" })
+    }
+
     setReceiptPayment({
       payment: { ...payment, feeTypeName },
       student: {
@@ -181,8 +194,29 @@ export default function StudentPaymentsPage() {
         parentName: student.parentName,
         parentPhone: student.parentPhone,
         className: cls?.name || student.className,
+        matricule,
+      },
+      schoolInfo: {
+        name: schoolInfo?.name || "",
+        address: schoolInfo?.address || "",
+        phone: schoolInfo?.phone || "",
+        email: schoolInfo?.email || "",
+        logoUrl: schoolInfo?.logoUrl || "",
+        director: schoolInfo?.director || "",
       },
       receiptNumber: `FACT-${String(payment.id).padStart(3, "0")}-${payment.date ? payment.date.replace(/-/g, "").slice(2) : ""}`,
+      academicYear: currentYear?.name || undefined,
+      feeBreakdown: feeBreakdown.length > 0 ? feeBreakdown : undefined,
+      totalDue: netFee,
+      alreadyPaid: totalPaid,
+      paymentHistory: payments.map((p: any) => ({
+        id: p.id,
+        amount: p.amount,
+        method: p.method,
+        date: p.date,
+        feeTypeName: p.feeTypeName || (p.feeTypeId ? feeTypes.find((ft: any) => ft.id === p.feeTypeId)?.name : null) || null,
+        status: p.status,
+      })),
     })
     setShowReceipt(true)
   }
@@ -409,8 +443,13 @@ export default function StudentPaymentsPage() {
             data={{
               payment: receiptPayment.payment,
               student: receiptPayment.student,
-              schoolInfo: schoolInfo || { name: "", address: "", phone: "", email: "", logoUrl: "", director: "" },
+              schoolInfo: receiptPayment.schoolInfo || { name: "", address: "", phone: "", email: "", logoUrl: "", director: "" },
               receiptNumber: receiptPayment.receiptNumber,
+              academicYear: receiptPayment.academicYear,
+              feeBreakdown: receiptPayment.feeBreakdown,
+              totalDue: receiptPayment.totalDue,
+              alreadyPaid: receiptPayment.alreadyPaid,
+              paymentHistory: receiptPayment.paymentHistory,
             }}
           />
         )}
